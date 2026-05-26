@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Enterprise Payment Letter Generator</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#eef2f7;
+    padding:18px;
+    overflow-x:hidden;
+}
+
+.container{
+    width:100%;
+    margin:auto;
+}
+
+.title{
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:20px;
+}
+
+.top-section{
+    display:grid;
+    grid-template-columns:450px 1fr;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.card{
+    background:white;
+    padding:18px;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+
+.card-title{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:15px;
+}
+
+.form-group{
+    margin-bottom:15px;
+}
+
+label{
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+    font-weight:600;
+}
+
+input,
+select{
+    width:100%;
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+}
+
+button{
+    border:none;
+    padding:10px 15px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+}
+
+.primary{
+    background:#2563eb;
+    color:white;
+}
+
+.success{
+    background:#059669;
+    color:white;
+}
+
+.danger{
+    background:#dc2626;
+    color:white;
+}
+
+.secondary{
+    background:#6b7280;
+    color:white;
+}
+
+.warning{
+    background:#d97706;
+    color:white;
+}
+
+.upload-box{
+    border:2px dashed #cbd5e1;
+    padding:16px;
+    border-radius:10px;
+    background:#f8fafc;
+}
+
+.upload-status{
+    margin-top:10px;
+    font-size:13px;
+    font-weight:600;
+    color:#059669;
+}
+
+.entry-card{
+    margin-bottom:25px;
+}
+
+.table-wrapper{
+    width:100%;
+    overflow:auto;
+    min-height:240px;
+}
+
+.entry-table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1400px;
+}
+
+.entry-table th{
+    background:#111827;
+    color:white;
+    padding:10px;
+    font-size:13px;
+    text-align:center;
+}
+
+.entry-table td{
+    border:1px solid #d1d5db;
+    padding:6px;
+    position:relative;
+    text-align:center;
+    vertical-align:middle;
+}
+
+.entry-table td input{
+    padding:8px;
+    text-align:center;
+}
+
+.amount{
+    text-align:right !important;
+    -moz-appearance:textfield;
+}
+
+.amount::-webkit-outer-spin-button,
+.amount::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+}
+
+.readonly{
+    background:#f3f4f6;
+    pointer-events:none;
+    color:#374151;
+    font-weight:600;
+}
+
+.party-search{
+    width:260px;
+}
+
+.dropdown{
+    position:absolute;
+    top:100%;
+    left:0;
+    width:100%;
+    background:white;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    max-height:220px;
+    overflow-y:auto;
+    z-index:99999;
+    display:none;
+    box-shadow:0 4px 15px rgba(0,0,0,0.15);
+    text-align:left;
+}
+
+.dropdown-item{
+    padding:10px;
+    cursor:pointer;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.dropdown-item:hover{
+    background:#eff6ff;
+}
+
+.selected-dropdown{
+    background:#dbeafe !important;
+}
+
+.preview-section{
+    margin-top:25px;
+}
+
+.preview-wrapper{
+    width:100%;
+    overflow:auto;
+    background:#d1d5db;
+    padding:25px;
+    display:flex;
+    justify-content:center;
+}
+
+.a4-sheet{
+    background:white;
+    padding:12mm;
+    box-shadow:0 0 10px rgba(0,0,0,0.15);
+}
+
+.portrait-mode{
+    width:210mm;
+}
+
+.landscape-mode{
+    width:297mm;
+}
+
+.letter-section{
+    margin-bottom:20px;
+    line-height:1.8;
+}
+
+.letter-header{
+    width:100%;
+    margin-bottom:18px;
+    border-collapse:collapse;
+}
+
+.letter-header td{
+    font-size:14px;
+    padding:2px 0;
+}
+
+.preview-heading{
+    font-size:18px;
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:18px;
+}
+
+.print-table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    word-wrap:break-word;
+}
+
+.print-table th,
+.print-table td{
+    border:1px solid black;
+    padding:5px;
+    word-break:break-word;
+    text-align:center;
+    font-size:11px;
+    position:relative;
+}
+
+.print-table th{
+    background:#f3f4f6;
+}
+
+.total-row{
+    font-weight:bold;
+    background:#f9fafb;
+}
+
+.amount-cell{
+    text-align:right !important;
+}
+
+.action-bar{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+    flex-wrap:wrap;
+}
+
+.firm-AA{
+    background:#fff9c4 !important;
+}
+
+.firm-BB{
+    background:#ffe0b2 !important;
+}
+
+.firm-CC{
+    background:#f8bbd0 !important;
+}
+
+.firm-DD{
+    background:#bbdefb !important;
+}
+
+.firm-EE{
+    background:#c8e6c9 !important;
+}
+
+.firm-FF{
+    background:#d7ccc8 !important;
+}
+
+.resize-handle-col{
+    position:absolute;
+    top:0;
+    right:-3px;
+    width:6px;
+    height:100%;
+    cursor:col-resize;
+    z-index:999;
+}
+
+.resize-handle-row{
+    position:absolute;
+    bottom:-3px;
+    left:0;
+    width:100%;
+    height:6px;
+    cursor:row-resize;
+    z-index:999;
+}
+
+@page{
+    margin:8mm;
+}
+
+@media print{
+
+    html,
+    body{
+        width:100%;
+        height:auto;
+        overflow:hidden;
+        background:white;
+    }
+
+    body{
+        padding:0;
+        margin:0;
+    }
+
+    .no-print{
+        display:none !important;
+    }
+
+    .preview-wrapper{
+        background:white;
+        padding:0;
+        overflow:visible;
+    }
+
+    .a4-sheet{
+        box-shadow:none;
+        margin:0 auto;
+    }
+
+    .resize-handle-col,
+    .resize-handle-row{
+        display:none !important;
+    }
+
+}
+
+@media(max-width:1100px){
+
+    .top-section{
+        grid-template-columns:1fr;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="title no-print">
+        Enterprise Payment Letter Generator
+    </div>
+
+    <div class="top-section no-print">
+
+        <div class="card">
+
+            <div class="card-title">
+                Letter Details
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Letter Type
+                </label>
+
+                <select id="letterType"
+                        onchange="generatePreview()">
+
+                    <option value="">
+                        Select Letter Type
+                    </option>
+
+                    <option>AA to Others</option>
+                    <option>BB to Others</option>
+                    <option>CC to Others</option>
+                    <option>DD to Others</option>
+                    <option>EE to Others</option>
+                    <option>FF to Others</option>
+
+                    <option>AA to UBI</option>
+                    <option>BB to UBI</option>
+                    <option>CC to UBI</option>
+                    <option>DD to UBI</option>
+                    <option>EE to UBI</option>
+                    <option>FF to UBI</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Firm
+                </label>
+
+                <select id="firmSelect"
+                        onchange="populateAccounts()">
+
+                    <option value="">Select Firm</option>
+                    <option value="AA">AA</option>
+                    <option value="BB">BB</option>
+                    <option value="CC">CC</option>
+                    <option value="DD">DD</option>
+                    <option value="EE">EE</option>
+                    <option value="FF">FF</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Account Number
+                </label>
+
+                <select id="accountNumber"></select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Cheque Number
+                </label>
+
+                <input type="text"
+                       id="chequeNumber"
+                       value="******">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Print Orientation
+                </label>
+
+                <select id="orientation"
+                        onchange="changeOrientation()">
+
+                    <option value="portrait" selected>
+                        Portrait
+                    </option>
+
+                    <option value="landscape">
+                        Landscape
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <div class="card-title">
+                Upload Party Master Excel
+            </div>
+
+            <div class="upload-box">
+
+                <input type="file"
+                       accept=".xlsx,.xls"
+                       onchange="handleExcelUpload(event)">
+
+                <div class="upload-status"
+                     id="uploadStatus">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card entry-card no-print">
+
+        <div class="card-title">
+            Payment Entry Table
+        </div>
+
+        <div class="table-wrapper">
+
+            <table class="entry-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th width="70">
+                            S.No.
+                        </th>
+
+                        <th width="260">
+                            Party Name
+                        </th>
+
+                        <th>
+                            Bank Account
+                        </th>
+
+                        <th>
+                            IFSC Code
+                        </th>
+
+                        <th width="140">
+                            Amount
+                        </th>
+
+                        <th>
+                            Mobile No.
+                        </th>
+
+                        <th width="90">
+                            Action
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="tableBody">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <div class="action-bar">
+
+            <button class="success"
+                    onclick="addRow()">
+
+                + Add Row
+
+            </button>
+
+            <button class="primary"
+                    onclick="generatePreview()">
+
+                Generate Preview
+
+            </button>
+
+            <button class="secondary"
+                    onclick="window.print()">
+
+                Print
+
+            </button>
+
+            <button class="success"
+                    onclick="exportToExcel()">
+
+                Export Excel
+
+            </button>
+
+            <button class="warning"
+                    onclick="toggleAutoFit()">
+
+                AutoFit Preview
+
+            </button>
+
+            <button class="secondary"
+                    onclick="decreaseFont()">
+
+                A-
+
+            </button>
+
+            <button class="primary"
+                    onclick="increaseFont()">
+
+                A+
+
+            </button>
+
+            <button class="danger"
+                    onclick="resetForm()">
+
+                Reset
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="preview-section">
+
+        <div class="preview-wrapper">
+
+            <div class="a4-sheet portrait-mode"
+                 id="printSection">
+
+                <div class="preview-heading"
+                     id="previewHeading">
+                </div>
+
+                <div class="letter-section">
+
+                    <table class="letter-header">
+
+                        <tr>
+
+                            <td>
+                                To
+                            </td>
+
+                            <td style="text-align:right;">
+                                Date:
+                                <span id="currentDate"></span>
+                            </td>
+
+                        </tr>
+
+                        <tr>
+                            <td>The Branch Manager</td>
+                            <td></td>
+                        </tr>
+
+                        <tr>
+                            <td>ABC Bank</td>
+                            <td></td>
+                        </tr>
+
+                        <tr>
+                            <td>LA, Sector-22</td>
+                            <td></td>
+                        </tr>
+
+                    </table>
+
+                </div>
+
+                <div class="letter-section"
+                     id="letterText">
+
+                </div>
+
+                <table class="print-table"
+                       id="printTable">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>S.No.</th>
+                            <th>Party Name</th>
+                            <th>Bank Account</th>
+                            <th>IFSC Code</th>
+                            <th>Amount</th>
+                            <th>Mobile No.</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="previewBody"></tbody>
+
+                    <tfoot id="previewFooter"></tfoot>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let partyMaster = [];
+let previewFontSize = 11;
+let autoFitEnabled = false;
+
+const firms = {
+
+    AA:["111","112"],
+    BB:["221","222"],
+    CC:["331","332"],
+    DD:["441"],
+    EE:["551"],
+    FF:["661"]
+
+};
+
+const firmColors = {
+
+    AA:"firm-AA",
+    BB:"firm-BB",
+    CC:"firm-CC",
+    DD:"firm-DD",
+    EE:"firm-EE",
+    FF:"firm-FF"
+
+};
+
+const tableBody =
+document.getElementById("tableBody");
+
+function populateAccounts(){
+
+    const firm =
+    document.getElementById(
+        "firmSelect"
+    ).value;
+
+    const accountDropdown =
+    document.getElementById(
+        "accountNumber"
+    );
+
+    accountDropdown.innerHTML = "";
+
+    accountDropdown.className = "";
+
+    if(!firm) return;
+
+    accountDropdown.classList.add(
+        firmColors[firm]
+    );
+
+    document.getElementById(
+        "firmSelect"
+    ).className = firmColors[firm];
+
+    firms[firm].forEach(account => {
+
+        const option =
+        document.createElement("option");
+
+        option.value = account;
+        option.textContent = account;
+
+        accountDropdown.appendChild(option);
+
+    });
+
+    generatePreview();
+
+}
+
+function normalizeText(text){
+
+    return text
+        .toString()
+        .trim()
+        .replace(/\s+/g,' ')
+        .toLowerCase();
+
+}
+
+function changeOrientation(){
+
+    const section =
+    document.getElementById(
+        "printSection"
+    );
+
+    const orientation =
+    document.getElementById(
+        "orientation"
+    ).value;
+
+    section.classList.remove(
+        "portrait-mode",
+        "landscape-mode"
+    );
+
+    if(orientation === "portrait"){
+
+        section.classList.add(
+            "portrait-mode"
+        );
+
+    }else{
+
+        section.classList.add(
+            "landscape-mode"
+        );
+
+    }
+
+}
+
+function increaseFont(){
+
+    previewFontSize++;
+
+    applyFontSize();
+
+}
+
+function decreaseFont(){
+
+    if(previewFontSize > 8){
+
+        previewFontSize--;
+
+        applyFontSize();
+
+    }
+
+}
+
+function applyFontSize(){
+
+    document.querySelectorAll(
+        "#printTable th, #printTable td"
+    ).forEach(cell => {
+
+        cell.style.fontSize =
+        previewFontSize + "px";
+
+    });
+
+}
+
+function toggleAutoFit(){
+
+    const table =
+    document.getElementById(
+        "printTable"
+    );
+
+    autoFitEnabled =
+    !autoFitEnabled;
+
+    if(autoFitEnabled){
+
+        table.style.tableLayout =
+        "auto";
+
+    }else{
+
+        table.style.tableLayout =
+        "fixed";
+
+    }
+
+}
+
+function exportToExcel(){
+
+    const data = [];
+
+    const letterType =
+    document.getElementById(
+        "letterType"
+    ).value;
+
+    const account =
+    document.getElementById(
+        "accountNumber"
+    ).value;
+
+    const cheque =
+    document.getElementById(
+        "chequeNumber"
+    ).value;
+
+    data.push([
+        "Letter Type",
+        letterType
+    ]);
+
+    data.push([
+        "Account Number",
+        account
+    ]);
+
+    data.push([
+        "Cheque Number",
+        cheque
+    ]);
+
+    data.push([]);
+
+    data.push([
+        "S.No.",
+        "Party Name",
+        "Bank Account",
+        "IFSC Code",
+        "Amount",
+        "Mobile No."
+    ]);
+
+    [...tableBody.rows].forEach(row => {
+
+        const serial =
+        row.querySelector(
+            "td:nth-child(1) input"
+        ).value;
+
+        const party =
+        row.querySelector(
+            ".party-search"
+        ).value;
+
+        const bank =
+        row.querySelector(
+            ".bankAccount"
+        ).value;
+
+        const ifsc =
+        row.querySelector(
+            ".ifscCode"
+        ).value;
+
+        const amount =
+        row.querySelector(
+            ".amount"
+        ).value;
+
+        const mobile =
+        row.querySelector(
+            ".mobileNumber"
+        ).value;
+
+        data.push([
+            serial,
+            party,
+            bank,
+            ifsc,
+            amount,
+            mobile
+        ]);
+
+    });
+
+    const worksheet =
+    XLSX.utils.aoa_to_sheet(data);
+
+    const workbook =
+    XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Payment Letter"
+    );
+
+    XLSX.writeFile(
+        workbook,
+        "Payment_Letter.xlsx"
+    );
+
+}
+
+function handleExcelUpload(event){
+
+    const file =
+    event.target.files[0];
+
+    if(!file) return;
+
+    const reader =
+    new FileReader();
+
+    reader.onload = function(e){
+
+        const data =
+        new Uint8Array(
+            e.target.result
+        );
+
+        const workbook =
+        XLSX.read(data,{
+            type:'array'
+        });
+
+        const worksheet =
+        workbook.Sheets[
+            workbook.SheetNames[0]
+        ];
+
+        const excelData =
+        XLSX.utils.sheet_to_json(
+            worksheet,
+            {
+                defval:'',
+                raw:false
+            }
+        );
+
+        partyMaster = [];
+
+        excelData.forEach(row => {
+
+            let cleanRow = {};
+
+            Object.keys(row).forEach(key => {
+
+                cleanRow[
+                    normalizeText(key)
+                ] = row[key];
+
+            });
+
+            partyMaster.push({
+
+                serialNo:
+                    cleanRow["serial no."],
+
+                partyName:
+                    cleanRow["party name"],
+
+                bankAccount:
+                    cleanRow["bank account"],
+
+                ifscCode:
+                    cleanRow["ifsc code"],
+
+                mobileNumber:
+                    cleanRow["mobile no."]
+
+            });
+
+        });
+
+        document.getElementById(
+            "uploadStatus"
+        ).innerHTML =
+
+        `✔ ${partyMaster.length} party records loaded`;
+
+    };
+
+    reader.readAsArrayBuffer(file);
+
+}
+
+function addRow(){
+
+    const rowCount =
+    tableBody.rows.length + 1;
+
+    const row =
+    document.createElement("tr");
+
+    row.innerHTML = `
+
+        <td>
+            <input type="text"
+                   class="readonly"
+                   value="${rowCount}"
+                   readonly>
+        </td>
+
+        <td>
+
+            <div style="position:relative;">
+
+                <input type="text"
+                       class="party-search"
+                       autocomplete="off">
+
+                <div class="dropdown"></div>
+
+            </div>
+
+        </td>
+
+        <td>
+            <input type="text"
+                   class="bankAccount readonly"
+                   readonly>
+        </td>
+
+        <td>
+            <input type="text"
+                   class="ifscCode readonly"
+                   readonly>
+        </td>
+
+        <td>
+            <input type="text"
+                   class="amount">
+        </td>
+
+        <td>
+            <input type="text"
+                   class="mobileNumber readonly"
+                   readonly>
+        </td>
+
+        <td>
+
+            <button class="danger"
+                    onclick="deleteRow(this)">
+
+                Delete
+
+            </button>
+
+        </td>
+
+    `;
+
+    tableBody.appendChild(row);
+
+    attachAutocomplete(row);
+
+    generatePreview();
+
+}
+
+function evaluateExpression(expression){
+
+    try{
+
+        let sanitized =
+        expression.replace(/%/g,"/100");
+
+        return Function(
+            `"use strict"; return (${sanitized})`
+        )();
+
+    }catch{
+
+        return 0;
+
+    }
+
+}
+
+function attachAutocomplete(row){
+
+    const input =
+    row.querySelector(".party-search");
+
+    const dropdown =
+    row.querySelector(".dropdown");
+
+    const amountInput =
+    row.querySelector(".amount");
+
+    let selectedIndex = -1;
+    let partySelected = false;
+
+    input.addEventListener(
+        "input",
+        function(){
+
+        partySelected = false;
+
+        const searchText =
+        normalizeText(input.value);
+
+        dropdown.innerHTML = "";
+
+        selectedIndex = -1;
+
+        if(searchText === ""){
+
+            dropdown.style.display =
+            "none";
+
+            return;
+
+        }
+
+        const matches =
+        partyMaster.filter(party => {
+
+            return normalizeText(
+                party.partyName
+            ).includes(searchText);
+
+        });
+
+        matches.forEach((party,index) => {
+
+            const item =
+            document.createElement("div");
+
+            item.className =
+            "dropdown-item";
+
+            item.innerText =
+            party.partyName;
+
+            item.onclick = function(){
+
+                selectParty(party);
+
+            };
+
+            dropdown.appendChild(item);
+
+        });
+
+        dropdown.style.display =
+        matches.length
+        ? "block"
+        : "none";
+
+        function selectParty(party){
+
+            input.value =
+            party.partyName;
+
+            row.querySelector(
+                ".bankAccount"
+            ).value =
+            party.bankAccount;
+
+            row.querySelector(
+                ".ifscCode"
+            ).value =
+            party.ifscCode;
+
+            row.querySelector(
+                ".mobileNumber"
+            ).value =
+            party.mobileNumber;
+
+            dropdown.style.display =
+            "none";
+
+            selectedIndex = -1;
+
+            partySelected = true;
+
+            generatePreview();
+
+        }
+
+    });
+
+    input.addEventListener(
+        "keydown",
+        function(e){
+
+        const items =
+        dropdown.querySelectorAll(
+            ".dropdown-item"
+        );
+
+        if(
+            dropdown.style.display === "block"
+        ){
+
+            if(e.key === "ArrowDown"){
+
+                e.preventDefault();
+
+                selectedIndex++;
+
+                if(
+                    selectedIndex >= items.length
+                ){
+
+                    selectedIndex = 0;
+
+                }
+
+                updateSelection(items);
+
+                return;
+            }
+
+            if(e.key === "ArrowUp"){
+
+                e.preventDefault();
+
+                selectedIndex--;
+
+                if(selectedIndex < 0){
+
+                    selectedIndex =
+                    items.length - 1;
+
+                }
+
+                updateSelection(items);
+
+                return;
+            }
+
+            if(e.key === "Enter"){
+
+                e.preventDefault();
+
+                if(
+                    selectedIndex >= 0 &&
+                    items[selectedIndex]
+                ){
+
+                    items[selectedIndex].click();
+
+                }
+
+                return;
+            }
+
+        }
+
+        if(
+            e.key === "Enter" &&
+            partySelected
+        ){
+
+            e.preventDefault();
+
+            let nextRow =
+            row.nextElementSibling;
+
+            if(!nextRow){
+
+                addRow();
+
+                nextRow =
+                tableBody.lastElementChild;
+
+            }
+
+            nextRow.querySelector(
+                ".party-search"
+            ).focus();
+
+        }
+
+    });
+
+    amountInput.addEventListener(
+        "keydown",
+        function(e){
+
+        if(e.key === "Enter"){
+
+            e.preventDefault();
+
+            const result =
+            evaluateExpression(
+                amountInput.value
+            );
+
+            amountInput.value =
+            result.toFixed(2);
+
+            generatePreview();
+
+            let nextRow =
+            row.nextElementSibling;
+
+            if(!nextRow){
+
+                addRow();
+
+                nextRow =
+                tableBody.lastElementChild;
+
+            }
+
+            nextRow.querySelector(
+                ".amount"
+            ).focus();
+
+        }
+
+    });
+
+    function updateSelection(items){
+
+        items.forEach(item => {
+
+            item.classList.remove(
+                "selected-dropdown"
+            );
+
+        });
+
+        if(items[selectedIndex]){
+
+            items[selectedIndex]
+            .classList.add(
+                "selected-dropdown"
+            );
+
+            items[selectedIndex]
+            .scrollIntoView({
+                block:"nearest"
+            });
+
+        }
+
+    }
+
+}
+
+function deleteRow(button){
+
+    button.closest("tr").remove();
+
+    updateSerialNumbers();
+
+    generatePreview();
+
+}
+
+function updateSerialNumbers(){
+
+    [...tableBody.rows].forEach(
+    (row,index) => {
+
+        row.querySelector(
+            "td:first-child input"
+        ).value = index + 1;
+
+    });
+
+}
+
+function generatePreview(){
+
+    const account =
+    document.getElementById(
+        "accountNumber"
+    ).value;
+
+    const cheque =
+    document.getElementById(
+        "chequeNumber"
+    ).value;
+
+    const letterType =
+    document.getElementById(
+        "letterType"
+    ).value;
+
+    document.getElementById(
+        "previewHeading"
+    ).innerHTML = letterType;
+
+    document.getElementById(
+        "letterText"
+    ).innerHTML =
+
+    `Please Debit party account from our saving account no.
+    <b>${account}</b>
+    from cheque no.
+    <b>${cheque}</b>`;
+
+    const previewBody =
+    document.getElementById(
+        "previewBody"
+    );
+
+    const previewFooter =
+    document.getElementById(
+        "previewFooter"
+    );
+
+    previewBody.innerHTML = "";
+
+    let grandTotal = 0;
+
+    [...tableBody.rows].forEach(row => {
+
+        const serial =
+        row.querySelector(
+            "td:nth-child(1) input"
+        ).value;
+
+        const party =
+        row.querySelector(
+            ".party-search"
+        ).value;
+
+        const bank =
+        row.querySelector(
+            ".bankAccount"
+        ).value;
+
+        const ifsc =
+        row.querySelector(
+            ".ifscCode"
+        ).value;
+
+        const amount =
+        parseFloat(
+            row.querySelector(
+                ".amount"
+            ).value
+        ) || 0;
+
+        const mobile =
+        row.querySelector(
+            ".mobileNumber"
+        ).value;
+
+        grandTotal += amount;
+
+        const tr =
+        document.createElement("tr");
+
+        tr.innerHTML = `
+
+            <td>${serial}</td>
+            <td>${party}</td>
+            <td>${bank}</td>
+            <td>${ifsc}</td>
+
+            <td class="amount-cell">
+                ₹ ${amount.toLocaleString('en-IN',{
+                    minimumFractionDigits:2
+                })}
+            </td>
+
+            <td>${mobile}</td>
+
+        `;
+
+        previewBody.appendChild(tr);
+
+    });
+
+    previewFooter.innerHTML = `
+
+        <tr class="total-row">
+
+            <td colspan="4"
+                style="text-align:right;">
+
+                Grand Total
+
+            </td>
+
+            <td class="amount-cell">
+
+                ₹ ${grandTotal.toLocaleString('en-IN',{
+                    minimumFractionDigits:2
+                })}
+
+            </td>
+
+            <td></td>
+
+        </tr>
+
+    `;
+
+    applyFontSize();
+
+}
+
+function resetForm(){
+
+    tableBody.innerHTML = "";
+
+    document.getElementById(
+        "orientation"
+    ).value = "portrait";
+
+    document.getElementById(
+        "firmSelect"
+    ).selectedIndex = 0;
+
+    document.getElementById(
+        "letterType"
+    ).selectedIndex = 0;
+
+    document.getElementById(
+        "previewHeading"
+    ).innerHTML = "";
+
+    document.getElementById(
+        "firmSelect"
+    ).className = "";
+
+    document.getElementById(
+        "accountNumber"
+    ).innerHTML = "";
+
+    document.getElementById(
+        "accountNumber"
+    ).className = "";
+
+    document.getElementById(
+        "chequeNumber"
+    ).value = "11111";
+
+    previewFontSize = 11;
+
+    autoFitEnabled = false;
+
+    document.getElementById(
+        "printTable"
+    ).style.tableLayout = "fixed";
+
+    changeOrientation();
+
+    addRow();
+    addRow();
+
+    generatePreview();
+
+}
+
+document.addEventListener(
+    "click",
+    function(e){
+
+    document.querySelectorAll(
+        ".dropdown"
+    ).forEach(dropdown => {
+
+        if(
+            !dropdown.parentElement.contains(
+                e.target
+            )
+        ){
+
+            dropdown.style.display =
+            "none";
+
+        }
+
+    });
+
+});
+
+function setCurrentDate(){
+
+    const today = new Date();
+
+    const dd =
+    String(today.getDate())
+    .padStart(2,'0');
+
+    const mm =
+    String(today.getMonth()+1)
+    .padStart(2,'0');
+
+    const yyyy =
+    today.getFullYear();
+
+    document.getElementById(
+        "currentDate"
+    ).innerText =
+    `${dd}-${mm}-${yyyy}`;
+
+}
+
+setCurrentDate();
+
+changeOrientation();
+
+addRow();
+addRow();
+
+generatePreview();
+
+</script>
+
+</body>
+</html>

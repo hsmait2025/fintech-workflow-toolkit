@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Merge, Compress & Split PDF</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007bff">
+
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; padding:1rem; background:#f7f9fb; color:#111; }
+  .container { max-width:720px; margin:0 auto; background:#fff; padding:1rem; border-radius:8px; box-shadow:0 6px 20px rgba(10,20,30,0.06); }
+  h2 { margin:0 0 1rem; text-align:center; font-size:1.25rem; }
+  .controls { display:flex; flex-direction:column; gap:0.75rem; }
+  label { display:flex; gap:0.5rem; align-items:center; font-size:0.95rem; }
+  input[type=file] { padding:0.25rem 0; }
+  button { background:#0b74ff; color:#fff; border:none; padding:0.8rem; border-radius:6px; font-size:1rem; cursor:pointer; }
+  button:active { transform:translateY(1px); }
+  #fileList { margin-top:1rem; padding-left:1rem; font-size:0.92rem; max-height:120px; overflow:auto; }
+  
+  .preview { display:flex; flex-wrap:wrap; gap:8px; margin-top:0.8rem; justify-content:center; }
+  .preview-item {
+    position: relative;
+    display: inline-block;
+    width: 120px;
+    height: 160px;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid #e6e9ee;
+    background: #f8f8f8;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .preview-item:active { cursor: grabbing; }
+
+  .preview img,
+  .preview canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    pointer-events: none; /* ensures dragging works smoothly */
+  }
+
+  .preview-item .label {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 2px 5px;
+    font-size: 14px;
+    border-radius: 4px;
+    z-index: 4;
+  }
+  
+  .preview-item .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: red;
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 18px;
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 5;
+  }
+  
+  .note { margin-top:0.6rem; font-size:0.85rem; color:#555; }
+  .split-section { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; }
+  /* small responsiveness */
+  @media (max-width:480px){
+    .preview-item { width: 100px; height: 140px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Merge & Compress — JPG / PNG / PDF → Single PDF</h2>
+
+  <div class="controls">
+    <label><input id="combineAll" type="checkbox" /> Combine ALL uploads into a single PDF</label>
+    <label><input id="showSize" type="checkbox" /> Show size info after processing</label>
+    <input id="files" type="file" accept=".jpeg,.jpg,.png,.pdf" multiple />
+    <button id="startBtn">Process & Download</button>
+  </div>
+
+  <div class="note">Upload JPG / PNG / PDF. If "Combine" is checked, all uploads are merged in the uploaded order into one PDF. PNGs are converted to JPEG for compression.</div>
+
+  <ul id="fileList"></ul>
+  <div class="preview" id="preview"></div>
+
+  <!-- New PDF Splitter Section -->
+  <div class="split-section">
+    <h2>PDF Splitter — Split PDF into Single Pages</h2>
+    <div class="controls">
+      <input id="splitFile" type="file" accept=".pdf" />
+      <button id="splitBtn">Split PDF</button>
+    </div>
+    <div class="note">Upload a PDF and split it into separate single-page PDFs.</div><p id="version" style="margin-top:1rem; text-align:center; font-size:0.85rem; color:#666;">
+  Version 2.0.0
+</p>
+  </div>
+</div>
+
+<!-- pdf-lib -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+<!-- SortableJS -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<!-- PDF.js (render thumbnails). Adjust versions if you want another release. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+<script>
+(function(){
+  const fileInput = document.getElementById('files');
+  const fileListEl = document.getElementById('fileList');
+  const previewEl = document.getElementById('preview');
+  const combineCheckbox = document.getElementById('combineAll');
+  const showSizeCheckbox = document.getElementById('showSize');
+  const startBtn = document.getElementById('startBtn');
+  const splitInput = document.getElementById('splitFile');
+  const splitBtn = document.getElementById('splitBtn');
+
+  // configure pdf.js worker
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  }
+
+  const mmToPt = mm => mm * 72 / 25.4;
+  const A4_W = mmToPt(210);
+  const A4_H = mmToPt(297);
+  const MARGIN_MM = 10;
+  const MARGIN_PT = mmToPt(MARGIN_MM);
+  const TARGET_BYTES = 200 * 1024;
+
+  let selectedFiles = [];
+
+  fileInput.addEventListener('change', () => {
+    // keep order by lastModified (as before) — you can remove sort if you prefer actual selection order
+    selectedFiles = Array.from(fileInput.files).sort((a,b)=>a.lastModified - b.lastModified);
+    renderPreview();
+  });
+
+  function renderPreview() {
+    previewEl.innerHTML = '';
+    fileListEl.innerHTML = '';
+
+    selectedFiles.forEach((f, index) => {
+      const li = document.createElement('li');
+      li.textContent = `${index+1}. ${f.name}`;
+      fileListEl.appendChild(li);
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'preview-item';
+      wrapper.dataset.index = index;
+      wrapper.title = 'Drag to reorder. Double-click to open.';
+
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = index + 1;
+      wrapper.appendChild(label);
+
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        // remove file and re-render
+        selectedFiles.splice(index, 1);
+        renderPreview();
+      };
+      wrapper.appendChild(removeBtn);
+
+      if (f.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        const objUrl = URL.createObjectURL(f);
+        img.src = objUrl;
+        img.onload = () => { URL.revokeObjectURL(objUrl); };
+        wrapper.appendChild(img);
+      } else if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+        // place a canvas and render page-1 using pdf.js
+        const canvas = document.createElement('canvas');
+        // canvas styling handled in CSS
+        wrapper.appendChild(canvas);
+        // Render async; don't await here to keep UI responsive
+        renderPdfThumbnail(f, canvas).catch(err => {
+          // fallback: show a simple blank canvas or an icon (silently)
+          console.error('Thumbnail render failed for', f.name, err);
+          const ctx = canvas.getContext('2d');
+          canvas.width = 120;
+          canvas.height = 160;
+          ctx.fillStyle = '#eee';
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+          ctx.fillStyle = '#666';
+          ctx.font = '12px sans-serif';
+          ctx.fillText('PDF', 10, 20);
+        });
+      }
+
+      // double-click to open the real file in a new tab
+      wrapper.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const url = URL.createObjectURL(f);
+        window.open(url, '_blank');
+        // give the new tab a bit to load before revoking
+        setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+      });
+
+      previewEl.appendChild(wrapper);
+    });
+  }
+
+  async function renderPdfThumbnail(file, canvas) {
+    // Use arrayBuffer so we don't need blob URLs
+    const arr = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: arr });
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+    // compute scale to fit the preview box nicely
+    const previewW = 120; // match CSS width
+    const previewH = 160; // match CSS height
+    // viewport at scale=1
+    const origViewport = page.getViewport({ scale: 1 });
+    // compute scale so that page fits inside preview area while preserving aspect ratio
+    const scale = Math.min(previewW / origViewport.width, previewH / origViewport.height);
+    const viewport = page.getViewport({ scale });
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    // optionally, we can trim or letterbox; CSS handles centering via object-fit
+    // cleanup
+    try { pdf.cleanup?.(); } catch(e) {}
+  }
+
+  // Enable drag-and-drop sorting
+  Sortable.create(previewEl, {
+    animation: 150,
+    onEnd: function () {
+      // Build new selectedFiles array in the DOM order by using dataset.index (original index)
+      const newOrder = [];
+      previewEl.querySelectorAll('.preview-item').forEach(item => {
+        const idx = parseInt(item.dataset.index, 10);
+        newOrder.push(selectedFiles[idx]);
+      });
+      selectedFiles = newOrder;
+      renderPreview(); // reassign dataset.index values
+    }
+  });
+
+  // ===== image compression helpers =====
+  function dataURLToUint8Array(dataURL) {
+    const base64 = dataURL.split(',')[1];
+    const binary = atob(base64);
+    const len = binary.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) arr[i] = binary.charCodeAt(i);
+    return arr;
+  }
+
+  function readFileAsArrayBuffer(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  function loadHTMLImageFromFile(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); res(img); };
+      img.onerror = err => { URL.revokeObjectURL(url); rej(err); };
+      img.src = url;
+    });
+  }
+
+  async function compressImageToJpegUint8(file, targetBytes = TARGET_BYTES) {
+    const img = await loadHTMLImageFromFile(file);
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+
+    let quality = 0.92;
+    const minQuality = 0.18;
+    const minDim = 200;
+    let u8, size;
+
+    while (true) {
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      u8 = dataURLToUint8Array(dataUrl);
+      size = u8.length;
+      if (size <= targetBytes || (quality <= minQuality && (canvas.width <= minDim || canvas.height <= minDim))) break;
+      if (quality > 0.25) {
+        quality = Math.max(minQuality, quality - 0.15);
+        continue;
+      }
+      const newW = Math.round(canvas.width * 0.85);
+      const newH = Math.round(canvas.height * 0.85);
+      if (newW < minDim || newH < minDim) break;
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = newW;
+      tmpCanvas.height = newH;
+      const tctx = tmpCanvas.getContext('2d');
+      tctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, newW, newH);
+      canvas = tmpCanvas;
+      ctx = tctx;
+      quality = Math.max(minQuality, 0.85);
+    }
+    return { bytes: u8, width: canvas.width, height: canvas.height, size };
+  }
+
+  function drawImageOnPage(pdfDoc, page, embeddedImage, imgPxW, imgPxH) {
+    const ptsPerPx = 72 / 96;
+    const imgWPt = imgPxW * ptsPerPx;
+    const imgHPt = imgPxH * ptsPerPx;
+    const maxW = A4_W - 2 * MARGIN_PT;
+    const maxH = A4_H - 2 * MARGIN_PT;
+    const scale = Math.min(1, maxW / imgWPt, maxH / imgHPt);
+    const drawW = imgWPt * scale;
+    const drawH = imgHPt * scale;
+    const x = (A4_W - drawW) / 2;
+    const y = (A4_H - drawH) / 2;
+    page.drawImage(embeddedImage, { x, y, width: drawW, height: drawH });
+  }
+
+  // ===== merging / processing =====
+  async function mergeAllFiles(files) {
+    const pdfDoc = await PDFLib.PDFDocument.create();
+    let totalOriginalSize = 0;
+    for (const f of files) {
+      totalOriginalSize += f.size;
+      if (/\.(jpe?g|png)$/i.test(f.name) || f.type.startsWith('image/')) {
+        const compressed = await compressImageToJpegUint8(f, TARGET_BYTES);
+        // pdf-lib.embedJpg accepts ArrayBuffer or Uint8Array
+        const imgBytes = compressed.bytes;
+        const embedded = await pdfDoc.embedJpg(imgBytes);
+        const page = pdfDoc.addPage([A4_W, A4_H]);
+        drawImageOnPage(pdfDoc, page, embedded, compressed.width, compressed.height);
+      } else if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+        const arr = await readFileAsArrayBuffer(f);
+        const srcPdf = await PDFLib.PDFDocument.load(arr);
+        const copied = await pdfDoc.copyPages(srcPdf, srcPdf.getPageIndices());
+        copied.forEach(p => pdfDoc.addPage(p));
+      }
+    }
+    const mergedBytes = await pdfDoc.save();
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' });
+    if (showSizeCheckbox.checked) displaySizeInfo({ name: 'merged.pdf', size: totalOriginalSize }, blob);
+    downloadBlob(blob, 'merged.pdf');
+  }
+
+  async function processSingleFile(file) {
+    if (/\.(jpe?g|png)$/i.test(file.name) || file.type.startsWith('image/')) {
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      const compressed = await compressImageToJpegUint8(file, TARGET_BYTES);
+      const embedded = await pdfDoc.embedJpg(compressed.bytes);
+      const page = pdfDoc.addPage([A4_W, A4_H]);
+      drawImageOnPage(pdfDoc, page, embedded, compressed.width, compressed.height);
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      if (showSizeCheckbox.checked) displaySizeInfo(file, blob);
+      downloadBlob(blob, file.name.replace(/\.[^/.]+$/, '') + '_compressed.pdf');
+    } else if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
+      const arr = await readFileAsArrayBuffer(file);
+      const srcPdf = await PDFLib.PDFDocument.load(arr);
+      const dest = await PDFLib.PDFDocument.create();
+      const copied = await dest.copyPages(srcPdf, srcPdf.getPageIndices());
+      copied.forEach(p => dest.addPage(p));
+      const bytes = await dest.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      if (showSizeCheckbox.checked) displaySizeInfo(file, blob);
+      downloadBlob(blob, file.name.replace(/\.[^/.]+$/, '') + '_compressed.pdf');
+    } else {
+      alert('Unsupported file type: ' + file.name);
+    }
+  }
+
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 5000);
+  }
+
+  function displaySizeInfo(originalFile, compressedBlob) {
+    const li = document.createElement('li');
+    const origKB = (originalFile.size / 1024).toFixed(1);
+    const compKB = (compressedBlob.size / 1024).toFixed(1);
+    li.textContent = `${originalFile.name} — Original: ${origKB} KB, Output: ${compKB} KB`;
+    fileListEl.appendChild(li);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (!selectedFiles.length) return alert('Please choose files first');
+    startBtn.disabled = true;
+    startBtn.textContent = 'Processing...';
+    try {
+      if (combineCheckbox.checked) {
+        await mergeAllFiles(selectedFiles);
+      } else {
+        for (const f of selectedFiles) {
+          await processSingleFile(f);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + (err && err.message ? err.message : err));
+    } finally {
+      startBtn.disabled = false;
+      startBtn.textContent = 'Process & Download';
+    }
+  });
+
+  // ===== splitter (unchanged) =====
+  splitBtn.addEventListener('click', async () => {
+    const file = splitInput.files[0];
+    if (!file) return alert('Please select a PDF to split');
+    try {
+      const arr = await readFileAsArrayBuffer(file);
+      const srcPdf = await PDFLib.PDFDocument.load(arr);
+      const totalPages = srcPdf.getPageCount();
+      for (let i = 0; i < totalPages; i++) {
+        const newPdf = await PDFLib.PDFDocument.create();
+        const [copiedPage] = await newPdf.copyPages(srcPdf, [i]);
+        newPdf.addPage(copiedPage);
+        const bytes = await newPdf.save();
+        downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `${file.name.replace(/\.pdf$/i, '')}_page${i+1}.pdf`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error splitting PDF: ' + err.message);
+    }
+  });
+
+  // expose for debugging (optional)
+  window.__app = {
+    getSelectedFiles: () => selectedFiles
+  };
+})();
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker Registered"));
+  }
+</script>
+</body>
+</html>

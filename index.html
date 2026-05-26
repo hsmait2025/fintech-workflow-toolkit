@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTech Workflow Toolkit</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --accent-color: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-hover: #2563eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            padding: 2rem 5%;
+            border-bottom: 1px solid #334155;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        header h1 span {
+            color: var(--accent-color);
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        main {
+            flex: 1;
+            padding: 3rem 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.1);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+        }
+
+        .card-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-btn {
+            align-self: flex-start;
+            background-color: rgba(56, 189, 248, 0.1);
+            color: var(--accent-color);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .card:hover .card-btn {
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid #334155;
+            background-color: var(--bg-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>FinTech <span>Workflow Toolkit</span></h1>
+        <p>Rapid, high-utility automation tools designed for financial and accounting professionals.</p>
+    </header>
+
+    <main>
+        <div class="grid">
+            
+            <a href="prorata-calculator/index.html" class="card">
+                <div>
+                    <div class="card-icon">📊</div>
+                    <h2 class="card-title">Prorata Calculator</h2>
+                    <p class="card-desc">Calculate exact proportional breakdowns for duration-based service charges cleanly and instantly.</p>
+                </div>
+                <div class="card-btn">Launch App →</div>
+            </a>
+
+            <a href="bill-calculator/index.html" class="card">
+                <div>
+                    <div class="card-icon">🧾</div>
+                    <h2 class="card-title">Bill Bundle Summarizer</h2>
+                    <p class="card-desc">Compile totals for multiple bundled invoices automatically into structured vertical or horizontal summary tables.</p>
+                </div>
+                <div class="card-btn">Launch App →</div>
+            </a>
+
+            <a href="tds-calculator/index.html" class="card">
+                <div>
+                    <div class="card-icon">🏛️</div>
+                    <h2 class="card-title">TDS Calculator</h2>
+                    <p class="card-desc">Accurate Tax Deducted at Source computation logic aligned with target financial compliance thresholds.</p>
+                </div>
+                <div class="card-btn">Launch App →</div>
+            </a>
+
+            <a href="pdf-compiler/index.html" class="card">
+                <div>
+                    <div class="card-icon">🗜️</div>
+                    <h2 class="card-title">Image-to-PDF Compressor</h2>
+                    <p class="card-desc">Compile and compress heavy documents or image lists into structured, web-ready PDFs limited strictly to under 200kb.</p>
+                </div>
+                <div class="card-btn">Launch App →</div>
+            </a>
+
+            <a href="party-list/index.html" class="card">
+                <div>
+                    <div class="card-icon">💳</div>
+                    <h2 class="card-title">Party Bank Details Generator</h2>
+                    <p class="card-desc">Structure clean tables mapped directly to client bank accounts for error-free bulk money transfers.</p>
+                </div>
+                <div class="card-btn">Launch App →</div>
+            </a>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Built with AI Workflow Automation. Open Source FinTech Utilities Portfolio.</p>
+    </footer>
+
+</body>
+</html>

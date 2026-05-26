@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TDS Calculator (India)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .calculator {
+            background: #ffffff;
+            padding: 24px;
+            width: 380px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .calculator h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        label {
+            font-size: 14px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        /* Remove number arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            text-align: right;
+        }
+
+        .tds-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tds-buttons button {
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: #f1f1f1;
+            cursor: pointer;
+        }
+
+        .tds-buttons button.active {
+            background: #007bff;
+            color: #ffffff;
+            border-color: #007bff;
+        }
+
+        .result {
+            background: #f1f1f1;
+            padding: 14px;
+            border-radius: 4px;
+        }
+
+        .result p {
+            margin: 8px 0;
+            font-size: 16px;
+        }
+
+        .amount {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .words {
+            font-size: 14px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <h2>TDS Calculator (India)</h2>
+
+    <label for="amount">Gross Amount (₹)</label>
+    <input type="text" id="amount" placeholder="Enter amount">
+
+    <label>Select TDS Rate</label>
+    <div class="tds-buttons">
+        <button onclick="selectTDS(0.1, this)">0.1%</button>
+        <button onclick="selectTDS(1, this)">1%</button>
+        <button onclick="selectTDS(2, this)">2%</button>
+        <button onclick="selectTDS(10, this)">10%</button>
+    </div>
+
+    <div class="result" id="result">
+        <p>TDS Amount: <span class="amount">₹0.00</span></p>
+        <p>Net Amount Payable: <span class="amount">₹0.00</span></p>
+        <p>Net Amount Payable (Rounded): <span class="amount">₹0</span></p>
+        <p class="words">Rupees Zero Only</p>
+    </div>
+</div>
+
+<script>
+    const amountInput = document.getElementById('amount');
+
+    amountInput.addEventListener('blur', () => {
+        const value = parseIndianNumber(amountInput.value);
+        if (!isNaN(value) && value > 0) {
+            amountInput.value = formatIndian(value);
+        }
+    });
+
+    function parseIndianNumber(value) {
+        return parseFloat(value.replace(/,/g, ''));
+    }
+
+    function formatIndian(value, decimals = 2) {
+        return value.toLocaleString('en-IN', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+    }
+
+    function selectTDS(rate, element) {
+        const amount = parseIndianNumber(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            alert("Please enter gross amount first");
+            return;
+        }
+
+        document.querySelectorAll('.tds-buttons button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        element.classList.add('active');
+
+        calculateTDS(amount, rate);
+    }
+
+    function calculateTDS(amount, rate) {
+        const tdsAmount = (amount * rate) / 100;
+        const netAmount = amount - tdsAmount;
+        const roundedNetAmount = Math.round(netAmount);
+        const words = numberToWords(roundedNetAmount);
+
+        document.getElementById('result').innerHTML = `
+            <p>TDS Amount: <span class="amount">₹${formatIndian(tdsAmount)}</span></p>
+            <p>Net Amount Payable: <span class="amount">₹${formatIndian(netAmount)}</span></p>
+            <p>Net Amount Payable (Rounded): <span class="amount">₹${roundedNetAmount.toLocaleString('en-IN')}</span></p>
+            <p class="words">Rupees ${words} Only</p>
+        `;
+    }
+
+    /* -------- Number to Words (Indian System) -------- */
+    function numberToWords(num) {
+        if (num === 0) return "Zero";
+
+        const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+                      "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+                      "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+        const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+        function twoDigits(n) {
+            if (n < 20) return ones[n];
+            return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+        }
+
+        function threeDigits(n) {
+            let str = "";
+            if (n >= 100) {
+                str += ones[Math.floor(n / 100)] + " Hundred ";
+                n %= 100;
+            }
+            if (n > 0) str += twoDigits(n);
+            return str.trim();
+        }
+
+        let result = "";
+        const crore = Math.floor(num / 10000000);
+        const lakh = Math.floor((num / 100000) % 100);
+        const thousand = Math.floor((num / 1000) % 100);
+        const hundred = num % 1000;
+
+        if (crore) result += threeDigits(crore) + " Crore ";
+        if (lakh) result += threeDigits(lakh) + " Lakh ";
+        if (thousand) result += threeDigits(thousand) + " Thousand ";
+        if (hundred) result += threeDigits(hundred);
+
+        return result.trim();
+    }
+</script>
+
+</body>
+</html>
