@@ -3,1212 +3,1023 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Bill Entry Tool — enter, cross-check, and export bill amounts in horizontal or vertical layout.">
 <title>Bill Entry Tool</title>
 
+<!-- SheetJS for real .xlsx export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
 <style>
-
-*{
-    box-sizing:border-box;
-    font-family:Arial,sans-serif;
+/* ─── Reset & Base ─────────────────────────────────────────────── */
+:root {
+  --col-left: 420px;
+  --grid-max-h: 320px;
+  --textarea-h: 260px;
+  --accent: #007bff;
+  --accent-dark: #0056b3;
+  --danger: #dc3545;
+  --success: #28a745;
+  --warning: #fd7e14;
+  --purple: #6f42c1;
+  --teal: #198754;
+  --surface: #f8f9fa;
+  --border: #cfd6dd;
+  --text: #222;
+  --muted: #666;
+  --radius: 6px;
 }
 
-body{
-    background:#eef2f7;
-    margin:0;
-    padding:12px;
-    font-size:14px;
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: #eef2f7;
+  margin: 0;
+  padding: 12px;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
+  color: var(--text);
 }
 
-.container{
-    max-width:1800px;
-    margin:auto;
-    background:white;
-    padding:14px;
-    border-radius:8px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+.container {
+  max-width: 1800px;
+  margin: auto;
+  background: white;
+  padding: 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-h1{
-    text-align:center;
-    margin:0 0 12px;
-    font-size:24px;
-    color:#222;
+h1 {
+  text-align: center;
+  margin: 0 0 12px;
+  font-size: 24px;
+  color: var(--text);
 }
 
-.instructions{
-    background:#fff8db;
-    border:1px solid #f0df9b;
-    padding:10px 12px;
-    border-radius:6px;
-    margin-bottom:12px;
-    line-height:1.5;
-    font-size:13px;
+/* ─── Instructions ─────────────────────────────────────────────── */
+.instructions {
+  background: #fff8db;
+  border: 1px solid #f0df9b;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
-.mode-switch{
-    display:flex;
-    gap:8px;
-    margin-bottom:12px;
+/* ─── Notification Toast ───────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+  background: #333;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 9999;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; }
+#toast.toast-success { background: var(--success); }
+#toast.toast-error   { background: var(--danger); }
+#toast.toast-warn    { background: var(--warning); color: #222; }
+
+/* ─── Mode Switch ──────────────────────────────────────────────── */
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: bold;
+  cursor: pointer;
+  background: #dfe3e8;
+  color: #333;
+  transition: background 0.2s, color 0.2s;
+  font-size: 14px;
+}
+.mode-btn.active { background: var(--accent); color: white; }
+
+/* ─── Header Input ─────────────────────────────────────────────── */
+.header-input { margin-bottom: 12px; }
+.header-input label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
+.header-input input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  font-family: Arial, sans-serif;
+}
+.header-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+
+/* ─── Triple Column Layout ─────────────────────────────────────── */
+.triple-entry {
+  display: grid;
+  grid-template-columns: var(--col-left) 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+.entry-box label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
+
+/* ─── Textarea ─────────────────────────────────────────────────── */
+textarea {
+  width: 100%;
+  height: var(--textarea-h);
+  padding: 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  resize: none;
+  outline: none;
+  line-height: 1.6;
+  font-family: Arial, sans-serif;
+}
+textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+
+/* ─── Ref Toolbar ──────────────────────────────────────────────── */
+.ref-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.auto-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.auto-btn:hover { background: #5a6268; }
+.date-picker {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+}
+.counter-box {
+  background: #f1f3f5;
+  border: 1px solid #d6dbe1;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
-.mode-btn{
-    flex:1;
-    padding:10px;
-    border:none;
-    border-radius:6px;
-    font-weight:bold;
-    cursor:pointer;
-    background:#dfe3e8;
-    color:#333;
-    transition:0.2s;
-    font-size:14px;
+/* ─── Bill Entry Grid ──────────────────────────────────────────── */
+.bill-entry-grid {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: white;
+  max-height: var(--grid-max-h);
+}
+.bill-entry-header {
+  display: grid;
+  grid-template-columns: 38px 1fr 1fr 42px;
+  background: var(--accent);
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.bill-entry-header div { padding: 6px; text-align: center; }
+
+.bill-row { display: grid; grid-template-columns: 38px 1fr 1fr 42px; }
+.bill-row:nth-child(even) { background: #f9fbff; }
+.bill-row input {
+  border: none;
+  border-bottom: 1px solid #e1e5ea;
+  border-right: 1px solid #e1e5ea;
+  padding: 6px;
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  font-family: Arial, sans-serif;
+  autocomplete: off;
+}
+.bill-row input.sno-input {
+  text-align: center;
+  background: #f1f3f5;
+  color: #555;
+  font-weight: bold;
+}
+.bill-row input:focus { background: #edf4ff; }
+.delete-btn {
+  border: none;
+  background: var(--danger);
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.delete-btn:hover { background: #b02a37; }
+
+/* ─── Cross-check Status ───────────────────────────────────────── */
+.crosscheck-status {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-weight: bold;
+  text-align: center;
+  border: 1px solid #ccc;
+  background: var(--surface);
+  transition: background 0.2s, color 0.2s;
+}
+.match    { color: var(--success); border-color: var(--success); background: #f0fff4; }
+.mismatch { color: var(--danger);  border-color: var(--danger);  background: #fff5f5; }
+
+/* ─── Table Controls ───────────────────────────────────────────── */
+.table-controls {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid #dfe3e8;
+  border-radius: var(--radius);
+  padding: 10px;
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.control-group { display: flex; align-items: center; gap: 6px; }
+.control-group label { font-size: 13px; font-weight: bold; }
+.control-group input {
+  width: 80px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
 }
 
-.mode-btn.active{
-    background:#007bff;
-    color:white;
+/* ─── Buttons ──────────────────────────────────────────────────── */
+.buttons {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-
-.header-input{
-    margin-bottom:12px;
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity 0.15s, transform 0.1s;
 }
+button:hover   { opacity: 0.88; }
+button:active  { transform: scale(0.97); }
+.process-btn   { background: var(--accent);   color: white; }
+.clear-btn     { background: var(--danger);   color: white; }
+.print-btn     { background: var(--success);  color: white; }
+.font-btn      { background: var(--purple);   color: white; }
+.fit-btn       { background: var(--warning);  color: white; }
+.export-btn    { background: var(--teal);     color: white; }
 
-.header-input label{
-    display:block;
-    margin-bottom:5px;
-    font-weight:bold;
-    font-size:13px;
+/* ─── Summary Cards ────────────────────────────────────────────── */
+.summary {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-
-.header-input input{
-    width:100%;
-    padding:10px 12px;
-    font-size:15px;
-    border:1px solid #cfd6dd;
-    border-radius:6px;
-    outline:none;
+.card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid #dee2e6;
+  border-radius: var(--radius);
+  padding: 10px;
+  text-align: center;
+  min-width: 180px;
 }
+.card h2 { margin: 0; font-size: 14px; color: var(--muted); }
+.card p  { font-size: 24px; font-weight: bold; margin: 6px 0 0; color: var(--text); }
 
-.triple-entry{
-    display:grid;
-    grid-template-columns:420px 1fr 1fr;
-    gap:12px;
-    margin-bottom:12px;
-    align-items:start;
+/* ─── Preview Table ────────────────────────────────────────────── */
+.table-wrapper { overflow: auto; margin-top: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td {
+  border: 2px solid black;
+  padding: 7px 8px;
+  text-align: center;
+  white-space: nowrap;
+  color: black;
+  min-width: 120px;
+  height: 40px;
 }
+th { background: #ffffff; color: black; }
+.main-header { background: #ffffff; color: black; font-size: 18px; }
+.bill-date   { background: #ffffff; font-weight: bold; }
+.bill-total  { background: #f3f5f7; font-weight: bold; }
+.grand-total { background: #dff3e4; font-weight: bold; font-size: 15px; }
+.vertical-label { background: #f5f6f8; font-weight: bold; }
+.autofit { table-layout: auto !important; width: auto !important; }
 
-.entry-box label{
-    display:block;
-    margin-bottom:5px;
-    font-weight:bold;
-    font-size:13px;
+/* ─── Print ────────────────────────────────────────────────────── */
+@media print {
+  body { background: white !important; padding: 0; margin: 0; }
+  .container { box-shadow: none !important; background: transparent !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+  .no-print, .container > *:not(.table-wrapper) { display: none !important; }
+  .table-wrapper { display: block !important; margin: 0; padding: 0; }
+  table { width: 100%; }
 }
-
-textarea{
-    width:100%;
-    padding:12px;
-    font-size:15px;
-    border:1px solid #cfd6dd;
-    border-radius:6px;
-    resize:none;
-    outline:none;
-    line-height:1.6;
-}
-
-#billAmounts,
-#crossCheckBox{
-    height:260px;
-}
-
-.ref-toolbar{
-    display:flex;
-    gap:6px;
-    align-items:center;
-    margin-bottom:8px;
-    flex-wrap:wrap;
-}
-
-.auto-btn{
-    background:#6c757d;
-    color:white;
-    border:none;
-    padding:7px 12px;
-    border-radius:5px;
-    font-size:12px;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.date-picker{
-    padding:6px 8px;
-    border:1px solid #cfd6dd;
-    border-radius:5px;
-    font-size:12px;
-}
-
-.counter-box{
-    background:#f1f3f5;
-    border:1px solid #d6dbe1;
-    padding:6px 10px;
-    border-radius:5px;
-    font-size:12px;
-    font-weight:bold;
-}
-
-.bill-entry-grid{
-    border:1px solid #cfd6dd;
-    border-radius:6px;
-    overflow-y:auto;
-    overflow-x:hidden; /* Prevents unwanted horizontal micro-scrolling */
-    background:white;
-    max-height:320px;
-}
-
-.bill-entry-header{
-    display:grid;
-    grid-template-columns:38px 1fr 1fr 42px; /* Adjusted columns for a more compact layout */
-    background:#007bff;
-    color:white;
-    font-weight:bold;
-    font-size:12px;
-}
-
-.bill-entry-header div{
-    padding:6px;
-    text-align:center;
-}
-
-.bill-row{
-    display:grid;
-    grid-template-columns:38px 1fr 1fr 42px; /* Matches header grid layout */
-}
-
-.bill-row input{
-    border:none;
-    border-bottom:1px solid #e1e5ea;
-    border-right:1px solid #e1e5ea;
-    padding:6px; /* Reduced from 8px for compactness */
-    font-size:12px;
-    outline:none;
-    width:100%;       /* Forces inputs to respect grid column track widths */
-    min-width:0;      /* Crucial: lets inputs shrink when vertical scrollbar appears */
-}
-
-.bill-row input.sno-input{
-    text-align:center;
-    background:#f1f3f5;
-    color:#555;
-    font-weight:bold;
-}
-
-.bill-row input:focus{
-    background:#edf4ff;
-}
-
-.delete-btn{
-    border:none;
-    background:#dc3545;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
-    font-size:12px;
-    padding:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-.crosscheck-status{
-    margin-top:8px;
-    padding:10px;
-    border-radius:6px;
-    font-weight:bold;
-    text-align:center;
-    border:1px solid #ccc;
-    background:#f8f9fa;
-}
-
-.match{
-    color:green;
-    border-color:green;
-}
-
-.mismatch{
-    color:red;
-    border-color:red;
-}
-
-.table-controls{
-    margin-top:12px;
-    background:#f8f9fa;
-    border:1px solid #dfe3e8;
-    border-radius:6px;
-    padding:10px;
-    display:flex;
-    gap:15px;
-    flex-wrap:wrap;
-    align-items:center;
-}
-
-.control-group{
-    display:flex;
-    align-items:center;
-    gap:6px;
-}
-
-.control-group label{
-    font-size:13px;
-    font-weight:bold;
-}
-
-.control-group input{
-    width:80px;
-    padding:6px;
-    border:1px solid #cfd6dd;
-    border-radius:5px;
-}
-
-.buttons{
-    margin-top:12px;
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-}
-
-button{
-    padding:10px 16px;
-    border:none;
-    border-radius:6px;
-    font-weight:bold;
-    cursor:pointer;
-    font-size:14px;
-}
-
-.process-btn{background:#007bff;color:white;}
-.clear-btn{background:#dc3545;color:white;}
-.print-btn{background:#28a745;color:white;}
-.font-btn{background:#6f42c1;color:white;}
-.fit-btn{background:#fd7e14;color:white;}
-.export-btn{background:#198754;color:white;}
-
-.summary{
-    margin-top:14px;
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-}
-
-.card{
-    flex:1;
-    background:#f8f9fa;
-    border:1px solid #dee2e6;
-    border-radius:6px;
-    padding:10px;
-    text-align:center;
-    min-width:180px;
-}
-
-.card h2{
-    margin:0;
-    font-size:14px;
-    color:#666;
-}
-
-.card p{
-    font-size:24px;
-    font-weight:bold;
-    margin:6px 0 0;
-    color:#111;
-}
-
-.table-wrapper{
-    overflow:auto;
-    margin-top:14px;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:13px;
-}
-
-th,td{
-    border:2px solid black;
-    padding:7px 8px;
-    text-align:center;
-    white-space:nowrap;
-    color:black;
-    min-width:120px;
-    height:40px;
-}
-
-th{
-    background:#ffffff;
-    color:black;
-}
-
-.main-header{
-    background:#ffffff;
-    color:Black;
-    font-size:18px;
-}
-
-.bill-date{
-    background:#ffffff;
-    font-weight:bold;
-}
-
-.bill-total{
-    background:#f3f5f7;
-    font-weight:bold;
-}
-
-.grand-total{
-    background:#dff3e4;
-    font-weight:bold;
-    font-size:15px;
-}
-
-.vertical-label{
-    background:#f5f6f8;
-    font-weight:bold;
-}
-
-.autofit{
-    table-layout:auto !important;
-    width:auto !important;
-}
-
-@media print{
-    body{
-        background:white !important;
-        padding:0;
-        margin:0;
-    }
-
-    /* Completely strips the styling/shadows off the container component for printing */
-    .container {
-        box-shadow: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-    }
-
-    .container > *:not(.table-wrapper){
-        display:none !important;
-    }
-
-    .table-wrapper{
-        display:block !important;
-        margin:0;
-        padding:0;
-    }
-
-    table{
-        width:100%;
-    }
-}
-
 </style>
 </head>
 
 <body>
 
+<div id="toast"></div>
+
 <div class="container">
 
-<h1>Bill Entry Tool</h1>
+  <h1>Bill Entry Tool</h1>
 
-<div class="instructions">
-<strong>Bill Amount Format:</strong><br>
-Amounts line by line<br>
-Blank line = next bill<br><br>
-Supports calculations like:
-<strong>120+45+10</strong>
-</div>
+  <div class="instructions">
+    <strong>Bill Amount Format:</strong><br>
+    Amounts line by line &nbsp;|&nbsp; Blank line = next bill &nbsp;|&nbsp;
+    Supports calculations like <strong>120+45+10</strong><br>
+    <strong>Tip:</strong> Press <kbd>Ctrl+Enter</kbd> anywhere to Process. Data auto-saves in browser.
+  </div>
 
-<div class="mode-switch">
+  <!-- Mode -->
+  <div class="mode-switch">
+    <button class="mode-btn active" id="horizontalBtn" onclick="setMode('horizontal')">Horizontal Bill Entry</button>
+    <button class="mode-btn"        id="verticalBtn"   onclick="setMode('vertical')">Vertical Bill Entry</button>
+  </div>
 
-<button class="mode-btn active" id="horizontalBtn" onclick="setMode('horizontal')">
-Horizontal Bill Entry
-</button>
+  <!-- Table Title -->
+  <div class="header-input">
+    <label for="tableTitle">Table Description / Party Name</label>
+    <input type="text" id="tableTitle" placeholder="Example: Hostel Expense" autocomplete="off">
+  </div>
 
-<button class="mode-btn" id="verticalBtn" onclick="setMode('vertical')">
-Vertical Bill Entry
-</button>
+  <!-- Three columns -->
+  <div class="triple-entry">
 
-</div>
+    <!-- Left: Bill entry grid -->
+    <div class="entry-box">
+      <label>Bill No. &amp; Date Entry</label>
 
-<div class="header-input">
-<label>Table Description / Party Name</label>
-<input type="text" id="tableTitle" placeholder="Example: Hostel Expense">
-</div>
+      <div class="ref-toolbar">
+        <button class="auto-btn" onclick="generateCurrentDate()">Current Date</button>
+        <input type="date" id="seriesDate" class="date-picker">
+        <button class="auto-btn" onclick="generateSelectedDate()">Select Date</button>
+        <button class="auto-btn" onclick="generateNextDate()">Next Date</button>
+        <div class="counter-box">Headers : <span id="headerCounter">1</span></div>
+      </div>
 
-<div class="triple-entry">
+      <div class="bill-entry-grid" id="billEntryGrid">
+        <div class="bill-entry-header">
+          <div>S.No.</div>
+          <div>Invoice Number</div>
+          <div>Date</div>
+          <div>Del</div>
+        </div>
+      </div>
+    </div>
 
-<div class="entry-box">
+    <!-- Middle: Amounts -->
+    <div class="entry-box">
+      <label>Bill Amount Entry</label>
+      <textarea id="billAmounts" placeholder="Enter bill amounts here..."></textarea>
+    </div>
 
-<label>Bill No. & Date Entry</label>
+    <!-- Right: Cross-check -->
+    <div class="entry-box">
+      <label>Crosscheck</label>
+      <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..."></textarea>
+      <div class="crosscheck-status" id="crosscheckStatus">Waiting for Crosscheck…</div>
+    </div>
 
-<div class="ref-toolbar">
+  </div>
 
-<button class="auto-btn" onclick="generateCurrentDate()">
-Current Date
-</button>
+  <!-- Table style controls -->
+  <div class="table-controls">
+    <div class="control-group">
+      <label>Column Width</label>
+      <input type="number" id="columnWidth" value="126" onchange="updateTableStyle()">
+    </div>
+    <div class="control-group">
+      <label>Row Height</label>
+      <input type="number" id="rowHeight" value="20" onchange="updateTableStyle()">
+    </div>
+    <div class="control-group">
+      <label>Cell Padding</label>
+      <input type="number" id="cellPadding" value="0" onchange="updateTableStyle()">
+    </div>
+  </div>
 
-<input type="date" id="seriesDate" class="date-picker">
+  <!-- Action buttons -->
+  <div class="buttons">
+    <button class="process-btn" onclick="processData()">Process</button>
+    <button class="clear-btn"   onclick="clearAll()">Clear</button>
+    <button class="print-btn"   onclick="window.print()">Print</button>
+    <button class="font-btn"    onclick="changeFont(1)">A+</button>
+    <button class="font-btn"    onclick="changeFont(-1)">A−</button>
+    <button class="fit-btn"     onclick="toggleAutofit()">Autofit</button>
+    <button class="export-btn"  onclick="exportExcel()">Export Excel</button>
+  </div>
 
-<button class="auto-btn" onclick="generateSelectedDate()">
-Select Date
-</button>
+  <!-- Summary cards -->
+  <div class="summary">
+    <div class="card"><h2>Total Bills</h2><p id="billCount">0</p></div>
+    <div class="card"><h2>Grand Total</h2><p id="grandTotal">0</p></div>
+  </div>
 
-<button class="auto-btn" onclick="generateNextDate()">
-Next Date
-</button>
+  <!-- Output table -->
+  <div class="table-wrapper">
+    <table id="previewTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
 
-<div class="counter-box">
-Headers : <span id="headerCounter">1</span>
-</div>
-
-</div>
-
-<div class="bill-entry-grid" id="billEntryGrid">
-
-<div class="bill-entry-header">
-<div>S.No.</div>
-<div>Invoice Number</div>
-<div>Date</div>
-<div>Del</div>
-</div>
-
-</div>
-
-</div>
-
-<div class="entry-box">
-
-<label>Bill Amount Entry</label>
-
-<textarea id="billAmounts" placeholder="Enter bill amounts here..." style="width: 100%; height: 500px;"></textarea>
-
-</div>
-
-<div class="entry-box">
-
-<label>Crosscheck</label>
-
-<textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..." style="width: 100%; height: 500px;"></textarea>
-
-<div class="crosscheck-status" id="crosscheckStatus">
-Waiting for Crosscheck...
-</div>
-
-</div>
-
-</div>
-
-<div class="table-controls">
-
-<div class="control-group">
-<label>Column Width</label>
-<input type="number" id="columnWidth" value="126" onchange="updateTableStyle()">
-</div>
-
-<div class="control-group">
-<label>Row Height</label>
-<input type="number" id="rowHeight" value="20" onchange="updateTableStyle()">
-</div>
-
-<div class="control-group">
-<label>Cell Padding</label>
-<input type="number" id="cellPadding" value="0" onchange="updateTableStyle()">
-</div>
-
-</div>
-
-<div class="buttons">
-
-<button class="process-btn" onclick="processData()">Process</button>
-<button class="clear-btn" onclick="clearAll()">Clear</button>
-<button class="print-btn" onclick="window.print()">Print</button>
-<button class="font-btn" onclick="increaseFont()">A+</button>
-<button class="font-btn" onclick="decreaseFont()">A-</button>
-<button class="fit-btn" onclick="toggleAutofit()">Autofit</button>
-<button class="export-btn" onclick="exportExcel()">Export Excel</button>
-
-</div>
-
-<div class="summary">
-
-<div class="card">
-<h2>Total Bills</h2>
-<p id="billCount">0</p>
-</div>
-
-<div class="card">
-<h2>Grand Total</h2>
-<p id="grandTotal">0</p>
-</div>
-
-</div>
-
-<div class="table-wrapper">
-
-<table id="previewTable">
-<thead id="tableHead"></thead>
-<tbody id="tableBody"></tbody>
-</table>
-
-</div>
-
-</div>
+</div><!-- /container -->
 
 <script>
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+const state = {
+  mode: "horizontal",
+  fontSize: 13,
+  autofit: false,
+};
 
-let currentMode = "horizontal";
-let tableFontSize = 13;
-let autofitEnabled = false;
-
-function createBillRow(invoice="", date=""){
-
-    const grid = document.getElementById("billEntryGrid");
-
-    const row = document.createElement("div");
-    row.className = "bill-row";
-
-    row.innerHTML = `
-        <input type="text" class="sno-input" value="" readonly tabindex="-1">
-        <input type="text" class="invoice-input" value="${invoice}">
-        <input type="text" class="date-input" value="${date}">
-        <button class="delete-btn" onclick="deleteRow(this)">X</button>
-    `;
-
-    grid.appendChild(row);
-
-    updateHeaderCount();
-
-    const inputs = row.querySelectorAll("input:not(.sno-input)");
-
-    inputs.forEach(input=>{
-        input.addEventListener("keydown", handleNavigation);
-    });
-
+/* ═══════════════════════════════════════════════════════════════
+   TOAST NOTIFICATION
+═══════════════════════════════════════════════════════════════ */
+function showToast(msg, type = "success") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "show toast-" + type;
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.className = ""; }, 3000);
 }
 
-function deleteRow(button){
+/* ═══════════════════════════════════════════════════════════════
+   SAFE MATH EVALUATOR (no eval / no Function constructor with arbitrary code)
+   Only allows digits, spaces, +  -  *  /  .  ( )
+═══════════════════════════════════════════════════════════════ */
+function safeCalc(expr) {
+  if (!/^[\d\s+\-*/.()]+$/.test(expr)) return NaN;
+  try {
+    // Using Function here is safe because we've already validated
+    // the expression contains only numeric operators and digits.
+    // eslint-disable-next-line no-new-func
+    const result = new Function('"use strict"; return (' + expr + ')')();
+    return (typeof result === "number" && isFinite(result)) ? result : NaN;
+  } catch (e) {
+    return NaN;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOCALSTORAGE AUTOSAVE
+═══════════════════════════════════════════════════════════════ */
+const LS_KEYS = {
+  amounts:    "bet_amounts",
+  crosscheck: "bet_crosscheck",
+  title:      "bet_title",
+  bills:      "bet_bills",   // JSON array of {invoice, date}
+};
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEYS.amounts,    document.getElementById("billAmounts").value);
+    localStorage.setItem(LS_KEYS.crosscheck, document.getElementById("crossCheckBox").value);
+    localStorage.setItem(LS_KEYS.title,      document.getElementById("tableTitle").value);
 
     const rows = document.querySelectorAll(".bill-row");
-
-    if(rows.length <= 1)return;
-
-    button.parentElement.remove();
-
-    updateHeaderCount();
-
+    const bills = Array.from(rows).map(row => ({
+      invoice: row.querySelector(".invoice-input").value,
+      date:    row.querySelector(".date-input").value,
+    }));
+    localStorage.setItem(LS_KEYS.bills, JSON.stringify(bills));
+  } catch (e) { /* storage might be full or disabled */ }
 }
 
-function handleNavigation(e){
+function restoreFromStorage() {
+  try {
+    const amounts    = localStorage.getItem(LS_KEYS.amounts);
+    const crosscheck = localStorage.getItem(LS_KEYS.crosscheck);
+    const title      = localStorage.getItem(LS_KEYS.title);
+    const billsRaw   = localStorage.getItem(LS_KEYS.bills);
 
-    const rows = Array.from(document.querySelectorAll(".bill-row"));
-    const currentRow = e.target.parentElement;
-    const rowIndex = rows.indexOf(currentRow);
+    if (amounts)    document.getElementById("billAmounts").value    = amounts;
+    if (crosscheck) document.getElementById("crossCheckBox").value  = crosscheck;
+    if (title)      document.getElementById("tableTitle").value     = title;
 
-    const isInvoice = e.target.classList.contains("invoice-input");
-
-    if(e.key === "ArrowDown"){
-
-        e.preventDefault();
-
-        if(rows[rowIndex + 1]){
-
-            rows[rowIndex + 1]
-            .querySelector(isInvoice ? ".invoice-input" : ".date-input")
-            .focus();
-
-        }
-
+    if (billsRaw) {
+      const bills = JSON.parse(billsRaw);
+      // Clear the default empty row first
+      const grid = document.getElementById("billEntryGrid");
+      grid.querySelectorAll(".bill-row").forEach(r => r.remove());
+      bills.forEach(b => createBillRow(b.invoice, b.date));
     }
 
-    if(e.key === "ArrowUp"){
+    if (amounts || crosscheck) {
+      checkCrossTotal();
+    }
+  } catch (e) { /* corrupt storage — silently ignore */ }
+}
 
-        e.preventDefault();
+/* ═══════════════════════════════════════════════════════════════
+   BILL ENTRY GRID
+═══════════════════════════════════════════════════════════════ */
+function createBillRow(invoice = "", date = "") {
+  const grid = document.getElementById("billEntryGrid");
+  const row  = document.createElement("div");
+  row.className = "bill-row";
 
-        if(rows[rowIndex - 1]){
+  // Safe: values go into .value, not innerHTML
+  row.innerHTML = `
+    <input type="text" class="sno-input" readonly tabindex="-1">
+    <input type="text" class="invoice-input" autocomplete="off">
+    <input type="text" class="date-input"    autocomplete="off">
+    <button class="delete-btn" onclick="deleteRow(this)">✕</button>
+  `;
 
-            rows[rowIndex - 1]
-            .querySelector(isInvoice ? ".invoice-input" : ".date-input")
-            .focus();
+  row.querySelector(".invoice-input").value = invoice;
+  row.querySelector(".date-input").value    = date;
 
-        }
+  grid.appendChild(row);
+  updateSNos();
 
+  row.querySelectorAll("input:not(.sno-input)").forEach(inp => {
+    inp.addEventListener("keydown", handleNavigation);
+    inp.addEventListener("change",  saveToStorage);
+  });
+
+  // Scroll new row into view
+  row.scrollIntoView({ block: "end", behavior: "smooth" });
+}
+
+function deleteRow(btn) {
+  const rows = document.querySelectorAll(".bill-row");
+  if (rows.length <= 1) return;
+  const row = btn.parentElement;
+  const idx  = Array.from(rows).indexOf(row);
+  row.remove();
+  updateSNos();
+  saveToStorage();
+
+  // Refocus neighbour
+  const remaining = document.querySelectorAll(".bill-row");
+  const target = remaining[Math.min(idx, remaining.length - 1)];
+  target?.querySelector(".invoice-input")?.focus();
+}
+
+function updateSNos() {
+  document.querySelectorAll(".bill-row").forEach((row, i) => {
+    const sno = row.querySelector(".sno-input");
+    if (sno) sno.value = i + 1;
+  });
+  document.getElementById("headerCounter").innerText =
+    document.querySelectorAll(".bill-row").length;
+}
+
+function handleNavigation(e) {
+  const rows   = Array.from(document.querySelectorAll(".bill-row"));
+  const curRow = e.target.parentElement;
+  const idx    = rows.indexOf(curRow);
+  const isInv  = e.target.classList.contains("invoice-input");
+  const sel    = isInv ? ".invoice-input" : ".date-input";
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    rows[idx + 1]?.querySelector(sel)?.focus();
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    rows[idx - 1]?.querySelector(sel)?.focus();
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (idx === rows.length - 1) createBillRow();
+    rows[idx + 1]?.querySelector(sel)?.focus();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATE HELPERS  (all use local date constructor — no UTC shift)
+═══════════════════════════════════════════════════════════════ */
+function fmtDate(d) {
+  return String(d.getDate()).padStart(2,"0") + "-" +
+         String(d.getMonth()+1).padStart(2,"0") + "-" +
+         d.getFullYear();
+}
+
+function parseDMY(str) {
+  const p = str.split("-");
+  if (p.length !== 3) return null;
+  const d = new Date(+p[2], +p[1]-1, +p[0]);
+  return isNaN(d) ? null : d;
+}
+
+function parseInputDate(val) {
+  // val from <input type="date"> is "YYYY-MM-DD"
+  const p = val.split("-");
+  return new Date(+p[0], +p[1]-1, +p[2]); // local, no UTC shift
+}
+
+function appendDateToRow(dateText) {
+  for (const row of document.querySelectorAll(".bill-row")) {
+    const di = row.querySelector(".date-input");
+    if (!di.value.trim()) { di.value = dateText; saveToStorage(); return; }
+  }
+  createBillRow("", dateText);
+  saveToStorage();
+}
+
+function getLastEnteredDate() {
+  const rows = Array.from(document.querySelectorAll(".bill-row")).reverse();
+  for (const row of rows) {
+    const v = row.querySelector(".date-input").value.trim();
+    if (v) return parseDMY(v);
+  }
+  return null;
+}
+
+function generateCurrentDate()  { appendDateToRow(fmtDate(new Date())); }
+
+function generateSelectedDate() {
+  const v = document.getElementById("seriesDate").value;
+  if (!v) { showToast("Please pick a date first.", "warn"); return; }
+  appendDateToRow(fmtDate(parseInputDate(v)));
+}
+
+function generateNextDate() {
+  let last = getLastEnteredDate();
+  if (!last) {
+    const v = document.getElementById("seriesDate").value;
+    last = v ? parseInputDate(v) : new Date();
+  }
+  last.setDate(last.getDate() + 1);
+  appendDateToRow(fmtDate(last));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODE SWITCH
+═══════════════════════════════════════════════════════════════ */
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById("horizontalBtn").classList.toggle("active", mode === "horizontal");
+  document.getElementById("verticalBtn").classList.toggle("active",   mode === "vertical");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INLINE CALCULATION ON ENTER  (safe — uses safeCalc)
+═══════════════════════════════════════════════════════════════ */
+function enableCalculation(id) {
+  document.getElementById(id).addEventListener("keydown", function(e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    const ta      = this;
+    const pos     = ta.selectionStart;
+    const val     = ta.value;
+    const lineStart = val.lastIndexOf("\n", pos - 1) + 1;
+    const lineEnd   = val.indexOf("\n", pos);
+    const end       = lineEnd === -1 ? val.length : lineEnd;
+    const line      = val.substring(lineStart, end).trim();
+
+    let replacement = line;
+    if (line) {
+      const result = safeCalc(line);
+      if (!isNaN(result)) replacement = String(Math.round(result));
     }
 
-    if(e.key === "Enter"){
-
-        e.preventDefault();
-
-        if(rowIndex === rows.length - 1){
-            createBillRow();
-        }
-
-        rows[rowIndex + 1]
-        ?.querySelector(isInvoice ? ".invoice-input" : ".date-input")
-        ?.focus();
-
-    }
-
-}
-
-function updateHeaderCount(){
-
-    const rows = document.querySelectorAll(".bill-row");
-    document.getElementById("headerCounter").innerText = rows.length;
-    
-    rows.forEach((row, index) => {
-        const snoInput = row.querySelector(".sno-input");
-        if(snoInput) {
-            snoInput.value = index + 1;
-        }
-    });
-
-}
-
-function formatDate(dateObj){
-
-    let day = String(dateObj.getDate()).padStart(2,'0');
-    let month = String(dateObj.getMonth()+1).padStart(2,'0');
-    let year = dateObj.getFullYear();
-
-    return `${day}-${month}-${year}`;
-
-}
-
-function parseDate(dateString){
-
-    const parts = dateString.split("-");
-
-    if(parts.length !== 3)return null;
-
-    return new Date(parts[2], parts[1]-1, parts[0]);
-
-}
-
-function appendDateToRow(dateText){
-
-    const rows = document.querySelectorAll(".bill-row");
-
-    for(let row of rows){
-
-        const dateInput = row.querySelector(".date-input");
-
-        if(dateInput.value.trim() === ""){
-
-            dateInput.value = dateText;
-            return;
-
-        }
-
-    }
-
-    createBillRow("", dateText);
-
-}
-
-function getLastEnteredDate(){
-
-    const rows = document.querySelectorAll(".bill-row");
-
-    for(let i = rows.length - 1; i >= 0; i--){
-
-        const dateValue =
-            rows[i].querySelector(".date-input").value.trim();
-
-        if(dateValue){
-
-            return parseDate(dateValue);
-
-        }
-
-    }
-
-    return null;
-
-}
-
-function generateCurrentDate(){
-
-    appendDateToRow(formatDate(new Date()));
-
-}
-
-function generateSelectedDate(){
-
-    const selected = document.getElementById("seriesDate").value;
-
-    if(!selected)return;
-
-    appendDateToRow(formatDate(new Date(selected)));
-
-}
-
-function generateNextDate(){
-
-    let lastDate = getLastEnteredDate();
-
-    if(!lastDate){
-
-        const selected = document.getElementById("seriesDate").value;
-
-        if(selected){
-            lastDate = new Date(selected);
-        }else{
-            lastDate = new Date();
-        }
-
-    }
-
-    lastDate.setDate(lastDate.getDate() + 1);
-
-    appendDateToRow(formatDate(lastDate));
-
-}
-
-function setMode(mode){
-
-    currentMode = mode;
-
-    document.getElementById("horizontalBtn").classList.remove("active");
-    document.getElementById("verticalBtn").classList.remove("active");
-
-    if(mode === "horizontal"){
-        document.getElementById("horizontalBtn").classList.add("active");
-    }else{
-        document.getElementById("verticalBtn").classList.add("active");
-    }
-
-}
-
-function enableCalculation(textareaId){
-
-    document.getElementById(textareaId).addEventListener("keydown", function(e){
-
-        if(e.key === "Enter"){
-
-            e.preventDefault();
-
-            const textarea = this;
-
-            const cursorPos = textarea.selectionStart;
-
-            const value = textarea.value;
-
-            const beforeCursor = value.substring(0, cursorPos);
-
-            const currentLineStart = beforeCursor.lastIndexOf("\n") + 1;
-
-            const currentLineEnd = value.indexOf("\n", cursorPos);
-
-            const endPos = currentLineEnd === -1 ? value.length : currentLineEnd;
-
-            const currentLine = value.substring(currentLineStart, endPos).trim();
-
-            let newLineValue = currentLine;
-
-            if(currentLine !== ""){
-
-                try{
-
-                    let result = eval(currentLine);
-
-                    if(!isNaN(result)){
-                        newLineValue = Math.round(result).toString();
-                    }
-
-                }catch{}
-
-            }
-
-            const updatedValue =
-                value.substring(0, currentLineStart) +
-                newLineValue +
-                "\n" +
-                value.substring(endPos);
-
-            textarea.value = updatedValue;
-
-            const newCursorPos = currentLineStart + newLineValue.length + 1;
-
-            textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-
-            checkCrossTotal();
-
-        }
-
-    });
-
+    ta.value = val.substring(0, lineStart) + replacement + "\n" + val.substring(end);
+    ta.selectionStart = ta.selectionEnd = lineStart + replacement.length + 1;
+    checkCrossTotal();
+    saveToStorage();
+  });
 }
 
 enableCalculation("billAmounts");
 enableCalculation("crossCheckBox");
 
-function calculateTotal(text){
+/* ═══════════════════════════════════════════════════════════════
+   CROSS-CHECK
+═══════════════════════════════════════════════════════════════ */
+function sumLines(text) {
+  return text.split("\n").reduce((acc, line) => {
+    const n = parseFloat(line.trim());
+    return acc + (isNaN(n) ? 0 : Math.round(n));
+  }, 0);
+}
 
-    let total = 0;
+function checkCrossTotal() {
+  const billTotal  = sumLines(document.getElementById("billAmounts").value);
+  const crossTotal = sumLines(document.getElementById("crossCheckBox").value);
+  const el = document.getElementById("crosscheckStatus");
 
-    text.split("\n").forEach(line=>{
+  if (crossTotal === 0) {
+    el.textContent = "Waiting for Crosscheck…";
+    el.className   = "crosscheck-status";
+    return;
+  }
+  if (billTotal === crossTotal) {
+    el.textContent = `✓ Match (${crossTotal.toLocaleString()})`;
+    el.className   = "crosscheck-status match";
+  } else {
+    const diff = Math.abs(billTotal - crossTotal);
+    el.textContent = `✗ Mismatch  Bill: ${billTotal.toLocaleString()}  |  Cross: ${crossTotal.toLocaleString()}  |  Diff: ${diff.toLocaleString()}`;
+    el.className   = "crosscheck-status mismatch";
+  }
+}
 
-        line = line.trim();
+// Live update on paste or type (not just Enter)
+["billAmounts","crossCheckBox"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => { checkCrossTotal(); saveToStorage(); });
+});
+document.getElementById("tableTitle").addEventListener("input", saveToStorage);
 
-        if(line !== ""){
+/* ═══════════════════════════════════════════════════════════════
+   TABLE STYLE CONTROLS
+═══════════════════════════════════════════════════════════════ */
+function updateTableStyle() {
+  const w = document.getElementById("columnWidth").value  + "px";
+  const h = document.getElementById("rowHeight").value    + "px";
+  const p = document.getElementById("cellPadding").value  + "px";
+  document.querySelectorAll("#previewTable th, #previewTable td").forEach(cell => {
+    cell.style.minWidth = w;
+    cell.style.height   = h;
+    cell.style.padding  = p;
+  });
+}
 
-            let num = parseFloat(line);
+function changeFont(delta) {
+  state.fontSize = Math.max(8, state.fontSize + delta);
+  document.getElementById("previewTable").style.fontSize = state.fontSize + "px";
+}
 
-            if(!isNaN(num)){
-                total += Math.round(num);
-            }
+function toggleAutofit() {
+  state.autofit = !state.autofit;
+  document.getElementById("previewTable").classList.toggle("autofit", state.autofit);
+}
 
-        }
-
+/* ═══════════════════════════════════════════════════════════════
+   DATA PARSING  (extracted from processData for testability)
+═══════════════════════════════════════════════════════════════ */
+function parseAmountBlocks(raw) {
+  return raw.split(/\n[ \t]*\n/).map(block => {
+    const amounts  = [];
+    let   total    = 0;
+    block.split("\n").forEach(line => {
+      const n = parseFloat(line.trim());
+      if (!isNaN(n)) { const r = Math.round(n); amounts.push(r); total += r; }
     });
-
-    return total;
-
+    return { amounts, total };
+  });
 }
 
-function checkCrossTotal(){
-
-    const billTotal =
-        calculateTotal(document.getElementById("billAmounts").value);
-
-    const crossTotal =
-        calculateTotal(document.getElementById("crossCheckBox").value);
-
-    const status = document.getElementById("crosscheckStatus");
-
-    if(crossTotal === 0){
-
-        status.innerText = "Waiting for Crosscheck...";
-        status.className = "crosscheck-status";
-        return;
-
-    }
-
-    if(billTotal === crossTotal){
-
-        status.innerText =
-            `Congratulations ✓ (${crossTotal})`;
-
-        status.className =
-            "crosscheck-status match";
-
-    }else{
-
-        status.innerText =
-            `Check Again ✗ (Bill: ${billTotal} | Crosscheck: ${crossTotal})`;
-
-        status.className =
-            "crosscheck-status mismatch";
-
-    }
-
+function getReferences() {
+  return Array.from(document.querySelectorAll(".bill-row")).map(row => ({
+    invoice: row.querySelector(".invoice-input").value.trim() || "-",
+    date:    row.querySelector(".date-input").value.trim()    || "-",
+  }));
 }
 
-function updateTableStyle(){
-
-    const width = document.getElementById("columnWidth").value;
-    const height = document.getElementById("rowHeight").value;
-    const padding = document.getElementById("cellPadding").value;
-
-    const cells = document.querySelectorAll("#previewTable th, #previewTable td");
-
-    cells.forEach(cell=>{
-
-        cell.style.minWidth = width + "px";
-        cell.style.height = height + "px";
-        cell.style.padding = padding + "px";
-
-    });
-
+/* ═══════════════════════════════════════════════════════════════
+   RENDER HELPERS  (safe DOM — no raw user HTML injected)
+═══════════════════════════════════════════════════════════════ */
+function makeTH(text, cls) {
+  const th = document.createElement("th");
+  if (cls) th.className = cls;
+  th.textContent = text;
+  return th;
 }
 
-function increaseFont(){
-
-    tableFontSize += 1;
-    document.getElementById("previewTable").style.fontSize = tableFontSize + "px";
-
+function makeTD(text, cls) {
+  const td = document.createElement("td");
+  if (cls) td.className = cls;
+  td.textContent = text;
+  return td;
 }
 
-function decreaseFont(){
-
-    if(tableFontSize > 8){
-
-        tableFontSize -= 1;
-        document.getElementById("previewTable").style.fontSize = tableFontSize + "px";
-
-    }
-
+function makeRow(...cells) {
+  const tr = document.createElement("tr");
+  cells.forEach(c => tr.appendChild(c));
+  return tr;
 }
 
-function toggleAutofit(){
+/* ═══════════════════════════════════════════════════════════════
+   RENDER HORIZONTAL TABLE
+═══════════════════════════════════════════════════════════════ */
+function renderHorizontal(billData, title, thead, tbody) {
+  // Title row
+  const titleRow = document.createElement("tr");
+  const titleTH  = makeTH(title, "main-header");
+  titleTH.colSpan = billData.length;
+  titleRow.appendChild(titleTH);
+  thead.appendChild(titleRow);
 
-    autofitEnabled = !autofitEnabled;
+  // Bill header row
+  const hRow = document.createElement("tr");
+  billData.forEach((b, i) => hRow.appendChild(makeTH(`Bill No.${i+1} (${b.billNo})`)));
+  thead.appendChild(hRow);
 
-    const table = document.getElementById("previewTable");
+  // Date row
+  const dRow = document.createElement("tr");
+  dRow.className = "bill-date";
+  billData.forEach(b => dRow.appendChild(makeTD(b.date)));
+  tbody.appendChild(dRow);
 
-    if(autofitEnabled){
-        table.classList.add("autofit");
-    }else{
-        table.classList.remove("autofit");
-    }
+  // Amount rows
+  const maxRows = Math.max(...billData.map(b => b.amounts.length));
+  for (let i = 0; i < maxRows; i++) {
+    const row = document.createElement("tr");
+    billData.forEach(b => row.appendChild(makeTD(b.amounts[i] !== undefined ? b.amounts[i] : "-")));
+    tbody.appendChild(row);
+  }
 
+  // Bill totals row
+  const tRow = document.createElement("tr");
+  tRow.className = "bill-total";
+  billData.forEach(b => tRow.appendChild(makeTD(b.total.toLocaleString())));
+  tbody.appendChild(tRow);
+
+  // Grand total
+  const gRow = document.createElement("tr");
+  gRow.className = "grand-total";
+  const gTD = makeTD("GRAND TOTAL : " + billData.reduce((s,b) => s+b.total, 0).toLocaleString(), "");
+  gTD.colSpan = billData.length;
+  gRow.appendChild(gTD);
+  tbody.appendChild(gRow);
 }
 
-function exportExcel(){
+/* ═══════════════════════════════════════════════════════════════
+   RENDER VERTICAL TABLE
+═══════════════════════════════════════════════════════════════ */
+function renderVertical(billData, title, thead, tbody) {
+  const titleRow = document.createElement("tr");
+  const titleTH  = makeTH(title, "main-header");
+  titleTH.colSpan = 3;
+  titleRow.appendChild(titleTH);
+  thead.appendChild(titleRow);
 
-    let table = document.getElementById("previewTable").outerHTML;
+  const hRow = document.createElement("tr");
+  ["Bill Reference", "Date", "Total"].forEach(h => hRow.appendChild(makeTH(h)));
+  thead.appendChild(hRow);
 
-    let blob = new Blob([table], {
-        type: "application/vnd.ms-excel"
-    });
+  billData.forEach((b, i) => {
+    const row = makeRow(
+      makeTD(`Bill No.${i+1} (${b.billNo})`, "vertical-label"),
+      makeTD(b.date),
+      makeTD(b.total.toLocaleString(), "bill-total")
+    );
+    tbody.appendChild(row);
+  });
 
-    let link = document.createElement("a");
-
-    link.href = URL.createObjectURL(blob);
-    link.download = "Bill_Summary.xls";
-    link.click();
-
+  const grand = billData.reduce((s,b) => s+b.total, 0);
+  const gRow  = document.createElement("tr");
+  gRow.className = "grand-total";
+  const gTD = makeTD("GRAND TOTAL : " + grand.toLocaleString());
+  gTD.colSpan = 3;
+  gRow.appendChild(gTD);
+  tbody.appendChild(gRow);
 }
 
-function processData(){
-
-    const amountsInput = document.getElementById("billAmounts").value.trim();
-
-    if(!amountsInput)return;
-
-    const title =
-        document.getElementById("tableTitle").value.trim() || "Summary";
-
-    const tableHead = document.getElementById("tableHead");
-    const tableBody = document.getElementById("tableBody");
-
-    tableHead.innerHTML = "";
-    tableBody.innerHTML = "";
-
-    const rows = document.querySelectorAll(".bill-row");
-
-    let references = [];
-
-    rows.forEach(row=>{
-
-        references.push({
-
-            invoice:
-                row.querySelector(".invoice-input").value.trim() || "-",
-
-            date:
-                row.querySelector(".date-input").value.trim() || "-"
-
-        });
-
-    });
-
-    const amountBlocks = amountsInput.split(/\n\s*\n/);
-
-    let billData = [];
-    let grandTotal = 0;
-
-    amountBlocks.forEach((block,index)=>{
-
-        const lines =
-            block.split("\n")
-            .map(x=>x.trim())
-            .filter(x=>x);
-
-        const ref = references[index] || {
-            invoice:"-",
-            date:"-"
-        };
-
-        let amounts = [];
-        let billTotal = 0;
-
-        lines.forEach(line=>{
-
-            let amount = parseFloat(line);
-
-            if(isNaN(amount))return;
-
-            amount = Math.round(amount);
-
-            amounts.push(amount);
-
-            billTotal += amount;
-            grandTotal += amount;
-
-        });
-
-        billData.push({
-            billNo:ref.invoice,
-            date:ref.date,
-            amounts,
-            total:billTotal
-        });
-
-    });
-
-    tableHead.innerHTML += `
-    <tr>
-        <th colspan="${currentMode === 'horizontal' ? billData.length : 3}" class="main-header">
-            ${title}
-        </th>
-    </tr>
-    `;
-
-    if(currentMode === "horizontal"){
-
-        let maxRows = 0;
-
-        billData.forEach(bill=>{
-            maxRows = Math.max(maxRows, bill.amounts.length);
-        });
-
-        let headerRow = "<tr>";
-
-        billData.forEach((bill,index)=>{
-
-            headerRow += `
-            <th>
-                Bill No.${index + 1} (${bill.billNo})
-            </th>
-            `;
-
-        });
-
-        headerRow += "</tr>";
-
-        tableHead.innerHTML += headerRow;
-
-        let dateRow = "<tr class='bill-date'>";
-
-        billData.forEach(bill=>{
-            dateRow += `<td>${bill.date}</td>`;
-        });
-
-        dateRow += "</tr>";
-
-        tableBody.innerHTML += dateRow;
-
-        for(let i=0;i<maxRows;i++){
-
-            let row = "<tr>";
-
-            billData.forEach(bill=>{
-                row += `<td>${bill.amounts[i] ?? "-"}</td>`;
-            });
-
-            row += "</tr>";
-
-            tableBody.innerHTML += row;
-
-        }
-
-        let totalRow = "<tr class='bill-total'>";
-
-        billData.forEach(bill=>{
-            totalRow += `<td>${bill.total}</td>`;
-        });
-
-        totalRow += "</tr>";
-
-        tableBody.innerHTML += totalRow;
-
-        tableBody.innerHTML += `
-        <tr class="grand-total">
-            <td colspan="${billData.length}">
-                GRAND TOTAL : ${grandTotal}
-            </td>
-        </tr>
-        `;
-
-    }else{
-
-        tableHead.innerHTML += `
-        <tr>
-            <th>Bill Reference</th>
-            <th>Date</th>
-            <th>Total</th>
-        </tr>
-        `;
-
-        billData.forEach((bill,index)=>{
-
-            tableBody.innerHTML += `
-            <tr>
-                <td class="vertical-label">
-                    Bill No.${index + 1} (${bill.billNo})
-                </td>
-
-                <td>${bill.date}</td>
-
-                <td class="bill-total">${bill.total}</td>
-            </tr>
-            `;
-
-        });
-
-        tableBody.innerHTML += `
-        <tr class="grand-total">
-            <td colspan="3">
-                GRAND TOTAL : ${grandTotal}
-            </td>
-        </tr>
-        `;
-
-    }
-
-    updateTableStyle();
-
-    document.getElementById("billCount").innerText = billData.length;
-    document.getElementById("grandTotal").innerText = grandTotal;
-
-    checkCrossTotal();
-
+/* ═══════════════════════════════════════════════════════════════
+   PROCESS DATA
+═══════════════════════════════════════════════════════════════ */
+function processData() {
+  const raw = document.getElementById("billAmounts").value.trim();
+  if (!raw) { showToast("No amounts entered yet.", "warn"); return; }
+
+  // Sanitise title via DOM, not innerHTML
+  const title = document.getElementById("tableTitle").value.trim() || "Summary";
+
+  const refs    = getReferences();
+  const blocks  = parseAmountBlocks(raw);
+  const thead   = document.getElementById("tableHead");
+  const tbody   = document.getElementById("tableBody");
+
+  thead.innerHTML = "";
+  tbody.innerHTML = "";
+
+  // Warn on mismatch
+  if (blocks.length !== refs.length) {
+    showToast(
+      `${blocks.length} amount block(s) but ${refs.length} bill row(s) — extra blocks use "-" for ref.`,
+      "warn"
+    );
+  }
+
+  const billData = blocks.map((block, i) => ({
+    billNo:  refs[i]?.invoice ?? "-",
+    date:    refs[i]?.date    ?? "-",
+    amounts: block.amounts,
+    total:   block.total,
+  }));
+
+  if (state.mode === "horizontal") {
+    renderHorizontal(billData, title, thead, tbody);
+  } else {
+    renderVertical(billData, title, thead, tbody);
+  }
+
+  updateTableStyle();
+
+  const grand = billData.reduce((s,b) => s+b.total, 0);
+  document.getElementById("billCount").textContent = billData.length;
+  document.getElementById("grandTotal").textContent = grand.toLocaleString();
+
+  checkCrossTotal();
+  showToast("Table generated successfully!", "success");
 }
 
-function clearAll(){
+/* ═══════════════════════════════════════════════════════════════
+   CLEAR ALL  (with confirmation)
+═══════════════════════════════════════════════════════════════ */
+function clearAll() {
+  if (!confirm("Clear everything? This cannot be undone.")) return;
 
-    document.getElementById("tableTitle").value = "";
-    document.getElementById("billAmounts").value = "";
-    document.getElementById("crossCheckBox").value = "";
-    document.getElementById("seriesDate").value = "";
+  ["tableTitle","billAmounts","crossCheckBox","seriesDate"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
 
-    document.getElementById("billEntryGrid").innerHTML = `
-        <div class="bill-entry-header">
-            <div>S.No.</div>
-            <div>Invoice Number</div>
-            <div>Date</div>
-            <div>Del</div>
-        </div>
-    `;
+  const grid = document.getElementById("billEntryGrid");
+  grid.querySelectorAll(".bill-row").forEach(r => r.remove());
+  createBillRow();
 
-    createBillRow();
+  document.getElementById("tableHead").innerHTML = "";
+  document.getElementById("tableBody").innerHTML = "";
+  document.getElementById("billCount").textContent  = "0";
+  document.getElementById("grandTotal").textContent = "0";
 
-    document.getElementById("tableHead").innerHTML = "";
-    document.getElementById("tableBody").innerHTML = "";
+  const cs = document.getElementById("crosscheckStatus");
+  cs.textContent = "Waiting for Crosscheck…";
+  cs.className   = "crosscheck-status";
 
-    document.getElementById("billCount").innerText = "0";
-    document.getElementById("grandTotal").innerText = "0";
-
-    document.getElementById("crosscheckStatus").innerText =
-        "Waiting for Crosscheck...";
-
-    document.getElementById("crosscheckStatus").className =
-        "crosscheck-status";
-
+  // Clear storage
+  Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+  showToast("Cleared.", "success");
 }
 
-createBillRow();
+/* ═══════════════════════════════════════════════════════════════
+   EXPORT EXCEL  (real .xlsx via SheetJS)
+═══════════════════════════════════════════════════════════════ */
+function exportExcel() {
+  try {
+    const tbl = document.getElementById("previewTable");
+    if (!tbl.rows.length) { showToast("Nothing to export — run Process first.", "warn"); return; }
 
+    const ws = XLSX.utils.table_to_sheet(tbl);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bills");
+
+    const filename = (document.getElementById("tableTitle").value.trim() || "Bill_Summary") + ".xlsx";
+    XLSX.writeFile(wb, filename);
+    showToast("Excel file downloaded!", "success");
+  } catch (e) {
+    showToast("Export failed: " + e.message, "error");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYBOARD SHORTCUT  Ctrl+Enter → Process
+═══════════════════════════════════════════════════════════════ */
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    processData();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+createBillRow();        // Create default empty row
+restoreFromStorage();   // Restore any previously saved session
 </script>
 
 </body>
