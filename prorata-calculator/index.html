@@ -1,158 +1,560 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Pro-Rata by FY and Month with Export</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pro-Rata Calculator by FY and Month</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
     body {
-      font-family: Arial;
-      margin: 40px;
-      background: #f4f4f4;
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 40px 24px;
+      background: #f0f2f5;
+      color: #1a1a1a;
     }
-    input, button {
-      padding: 8px;
-      font-size: 14px;
-      margin: 10px 0;
-      width: 250px;
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
     }
-    .result {
-      margin-top: 20px;
-      padding: 15px;
-      background: #fff;
-      border-left: 4px solid #007acc;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-    }
-    h3 {
-      margin-top: 25px;
+
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
       color: #007acc;
+      margin: 0 0 24px;
+    }
+
+    .input-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus {
+      border-color: #007acc;
+      box-shadow: 0 0 0 3px rgba(0,122,204,0.12);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      min-width: 130px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { background: #f5f5f5; }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: #e6f4ff;
+      border-color: #007acc;
+      color: #005a99;
+    }
+    .btn-primary:hover { background: #cce8ff; }
+
+    .btn-download {
+      background: #f0faf4;
+      border-color: #28a745;
+      color: #1a7a35;
+    }
+    .btn-download:hover { background: #d4f0de; }
+
+    .btn-danger {
+      background: #fff5f5;
+      border-color: #e53e3e;
+      color: #c53030;
+    }
+    .btn-danger:hover { background: #ffe0e0; }
+
+    /* Summary metric cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: #f7f9fc;
+      border-radius: 8px;
+      padding: 14px 16px;
+      border: 1px solid #e8edf2;
+    }
+
+    .metric-card .lbl {
+      font-size: 12px;
+      color: #777;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .metric-card .val {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* Current FY Summary Card */
+    .current-fy-card {
+      background: #f0faf4;
+      border: 1.5px solid #28a745;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+
+    .current-fy-card .fy-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a7a35;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .current-fy-card .fy-header svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .current-fy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .current-fy-grid .fy-metric {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 14px;
+      border: 1px solid #c3e6cb;
+    }
+
+    .current-fy-grid .fy-metric .ml {
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .current-fy-grid .fy-metric .mv {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* Section headings */
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #007acc;
+      margin: 0 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tables */
+    .table-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      background: #eaf4ff;
+      color: #444;
+      font-weight: 600;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #d0e8f8;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #1a1a1a;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr.row-current td { background: #f0faf4; }
+    tbody tr.row-prior td { background: #fffbf0; }
+    tbody tr.row-future td { background: #f0f5ff; }
+
+    tbody tr:hover td { background: #f7f9fc; }
+    tbody tr.row-current:hover td { background: #e6f7ee; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge-current { background: #d4edda; color: #1a7a35; }
+    .badge-prior   { background: #fff3cd; color: #856404; }
+    .badge-future  { background: #cce5ff; color: #004085; }
+
+    /* Error message */
+    .error-msg {
+      background: #fff5f5;
+      color: #c53030;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .current-fy-grid { grid-template-columns: repeat(2, 1fr); }
+      .btn { min-width: 100px; font-size: 13px; }
+      thead th, tbody td { padding: 7px 8px; font-size: 12px; }
     }
   </style>
 </head>
 <body>
 
-  <h2>Prorated Amount Split by Financial Year and Month</h2>
+<div class="container">
 
-  <label>Start Date:</label>
-  <input type="date" id="startDate">
+  <h2>&#8377; Prorated Amount — FY &amp; Month Breakdown</h2>
 
-  <label>End Date:</label>
-  <input type="date" id="endDate">
+  <div class="input-card">
+    <div class="grid2">
+      <div class="field">
+        <label for="startDate">Start date</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="field">
+        <label for="endDate">End date</label>
+        <input type="date" id="endDate">
+      </div>
+    </div>
+    <div class="field">
+      <label for="totalAmount">Total amount (&#8377;)</label>
+      <input type="number" id="totalAmount" placeholder="e.g. 120000" min="0">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calculateProrata()">
+        &#9654; Calculate
+      </button>
+      <button class="btn btn-download" onclick="downloadCSV()">
+        &#8595; Download CSV
+      </button>
+      <button class="btn btn-danger" onclick="clearAll()">
+        &#10005; Clear
+      </button>
+    </div>
+  </div>
 
-  <label>Total Amount (₹):</label>
-  <input type="number" id="totalAmount" placeholder="Enter total amount">
+  <div id="result"></div>
 
-  <button onclick="calculateProrata()">Calculate</button>
-  <button onclick="downloadCSV()">Download CSV</button>
+</div>
 
-  <div class="result" id="result"></div>
+<script>
+  const FY_START_MONTH = 4;
+  let csvRows = [];
 
-  <script>
-    let csvRows = [];
+  function getFYStartYear(date) {
+    return (date.getMonth() + 1 >= FY_START_MONTH)
+      ? date.getFullYear()
+      : date.getFullYear() - 1;
+  }
 
-    function calculateProrata() {
-      const startInput = document.getElementById('startDate').value;
-      const endInput = document.getElementById('endDate').value;
-      const totalAmount = parseFloat(document.getElementById('totalAmount').value);
-      const resultDiv = document.getElementById('result');
-      csvRows = [];
+  function fyLabel(yr) {
+    return 'FY ' + yr + '-' + (yr + 1).toString().slice(-2);
+  }
 
-      if (!startInput || !endInput || isNaN(totalAmount)) {
-        resultDiv.innerHTML = '❗ Please enter valid start/end dates and total amount.';
-        return;
-      }
+  function fmtINR(n) {
+    return '\u20B9' + n.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
 
-      const startDate = new Date(startInput);
-      const endDate = new Date(endInput);
+  function escapeCsv(val) {
+    const s = String(val);
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  }
 
-      if (endDate < startDate) {
-        resultDiv.innerHTML = '⚠️ End date must be after start date.';
-        return;
-      }
+  function clearAll() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('totalAmount').value = '';
+    document.getElementById('result').innerHTML = '';
+    csvRows = [];
+  }
 
-      const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-      const oneDayAmount = totalAmount / totalDays;
+  function calculateProrata() {
+    const startInput  = document.getElementById('startDate').value;
+    const endInput    = document.getElementById('endDate').value;
+    const totalAmount = parseFloat(document.getElementById('totalAmount').value);
+    const resultDiv   = document.getElementById('result');
+    csvRows = [];
 
-      let output = `<strong>Total Duration:</strong> ${totalDays} day(s)<br>`;
-      output += `<strong>Total Amount:</strong> ₹${totalAmount.toFixed(2)}<br>`;
-      output += `<strong>One Day Amount:</strong> ₹${oneDayAmount.toFixed(2)}<br>`;
-
-      csvRows.push(["Summary", "Value"]);
-      csvRows.push(["Total Duration (days)", totalDays]);
-      csvRows.push(["Total Amount", totalAmount.toFixed(2)]);
-      csvRows.push(["One Day Amount", oneDayAmount.toFixed(2)]);
-      csvRows.push([]);
-
-      // === Financial Year Split ===
-      output += `<h3>🔹 Financial Year Breakdown</h3>`;
-      csvRows.push(["Financial Year", "Days", "Amount"]);
-
-      let currentFYStartYear = (startDate.getMonth() + 1 >= 4) ? startDate.getFullYear() : startDate.getFullYear() - 1;
-
-      while (true) {
-        const fyStart = new Date(`${currentFYStartYear}-04-01`);
-        const fyEnd = new Date(`${currentFYStartYear + 1}-03-31`);
-        const actualStart = new Date(Math.max(fyStart, startDate));
-        const actualEnd = new Date(Math.min(fyEnd, endDate));
-
-        if (actualStart <= actualEnd) {
-          const daysInFY = Math.floor((actualEnd - actualStart) / (1000 * 60 * 60 * 24)) + 1;
-          const prorataAmount = daysInFY * oneDayAmount;
-          const fyLabel = `FY ${currentFYStartYear}-${(currentFYStartYear + 1).toString().slice(-2)}`;
-          output += `<strong>${fyLabel}</strong>: ${daysInFY} day(s), ₹${prorataAmount.toFixed(2)}<br>`;
-          csvRows.push([fyLabel, daysInFY, prorataAmount.toFixed(2)]);
-        }
-
-        if (fyEnd >= endDate) break;
-        currentFYStartYear += 1;
-      }
-
-      // === Month-wise Breakdown ===
-      output += `<h3>📅 Month-wise Breakdown</h3>`;
-      csvRows.push([]);
-      csvRows.push(["Month", "Year", "Days", "Amount"]);
-
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      let monthCursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-
-      while (monthCursor <= endDate) {
-        const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
-        const monthEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0);
-
-        const actualStart = new Date(Math.max(monthStart, startDate));
-        const actualEnd = new Date(Math.min(monthEnd, endDate));
-
-        if (actualStart <= actualEnd) {
-          const daysInMonth = Math.floor((actualEnd - actualStart) / (1000 * 60 * 60 * 24)) + 1;
-          const amountInMonth = daysInMonth * oneDayAmount;
-          const label = `${months[monthCursor.getMonth()]}-${monthCursor.getFullYear()}`;
-          output += `${label}: ${daysInMonth} day(s), ₹${amountInMonth.toFixed(2)}<br>`;
-          csvRows.push([months[monthCursor.getMonth()], monthCursor.getFullYear(), daysInMonth, amountInMonth.toFixed(2)]);
-        }
-
-        monthCursor.setMonth(monthCursor.getMonth() + 1);
-      }
-
-      resultDiv.innerHTML = output;
+    if (!startInput || !endInput || isNaN(totalAmount) || totalAmount < 0) {
+      resultDiv.innerHTML = '<div class="error-msg">&#9888; Please enter valid start/end dates and a non-negative total amount.</div>';
+      return;
     }
 
-    function downloadCSV() {
-      if (csvRows.length === 0) {
-        alert("Please calculate first before downloading.");
-        return;
-      }
+    const startDate = new Date(startInput);
+    const endDate   = new Date(endInput);
 
-      let csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "prorata_breakdown.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    if (endDate < startDate) {
+      resultDiv.innerHTML = '<div class="error-msg">&#9888; End date must be after start date.</div>';
+      return;
     }
-  </script>
+
+    const MS_PER_DAY  = 86400000;
+    const totalDays   = Math.floor((endDate - startDate) / MS_PER_DAY) + 1;
+    const oneDayAmt   = totalAmount / totalDays;
+    const currentFYSY = getFYStartYear(new Date());
+
+    /* ---- CSV header ---- */
+    csvRows.push(['Summary', 'Value']);
+    csvRows.push(['Total Duration (days)', totalDays]);
+    csvRows.push(['Total Amount (INR)', totalAmount.toFixed(2)]);
+    csvRows.push(['Per Day Amount (INR)', oneDayAmt.toFixed(2)]);
+    csvRows.push([]);
+
+    let output = '';
+
+    /* ---- Top metric cards ---- */
+    output += `
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="lbl">Total days</div><div class="val">${totalDays}</div></div>
+      <div class="metric-card"><div class="lbl">Total amount</div><div class="val">${fmtINR(totalAmount)}</div></div>
+      <div class="metric-card"><div class="lbl">Per day</div><div class="val">${fmtINR(oneDayAmt)}</div></div>
+      <div class="metric-card"><div class="lbl">Current FY</div><div class="val">${fyLabel(currentFYSY)}</div></div>
+    </div>`;
+
+    /* ---- Build FY rows ---- */
+    const fyRows = [];
+    let fyCursor   = getFYStartYear(startDate);
+    let safeGuard  = 0;
+
+    while (safeGuard++ < 100) {
+      const fyStart   = new Date(fyCursor + '-04-01');
+      const fyEnd     = new Date((fyCursor + 1) + '-03-31');
+      const actStart  = startDate > fyStart ? startDate : fyStart;
+      const actEnd    = endDate   < fyEnd   ? endDate   : fyEnd;
+
+      if (actStart <= actEnd) {
+        const days = Math.floor((actEnd - actStart) / MS_PER_DAY) + 1;
+        const amt  = days * oneDayAmt;
+        const type = fyCursor < currentFYSY  ? 'prior'
+                   : fyCursor === currentFYSY ? 'current'
+                   : 'future';
+        fyRows.push({ yr: fyCursor, label: fyLabel(fyCursor), days, amt, type });
+      }
+      if (fyEnd >= endDate) break;
+      fyCursor++;
+    }
+
+    /* ---- Current FY Summary Card ---- */
+    const curRow     = fyRows.find(r => r.type === 'current');
+    const priorAmt   = fyRows.filter(r => r.type === 'prior').reduce((s, r) => s + r.amt, 0);
+    const futureAmt  = fyRows.filter(r => r.type === 'future').reduce((s, r) => s + r.amt, 0);
+    const priorDays  = fyRows.filter(r => r.type === 'prior').reduce((s, r) => s + r.days, 0);
+    const futureDays = fyRows.filter(r => r.type === 'future').reduce((s, r) => s + r.days, 0);
+    const curAmt     = curRow ? curRow.amt  : 0;
+    const curDays    = curRow ? curRow.days : 0;
+
+    output += `
+    <div class="current-fy-card">
+      <div class="fy-header">
+        &#9733; Current FY Summary &mdash; ${fyLabel(currentFYSY)}
+      </div>
+      <div class="current-fy-grid">
+        <div class="fy-metric"><div class="ml">Expense (current FY)</div><div class="mv">${fmtINR(curAmt)}</div></div>
+        <div class="fy-metric"><div class="ml">Prior period adjustment</div><div class="mv">${fmtINR(priorAmt)}</div></div>
+        <div class="fy-metric"><div class="ml">Prepaid (future FY)</div><div class="mv">${fmtINR(futureAmt)}</div></div>
+        <div class="fy-metric"><div class="ml">Days in current FY</div><div class="mv">${curDays}</div></div>
+        <div class="fy-metric"><div class="ml">Days (prior)</div><div class="mv">${priorDays}</div></div>
+        <div class="fy-metric"><div class="ml">Days (future)</div><div class="mv">${futureDays}</div></div>
+      </div>
+    </div>`;
+
+    /* ---- FY Breakdown Table ---- */
+    output += `<div class="section-title">&#128198; Financial Year Breakdown</div>`;
+    output += `
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Financial Year</th>
+            <th>Days</th>
+            <th>Amount</th>
+            <th>Prior Period Adj.</th>
+            <th>Expense Header</th>
+            <th>Prepaid Adj.</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    csvRows.push(['Financial Year', 'Days', 'Amount', 'Prior Period Adjustment', 'Expense Header', 'Prepaid Adjustment']);
+
+    for (const row of fyRows) {
+      const prior   = row.type === 'prior'   ? row.amt : 0;
+      const expense = row.type === 'current' ? row.amt : 0;
+      const prepaid = row.type === 'future'  ? row.amt : 0;
+      const rowCls  = 'row-' + row.type;
+      const badge   = `<span class="badge badge-${row.type}">${row.type}</span>`;
+
+      output += `
+          <tr class="${rowCls}">
+            <td>${row.label}${badge}</td>
+            <td>${row.days}</td>
+            <td>${fmtINR(row.amt)}</td>
+            <td>${fmtINR(prior)}</td>
+            <td>${fmtINR(expense)}</td>
+            <td>${fmtINR(prepaid)}</td>
+          </tr>`;
+
+      csvRows.push([row.label, row.days, row.amt.toFixed(2), prior.toFixed(2), expense.toFixed(2), prepaid.toFixed(2)]);
+    }
+
+    output += `</tbody></table></div>`;
+
+    /* ---- Month-wise Breakdown Table ---- */
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let mCursor  = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+    output += `<div class="section-title">&#128197; Month-wise Breakdown</div>`;
+    output += `
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Year</th>
+            <th>Days</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    csvRows.push([]);
+    csvRows.push(['Month', 'Year', 'Days', 'Amount']);
+
+    while (mCursor <= endDate) {
+      const mStart  = new Date(mCursor.getFullYear(), mCursor.getMonth(), 1);
+      const mEnd    = new Date(mCursor.getFullYear(), mCursor.getMonth() + 1, 0);
+      const aStart  = startDate > mStart ? startDate : mStart;
+      const aEnd    = endDate   < mEnd   ? endDate   : mEnd;
+
+      if (aStart <= aEnd) {
+        const days = Math.floor((aEnd - aStart) / MS_PER_DAY) + 1;
+        const amt  = days * oneDayAmt;
+        const mo   = MONTHS[mCursor.getMonth()];
+        const yr   = mCursor.getFullYear();
+
+        output += `
+          <tr>
+            <td>${mo}</td>
+            <td>${yr}</td>
+            <td>${days}</td>
+            <td>${fmtINR(amt)}</td>
+          </tr>`;
+
+        csvRows.push([mo, yr, days, amt.toFixed(2)]);
+      }
+      mCursor.setMonth(mCursor.getMonth() + 1);
+    }
+
+    output += `</tbody></table></div>`;
+    resultDiv.innerHTML = output;
+  }
+
+  function downloadCSV() {
+    if (csvRows.length === 0) {
+      alert('Please calculate first before downloading.');
+      return;
+    }
+    const content = csvRows.map(r => r.map(escapeCsv).join(',')).join('\n');
+    const blob    = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url     = URL.createObjectURL(blob);
+    const link    = document.createElement('a');
+    link.href     = url;
+    link.download = 'prorata_breakdown.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+</script>
 
 </body>
 </html>
