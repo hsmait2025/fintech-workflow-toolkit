@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GST Bill Calculator with Bill Split</title>
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f4f6f9;padding:20px;margin:0}
+.container{max-width:1100px;margin:auto;background:#fff;padding:25px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.1)}
+h2,h3{text-align:center}
+.item-row{display:flex;gap:10px;margin-bottom:10px}
+input{
+width:100%;
+padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+font-size:16px;
+appearance:textfield;
+-moz-appearance:textfield;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button{
+-webkit-appearance:none;
+margin:0;
+}
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+.add-btn{background:#28a745;color:#fff}
+.delete-btn{background:#dc3545;color:#fff}
+.label{margin-top:15px;margin-bottom:5px;font-weight:bold}
+.summary-row{
+display:flex;
+justify-content:space-between;
+padding:10px 0;
+border-bottom:1px solid #eee;
+}
+.grand-total{font-size:22px;font-weight:bold;color:#0d6efd}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ddd;padding:8px;text-align:center}
+th{background:#f2f2f2}
+@media(max-width:700px){
+.item-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>GST Bill Calculator with Freight Split</h2>
+
+<div id="itemContainer">
+<div class="item-row">
+<input type="text" class="itemAmount" placeholder="Item Amount (e.g. 1000+500)">
+<button class="delete-btn" onclick="deleteRow(this)">Delete</button>
+</div>
+</div>
+
+<button class="add-btn" onclick="addRow()">+ Add Item</button>
+
+<div class="label">Freight Charges</div>
+<input type="text" id="freight" placeholder="e.g. 500+100">
+
+<div class="label">GST (%)</div>
+<input type="text" id="gst" placeholder="e.g. 18">
+
+<div style="margin-top:20px">
+<div class="summary-row"><span>Items Total</span><span id="itemsTotal">₹0.00</span></div>
+<div class="summary-row"><span>Freight</span><span id="freightTotal">₹0.00</span></div>
+<div class="summary-row"><span>Taxable Amount</span><span id="taxableAmount">₹0.00</span></div>
+<div class="summary-row"><span>GST Amount</span><span id="gstAmount">₹0.00</span></div>
+<div class="summary-row grand-total"><span>Grand Total</span><span id="grandTotal">₹0.00</span></div>
+</div>
+
+<h3>Bill Split Details</h3>
+<table id="splitTable">
+<thead>
+<tr>
+<th>Item No.</th>
+<th>Item Amount</th>
+<th>Freight Share</th>
+<th>Taxable Value</th>
+<th>GST Amount</th>
+<th>Total Amount</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+</div>
+
+<script>
+function getValue(v){
+ if(!v || v.trim()==='') return 0;
+ try{
+   v=v.replace(/[^0-9+\-*/().]/g,'');
+   return Number(Function('"use strict";return ('+v+')')())||0;
+ }catch{
+   return 0;
+ }
+}
+
+function addRow(){
+ let row=document.createElement('div');
+ row.className='item-row';
+ row.innerHTML=`
+ <input type="text" class="itemAmount" placeholder="Item Amount (e.g. 1000+500)">
+ <button class="delete-btn" onclick="deleteRow(this)">Delete</button>`;
+ document.getElementById('itemContainer').appendChild(row);
+ attachEvents();
+}
+
+function deleteRow(btn){
+ let rows=document.querySelectorAll('.item-row');
+ if(rows.length>1){
+   btn.parentElement.remove();
+   calculateTotal();
+ }
+}
+
+function generateSplitTable(){
+ let freight=getValue(document.getElementById('freight').value);
+ let gst=getValue(document.getElementById('gst').value);
+
+ let items=Array.from(document.querySelectorAll('.itemAmount'))
+ .map(i=>getValue(i.value))
+ .filter(v=>v>0);
+
+ let tbody=document.querySelector('#splitTable tbody');
+ tbody.innerHTML='';
+
+ if(items.length===0) return;
+
+ let freightShare=freight/items.length;
+
+ items.forEach((amount,index)=>{
+   let taxable=amount+freightShare;
+   let gstAmt=taxable*gst/100;
+   let total=taxable+gstAmt;
+
+   tbody.innerHTML+=`
+   <tr>
+   <td>${index+1}</td>
+   <td>₹${amount.toFixed(2)}</td>
+   <td>₹${freightShare.toFixed(2)}</td>
+   <td>₹${taxable.toFixed(2)}</td>
+   <td>₹${gstAmt.toFixed(2)}</td>
+   <td>₹${total.toFixed(2)}</td>
+   </tr>`;
+ });
+}
+
+function calculateTotal(){
+ let itemTotal=0;
+
+ document.querySelectorAll('.itemAmount').forEach(input=>{
+   itemTotal+=getValue(input.value);
+ });
+
+ let freight=getValue(document.getElementById('freight').value);
+ let gst=getValue(document.getElementById('gst').value);
+
+ let taxable=itemTotal+freight;
+ let gstAmt=taxable*gst/100;
+ let grandTotal=taxable+gstAmt;
+
+ document.getElementById('itemsTotal').innerText='₹'+itemTotal.toFixed(2);
+ document.getElementById('freightTotal').innerText='₹'+freight.toFixed(2);
+ document.getElementById('taxableAmount').innerText='₹'+taxable.toFixed(2);
+ document.getElementById('gstAmount').innerText='₹'+gstAmt.toFixed(2);
+ document.getElementById('grandTotal').innerText='₹'+grandTotal.toFixed(2);
+
+ generateSplitTable();
+}
+
+function attachEvents(){
+ document.querySelectorAll('input').forEach(i=>{
+   i.oninput=calculateTotal;
+ });
+}
+
+document.addEventListener('keydown',function(e){
+ if(e.key!=='Enter') return;
+
+ let inputs=Array.from(document.querySelectorAll('input'));
+ let current=document.activeElement;
+ let idx=inputs.indexOf(current);
+
+ if(idx>-1){
+   e.preventDefault();
+   let next=inputs[idx+1];
+   if(next){
+     next.focus();
+     next.select();
+   }
+ }
+});
+
+attachEvents();
+calculateTotal();
+</script>
+</body>
+</html>
