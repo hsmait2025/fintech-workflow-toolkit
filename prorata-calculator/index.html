@@ -19,7 +19,7 @@
     }
 
     .container {
-      max-width: 960px;
+      max-width: 850px;
       margin: 0 auto;
     }
 
@@ -175,51 +175,6 @@
 
     .metric-card .val {
       font-size: 20px;
-      font-weight: 600;
-      color: #1a1a1a;
-    }
-
-    /* Current FY Summary Card */
-    .current-fy-card {
-      background: #f0faf4;
-      border: 1.5px solid #28a745;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 24px;
-    }
-
-    .current-fy-card .fy-header {
-      font-size: 13px;
-      font-weight: 600;
-      color: #1a7a35;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .current-fy-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
-    .current-fy-grid .fy-metric {
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px 14px;
-      border: 1px solid #c3e6cb;
-    }
-
-    .current-fy-grid .fy-metric .ml {
-      font-size: 11px;
-      color: #555;
-      margin-bottom: 5px;
-      font-weight: 500;
-    }
-
-    .current-fy-grid .fy-metric .mv {
-      font-size: 16px;
       font-weight: 600;
       color: #1a1a1a;
     }
@@ -606,28 +561,6 @@
       if (fyEnd >= endDate) break;
       fyCursor++;
     }
-
-    /* ── Current FY Summary Card ── */
-    const curRow     = fyRows.find(r => r.type === 'current');
-    const priorAmt   = fyRows.filter(r => r.type === 'prior').reduce((s, r) => s + r.amt, 0);
-    const futureAmt  = fyRows.filter(r => r.type === 'future').reduce((s, r) => s + r.amt, 0);
-    const priorDays  = fyRows.filter(r => r.type === 'prior').reduce((s, r) => s + r.days, 0);
-    const futureDays = fyRows.filter(r => r.type === 'future').reduce((s, r) => s + r.days, 0);
-    const curAmt     = curRow ? curRow.amt  : 0;
-    const curDays    = curRow ? curRow.days : 0;
-
-    output += `
-    <div class="current-fy-card" role="region" aria-label="Current financial year summary">
-      <div class="fy-header">&#9733; Current FY Summary &mdash; ${fyLabel(currentFYSY)}</div>
-      <div class="current-fy-grid">
-        <div class="fy-metric"><div class="ml">Expense (current FY)</div><div class="mv">${fmtINR(curAmt)}</div></div>
-        <div class="fy-metric"><div class="ml">Prior period adjustment</div><div class="mv">${fmtINR(priorAmt)}</div></div>
-        <div class="fy-metric"><div class="ml">Prepaid (future FY)</div><div class="mv">${fmtINR(futureAmt)}</div></div>
-        <div class="fy-metric"><div class="ml">Days in current FY</div><div class="mv">${curDays}</div></div>
-        <div class="fy-metric"><div class="ml">Days (prior)</div><div class="mv">${priorDays}</div></div>
-        <div class="fy-metric"><div class="ml">Days (future)</div><div class="mv">${futureDays}</div></div>
-      </div>
-    </div>`;
 
     /* ── FY Breakdown Table ── */
     output += `<div class="section-title">&#128198; Financial Year Breakdown</div>`;
