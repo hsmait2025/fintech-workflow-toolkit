@@ -95,7 +95,7 @@ h1 {
 }
 .mode-btn {
   flex: 1;
-  padding: 12px 10px; /* Enhanced for touch targets */
+  padding: 12px 10px;
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -113,7 +113,7 @@ h1 {
 .header-input input {
   width: 100%;
   padding: 12px;
-  font-size: 16px; /* 16px prevents automatic zoom-on-focus on iOS devices */
+  font-size: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   outline: none;
@@ -124,7 +124,7 @@ h1 {
 /* ─── Responsive Layout (Mobile-First) ─────────────────────────── */
 .triple-entry {
   display: grid;
-  grid-template-columns: 1fr; /* Stacks vertically into 1 single column on mobile */
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 12px;
   align-items: start;
@@ -136,10 +136,10 @@ textarea {
   width: 100%;
   height: var(--textarea-h);
   padding: 12px;
-  font-size: 16px; /* Native feel on mobile browsers */
+  font-size: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  resize: vertical; /* Allow responsive height scaling */
+  resize: vertical;
   outline: none;
   line-height: 1.6;
   font-family: Arial, sans-serif;
@@ -158,7 +158,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   background: #6c757d;
   color: white;
   border: none;
-  padding: 8px 12px; /* Slightly scaled touch targets */
+  padding: 8px 12px;
   border-radius: 5px;
   font-size: 12px;
   font-weight: bold;
@@ -192,7 +192,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .bill-entry-header {
   display: grid;
-  grid-template-columns: 44px 1fr 1fr 44px; /* Enhanced sizing for accessibility margins */
+  grid-template-columns: 44px 1fr 1fr 44px;
   background: var(--accent);
   color: white;
   font-weight: bold;
@@ -209,7 +209,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   border: none;
   border-bottom: 1px solid #e1e5ea;
   border-right: 1px solid #e1e5ea;
-  padding: 10px 6px; /* Taller input items make targeting cells by thumb cleaner */
+  padding: 10px 6px;
   font-size: 14px;
   outline: none;
   width: 100%;
@@ -236,7 +236,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
-  min-height: 38px; /* Safe human hand thumb interactions */
+  min-height: 38px;
 }
 .delete-btn:hover { background: #b02a37; }
 
@@ -271,7 +271,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   display: flex; 
   align-items: center; 
   gap: 8px;
-  flex: 1 1 140px; /* Adapts dynamically to row width wrappers */
+  flex: 1 1 140px;
 }
 .control-group label { font-size: 13px; font-weight: bold; white-space: nowrap; }
 .control-group input {
@@ -287,11 +287,11 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 .buttons {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Clean uniform grid balance on mobile screens */
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 button {
-  padding: 12px 14px; /* Scaled structural balance */
+  padding: 12px 14px;
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -305,12 +305,12 @@ button {
 }
 button:hover   { opacity: 0.88; }
 button:active  { transform: scale(0.97); }
-.process-btn   { background: var(--accent);   color: white; grid-column: span 2; } /* Process is primary, spans full width */
+.process-btn   { background: var(--accent);   color: white; grid-column: span 2; }
 .clear-btn     { background: var(--danger);   color: white; }
 .print-btn     { background: var(--success);  color: white; }
 .font-btn      { background: var(--purple);   color: white; }
 .fit-btn       { background: var(--warning);  color: white; }
-.export-btn    { background: var(--teal);     color: white; grid-column: span 2; } /* Primary Action spans base layout on mobile */
+.export-btn    { background: var(--teal);     color: white; grid-column: span 2; }
 
 /* ─── Summary Cards ────────────────────────────────────────────── */
 .summary {
@@ -320,7 +320,7 @@ button:active  { transform: scale(0.97); }
   flex-wrap: wrap;
 }
 .card {
-  flex: 1 1 calc(50% - 5px); /* Balanced 2-wide columns layout grid split targets */
+  flex: 1 1 calc(50% - 5px);
   background: var(--surface);
   border: 1px solid #dee2e6;
   border-radius: var(--radius);
@@ -333,7 +333,7 @@ button:active  { transform: scale(0.97); }
 
 /* ─── Preview Table ────────────────────────────────────────────── */
 .table-wrapper { 
-  overflow-x: auto; /* Ensures wide summary grids slide effortlessly on small glass touch panels */
+  overflow-x: auto;
   margin-top: 14px; 
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -356,12 +356,12 @@ th { background: #ffffff; color: black; }
 .vertical-label { background: #f5f6f8; font-weight: bold; }
 .autofit { table-layout: auto !important; width: auto !important; }
 
-/* ─── Responsive Media Breakpoints (Desktop Upscaling) ─────────── */
+/* ─── Responsive Media Breakpoints ─────────────────────────────── */
 @media (min-width: 768px) {
   body { padding: 20px; }
   .container { padding: 24px; }
   .buttons {
-    display: flex; /* Return buttons container layout grid to linear spacing on web clients */
+    display: flex;
     flex-wrap: wrap;
   }
   .buttons button {
@@ -376,12 +376,11 @@ th { background: #ffffff; color: black; }
 }
 
 @media (min-width: 1024px) {
-  /* Restore horizontal data workflow columns for massive workspace screens */
   .triple-entry {
     grid-template-columns: var(--col-left) 1fr 1fr;
   }
   .mode-switch {
-    max-width: 400px; /* Keep switch centered neatly */
+    max-width: 400px;
   }
 }
 
@@ -446,12 +445,12 @@ th { background: #ffffff; color: black; }
 
     <div class="entry-box">
       <label>Bill Amount Entry</label>
-      <textarea id="billAmounts" placeholder="Enter bill amounts here..." inputmode="text"></textarea>
+      <textarea id="billAmounts" placeholder="Enter bill amounts here..."></textarea>
     </div>
 
     <div class="entry-box">
       <label>Crosscheck</label>
-      <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..." inputmode="text"></textarea>
+      <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..."></textarea>
       <div class="crosscheck-status" id="crosscheckStatus">Waiting for Crosscheck…</div>
     </div>
 
@@ -478,7 +477,7 @@ th { background: #ffffff; color: black; }
     <button class="print-btn"   onclick="window.print()">Print</button>
     <button class="font-btn"    onclick="changeFont(1)">A+</button>
     <button class="font-btn"    onclick="changeFont(-1)">A−</button>
-    <button class="fit-btn"     onclick="toggleAutofit()">Autofit</button>
+    <button class="fit-btn"     id="autofitBtn" onclick="toggleAutofit()">Autofit Off</button>
     <button class="export-btn"  onclick="exportExcel()">Export Excel</button>
   </div>
 
@@ -807,6 +806,9 @@ function changeFont(delta) {
 function toggleAutofit() {
   state.autofit = !state.autofit;
   document.getElementById("previewTable").classList.toggle("autofit", state.autofit);
+  
+  // Directly updates button layout display text dynamically
+  document.getElementById("autofitBtn").textContent = state.autofit ? "Autofit On" : "Autofit Off";
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -994,6 +996,10 @@ function clearAll() {
   const cs = document.getElementById("crosscheckStatus");
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
+
+  // Reset Autofit State back to default Off text representation
+  state.autofit = false;
+  document.getElementById("autofitBtn").textContent = "Autofit Off";
 
   Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
   showToast("Cleared.", "success");
