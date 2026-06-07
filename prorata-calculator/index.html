@@ -167,14 +167,14 @@
     }
 
     .metric-card .lbl {
-      font-size: 12px;
+      font-size: 17px;
       color: #777;
       margin-bottom: 6px;
       font-weight: 500;
     }
 
     .metric-card .val {
-      font-size: 20px;
+      font-size: 17px;
       font-weight: 600;
       color: #1a1a1a;
     }
@@ -202,7 +202,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 17px;
     }
 
     thead th {
@@ -562,6 +562,20 @@
       fyCursor++;
     }
 
+    
+    const priorTotal = fyRows.filter(r=>r.type==='prior').reduce((a,b)=>a+b.amt,0);
+    const expenseTotal = fyRows.filter(r=>r.type==='current').reduce((a,b)=>a+b.amt,0);
+    const prepaidTotal = fyRows.filter(r=>r.type==='future').reduce((a,b)=>a+b.amt,0);
+
+    output += `
+    <div class="metrics-grid" role="region" aria-label="Accounting summary">
+      <div class="metric-card"><div class="lbl">Prior Period Adj.</div><div class="val">${fmtINR(priorTotal)}</div></div>
+      <div class="metric-card"><div class="lbl">Expense Header</div><div class="val">${fmtINR(expenseTotal)}</div></div>
+      <div class="metric-card"><div class="lbl">Prepaid Adj.</div><div class="val">${fmtINR(prepaidTotal)}</div></div>
+      <div class="metric-card"><div class="lbl">Classification Total</div><div class="val">${fmtINR(priorTotal+expenseTotal+prepaidTotal)}</div></div>
+    </div>`;
+
+
     /* ── FY Breakdown Table ── */
     output += `<div class="section-title">&#128198; Financial Year Breakdown</div>`;
     output += `
@@ -572,33 +586,31 @@
             <th scope="col">Financial Year</th>
             <th scope="col">Days</th>
             <th scope="col">Amount</th>
-            <th scope="col">Prior Period Adj.</th>
-            <th scope="col">Expense Header</th>
-            <th scope="col">Prepaid Adj.</th>
+            <th scope="col">Accounting Treatment</th>
           </tr>
         </thead>
         <tbody>`;
 
-    csvRows.push(['Financial Year', 'Days', 'Amount', 'Prior Period Adjustment', 'Expense Header', 'Prepaid Adjustment']);
+    csvRows.push(['Financial Year', 'Days', 'Amount', 'Accounting Treatment']);
 
     for (const row of fyRows) {
-      const prior   = row.type === 'prior'   ? row.amt : 0;
-      const expense = row.type === 'current' ? row.amt : 0;
-      const prepaid = row.type === 'future'  ? row.amt : 0;
       const rowCls  = 'row-' + row.type;
       const badge   = `<span class="badge badge-${row.type}">${row.type}</span>`;
+      const treatment = row.type === 'prior'
+          ? `${fmtINR(row.amt)} (Prior Period Adjustment)`
+          : row.type === 'current'
+          ? `${fmtINR(row.amt)} (Expense Header)`
+          : `${fmtINR(row.amt)} (Prepaid Adjustment)`;
 
       output += `
           <tr class="${rowCls}" tabindex="0" aria-label="${row.label}, ${row.days} days, ${fmtINR(row.amt)}">
             <td>${row.label}${badge}</td>
             <td>${row.days}</td>
             <td>${fmtINR(row.amt)}</td>
-            <td>${fmtINR(prior)}</td>
-            <td>${fmtINR(expense)}</td>
-            <td>${fmtINR(prepaid)}</td>
+            <td>${treatment}</td>
           </tr>`;
 
-      csvRows.push([row.label, row.days, row.amt.toFixed(2), prior.toFixed(2), expense.toFixed(2), prepaid.toFixed(2)]);
+      csvRows.push([row.label, row.days, row.amt.toFixed(2), treatment]);
     }
 
     output += `</tbody></table></div>`;
@@ -679,7 +691,7 @@
     
     <footer style="text-align: center; padding: 20px; color: #666; font-size: 0.8rem;">
         <p>&copy; 2026 HS. All rights reserved.</p>
-        <p>Version: <span id="app-version">1.0.0</span></p>
+        <p>Version: <span id="app-version">1.2.0</span></p>
     </footer>
 </body>
 </html>
