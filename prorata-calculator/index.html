@@ -10,12 +10,21 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
+    :root {
+      --primary-color: #007acc;
+      --primary-hover: #cce8ff;
+      --bg-color: #f0f2f5;
+      --text-color: #1a1a1a;
+      --card-bg: #fff;
+    }
+
     body {
       font-family: 'Roboto', Arial, sans-serif;
       margin: 0;
-      padding: 40px 24px;
-      background: #f0f2f5;
-      color: #1a1a1a;
+      padding: clamp(16px, 4vw, 40px) clamp(12px, 3vw, 24px);
+      background: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
     }
 
     .container {
@@ -24,19 +33,18 @@
     }
 
     h2 {
-      font-size: 22px;
+      font-size: clamp(20px, 5vw, 24px);
       font-weight: 600;
-      color: #007acc;
-      margin: 0 0 4px;
+      color: var(--primary-color);
+      margin: 0 0 6px;
     }
 
     .subtitle {
-      font-size: 13px;
-      color: #888;
+      font-size: clamp(11px, 2.5vw, 13px);
+      color: #666;
       margin: 0 0 24px;
     }
 
-    /* Keyboard hint pill on Calculate button */
     .kbd-hint {
       display: inline-block;
       font-size: 10px;
@@ -53,16 +61,16 @@
     }
 
     .input-card {
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 12px;
       border: 1px solid #e0e0e0;
-      padding: 24px;
+      padding: clamp(16px, 4vw, 24px);
       margin-bottom: 24px;
     }
 
     .grid2 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 16px;
       margin-bottom: 16px;
     }
@@ -77,41 +85,31 @@
 
     .field input {
       width: 100%;
-      padding: 9px 12px;
+      padding: 12px;
       font-size: 14px;
       border: 1px solid #ccc;
       border-radius: 8px;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
       font-family: 'Roboto', Arial, sans-serif;
+      min-height: 44px; /* Mobile Friendly Touch Target */
     }
 
     .field input:focus {
-      border-color: #007acc;
-      box-shadow: 0 0 0 3px rgba(0,122,204,0.15);
-    }
-
-    /* Visible focus ring for buttons (keyboard navigation) */
-    .btn:focus-visible {
-      outline: 2px solid #007acc;
-      outline-offset: 3px;
-    }
-
-    .field input:focus-visible {
-      border-color: #007acc;
+      border-color: var(--primary-color);
       box-shadow: 0 0 0 3px rgba(0,122,204,0.15);
     }
 
     .btn-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
       margin-top: 20px;
     }
 
     .btn {
-      flex: 1;
-      min-width: 130px;
+      width: 100%;
+      min-height: 44px; /* Mobile Friendly Touch Target */
       padding: 10px 16px;
       font-size: 14px;
       font-weight: 500;
@@ -124,7 +122,6 @@
       justify-content: center;
       gap: 7px;
       transition: background 0.15s, transform 0.1s;
-      font-family: 'Roboto', Arial, sans-serif;
     }
 
     .btn:hover { background: #f5f5f5; }
@@ -132,10 +129,10 @@
 
     .btn-primary {
       background: #e6f4ff;
-      border-color: #007acc;
+      border-color: var(--primary-color);
       color: #005a99;
     }
-    .btn-primary:hover { background: #cce8ff; }
+    .btn-primary:hover { background: var(--primary-hover); }
 
     .btn-download {
       background: #f0faf4;
@@ -151,10 +148,10 @@
     }
     .btn-danger:hover { background: #ffe0e0; }
 
-    /* Summary metric cards */
+    /* Summary metric cards responsive layouts */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
       margin-bottom: 24px;
     }
@@ -167,78 +164,82 @@
     }
 
     .metric-card .lbl {
-      font-size: 17px;
-      color: #777;
-      margin-bottom: 6px;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
       font-weight: 500;
     }
 
     .metric-card .val {
-      font-size: 17px;
+      font-size: clamp(15px, 4vw, 18px);
       font-weight: 600;
-      color: #1a1a1a;
+      color: var(--text-color);
+      word-break: break-word;
     }
 
-    /* Section headings */
     .section-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
-      color: #007acc;
-      margin: 0 0 10px;
+      color: var(--primary-color);
+      margin: 24px 0 12px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    /* Tables */
-    .table-card {
-      background: #fff;
+    /* Overflow containers keep tables readable on ultra-narrow phones */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border-radius: 12px;
       border: 1px solid #e0e0e0;
-      overflow: hidden;
+      background: var(--card-bg);
       margin-bottom: 24px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 17px;
+      font-size: 14px; /* Scaled down for better desktop/mobile default */
+      text-align: left;
     }
 
     thead th {
       background: #eaf4ff;
       color: #444;
       font-weight: 600;
-      padding: 10px 12px;
-      text-align: left;
+      padding: 12px;
       border-bottom: 1px solid #d0e8f8;
       white-space: nowrap;
     }
 
     tbody td {
-      padding: 9px 12px;
+      padding: 12px;
       border-bottom: 1px solid #f0f0f0;
-      color: #1a1a1a;
+      color: var(--text-color);
+      white-space: nowrap; /* Prevents awkward mid-text line breaks on mobile */
+    }
+
+    /* Exceptions allowing multi-line layout inside wide columns */
+    tbody td:last-child {
+      white-space: normal;
+      min-width: 180px;
     }
 
     tbody tr:last-child td { border-bottom: none; }
-
     tbody tr.row-current td { background: #f0faf4; }
     tbody tr.row-prior   td { background: #fffbf0; }
     tbody tr.row-future  td { background: #f0f5ff; }
-
     tbody tr:hover td { background: #f7f9fc; }
     tbody tr.row-current:hover td { background: #e6f7ee; }
 
-    /* Keyboard-focused table rows */
     tbody tr:focus {
-      outline: 2px solid #007acc;
+      outline: 2px solid var(--primary-color);
       outline-offset: -2px;
     }
-
     tbody tr:focus td { background: #ddeeff; }
 
-    /* Badges */
     .badge {
       display: inline-block;
       font-size: 10px;
@@ -254,7 +255,6 @@
     .badge-prior   { background: #fff3cd; color: #856404; }
     .badge-future  { background: #cce5ff; color: #004085; }
 
-    /* Error message */
     .error-msg {
       background: #fff5f5;
       color: #c53030;
@@ -267,12 +267,11 @@
       gap: 8px;
     }
 
-    /* Skip-to-results link for keyboard users */
     .skip-link {
       position: absolute;
       left: -9999px;
       top: 8px;
-      background: #007acc;
+      background: var(--primary-color);
       color: #fff;
       padding: 8px 14px;
       border-radius: 6px;
@@ -283,22 +282,21 @@
     }
     .skip-link:focus { left: 16px; }
 
-    @media (max-width: 600px) {
-      .grid2           { grid-template-columns: 1fr; }
-      .metrics-grid    { grid-template-columns: repeat(2, 1fr); }
-      .current-fy-grid { grid-template-columns: repeat(2, 1fr); }
-      .btn             { min-width: 100px; font-size: 13px; }
-      thead th, tbody td { padding: 7px 8px; font-size: 12px; }
+    @media (max-width: 480px) {
+      .btn-row {
+        grid-template-columns: 1fr;
+      }
+      .kbd-hint {
+        display: none; /* Hide non-actionable shortcuts on touch devices */
+      }
     }
   </style>
 </head>
 <body>
 
-<!-- Skip link: keyboard users can jump straight to results -->
 <a href="#result" class="skip-link">Skip to results</a>
 
 <div class="container">
-
   <h2>&#8377; Prorated Amount — FY &amp; Month Breakdown</h2>
   <p class="subtitle">Use Tab to move between fields &bull; Arrow keys to adjust dates &bull; Enter to activate buttons &bull; Ctrl+Enter to calculate</p>
 
@@ -306,94 +304,48 @@
     <div class="grid2">
       <div class="field">
         <label for="startDate">Start date</label>
-        <input
-          type="date"
-          id="startDate"
-          tabindex="1"
-          aria-label="Start date"
-          aria-required="true"
-          aria-describedby="hint-dates"
-        >
+        <input type="date" id="startDate" tabindex="1" aria-label="Start date" aria-required="true" aria-describedby="hint-dates">
       </div>
       <div class="field">
         <label for="endDate">End date</label>
-        <input
-          type="date"
-          id="endDate"
-          tabindex="2"
-          aria-label="End date"
-          aria-required="true"
-          aria-describedby="hint-dates"
-        >
+        <input type="date" id="endDate" tabindex="2" aria-label="End date" aria-required="true" aria-describedby="hint-dates">
       </div>
     </div>
     <p id="hint-dates" style="font-size:12px;color:#999;margin:0 0 12px;">Use arrow keys to change date values once a date field is focused.</p>
 
     <div class="field">
       <label for="totalAmount">Total amount (&#8377;)</label>
-      <input
-        type="number"
-        id="totalAmount"
-        placeholder="e.g. 120000"
-        min="0"
-        tabindex="3"
-        aria-label="Total amount in rupees"
-        aria-required="true"
-      >
+      <input type="number" id="totalAmount" placeholder="e.g. 120000" min="0" tabindex="3" aria-label="Total amount in rupees" aria-required="true">
     </div>
 
     <div class="btn-row" role="group" aria-label="Actions">
-      <button
-        class="btn btn-primary"
-        id="btnCalculate"
-        onclick="calculateProrata()"
-        tabindex="4"
-        aria-label="Calculate prorated amount. Keyboard shortcut: Ctrl+Enter"
-      >
+      <button class="btn btn-primary" id="btnCalculate" onclick="calculateProrata()" tabindex="4" aria-label="Calculate prorated amount. Keyboard shortcut: Ctrl+Enter">
         &#9654; Calculate <span class="kbd-hint" aria-hidden="true">Ctrl+Enter</span>
       </button>
-      <button
-        class="btn btn-download"
-        id="btnDownload"
-        onclick="downloadCSV()"
-        tabindex="5"
-        aria-label="Download results as CSV file"
-      >
+      <button class="btn btn-download" id="btnDownload" onclick="downloadCSV()" tabindex="5" aria-label="Download results as CSV file">
         &#8595; Download CSV
       </button>
-      <button
-        class="btn btn-danger"
-        id="btnClear"
-        onclick="clearAll()"
-        tabindex="6"
-        aria-label="Clear all inputs and results"
-      >
+      <button class="btn btn-danger" id="btnClear" onclick="clearAll()" tabindex="6" aria-label="Clear all inputs and results">
         &#10005; Clear
       </button>
     </div>
   </div>
 
   <div id="result" tabindex="-1" aria-live="polite" aria-label="Calculation results"></div>
-
 </div>
 
 <script>
   const FY_START_MONTH = 4;
   let csvRows = [];
-
-  /* ── Focusable fields in tab order ── */
   const NAV_IDS = ['startDate', 'endDate', 'totalAmount', 'btnCalculate', 'btnDownload', 'btnClear'];
 
-  /* ── Ctrl+Enter → Calculate ── */
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
       calculateProrata();
-      return;
     }
   });
 
-  /* ── Enter on input fields: advance to next field or trigger button ── */
   document.querySelectorAll('.field input').forEach(function (input) {
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.ctrlKey) {
@@ -405,7 +357,6 @@
     });
   });
 
-  /* ── Arrow keys on number input: increment / decrement by 1000 ── */
   document.getElementById('totalAmount').addEventListener('keydown', function (e) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -418,7 +369,6 @@
     }
   });
 
-  /* ── Arrow keys navigate between buttons when a button is focused ── */
   document.querySelectorAll('.btn').forEach(function (btn) {
     btn.addEventListener('keydown', function (e) {
       const btns = Array.from(document.querySelectorAll('.btn'));
@@ -434,7 +384,6 @@
     });
   });
 
-  /* ── Arrow keys navigate table rows (FY & Month tables) ── */
   document.addEventListener('keydown', function (e) {
     const active = document.activeElement;
     if (!active || active.tagName !== 'TR') return;
@@ -450,14 +399,8 @@
     }
   });
 
-  /* ══════════════════════════════════════════════
-     HELPER FUNCTIONS
-  ══════════════════════════════════════════════ */
-
   function getFYStartYear(date) {
-    return (date.getMonth() + 1 >= FY_START_MONTH)
-      ? date.getFullYear()
-      : date.getFullYear() - 1;
+    return (date.getMonth() + 1 >= FY_START_MONTH) ? date.getFullYear() : date.getFullYear() - 1;
   }
 
   function fyLabel(yr) {
@@ -465,22 +408,13 @@
   }
 
   function fmtINR(n) {
-    return '\u20B9' + n.toLocaleString('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+    return '\u20B9' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function escapeCsv(val) {
     const s = String(val);
-    return (s.includes(',') || s.includes('"') || s.includes('\n'))
-      ? '"' + s.replace(/"/g, '""') + '"'
-      : s;
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
-
-  /* ══════════════════════════════════════════════
-     CLEAR
-  ══════════════════════════════════════════════ */
 
   function clearAll() {
     document.getElementById('startDate').value   = '';
@@ -490,10 +424,6 @@
     csvRows = [];
     document.getElementById('startDate').focus();
   }
-
-  /* ══════════════════════════════════════════════
-     CALCULATE
-  ══════════════════════════════════════════════ */
 
   function calculateProrata() {
     const startInput  = document.getElementById('startDate').value;
@@ -530,7 +460,6 @@
 
     let output = '';
 
-    /* ── Metric cards ── */
     output += `
     <div class="metrics-grid" role="region" aria-label="Summary metrics">
       <div class="metric-card"><div class="lbl">Total days</div><div class="val">${totalDays}</div></div>
@@ -539,7 +468,6 @@
       <div class="metric-card"><div class="lbl">Current FY</div><div class="val">${fyLabel(currentFYSY)}</div></div>
     </div>`;
 
-    /* ── Build FY rows ── */
     const fyRows  = [];
     let fyCursor  = getFYStartYear(startDate);
     let safeGuard = 0;
@@ -553,16 +481,13 @@
       if (actStart <= actEnd) {
         const days = Math.floor((actEnd - actStart) / MS_PER_DAY) + 1;
         const amt  = days * oneDayAmt;
-        const type = fyCursor < currentFYSY  ? 'prior'
-                   : fyCursor === currentFYSY ? 'current'
-                   : 'future';
+        const type = fyCursor < currentFYSY  ? 'prior' : fyCursor === currentFYSY ? 'current' : 'future';
         fyRows.push({ yr: fyCursor, label: fyLabel(fyCursor), days, amt, type });
       }
       if (fyEnd >= endDate) break;
       fyCursor++;
     }
 
-    
     const priorTotal = fyRows.filter(r=>r.type==='prior').reduce((a,b)=>a+b.amt,0);
     const expenseTotal = fyRows.filter(r=>r.type==='current').reduce((a,b)=>a+b.amt,0);
     const prepaidTotal = fyRows.filter(r=>r.type==='future').reduce((a,b)=>a+b.amt,0);
@@ -575,11 +500,9 @@
       <div class="metric-card"><div class="lbl">Classification Total</div><div class="val">${fmtINR(priorTotal+expenseTotal+prepaidTotal)}</div></div>
     </div>`;
 
-
-    /* ── FY Breakdown Table ── */
     output += `<div class="section-title">&#128198; Financial Year Breakdown</div>`;
     output += `
-    <div class="table-card">
+    <div class="table-container">
       <table role="grid" aria-label="Financial year breakdown">
         <thead>
           <tr>
@@ -596,11 +519,7 @@
     for (const row of fyRows) {
       const rowCls  = 'row-' + row.type;
       const badge   = `<span class="badge badge-${row.type}">${row.type}</span>`;
-      const treatment = row.type === 'prior'
-          ? `${fmtINR(row.amt)} (Prior Period Adjustment)`
-          : row.type === 'current'
-          ? `${fmtINR(row.amt)} (Expense Header)`
-          : `${fmtINR(row.amt)} (Prepaid Adjustment)`;
+      const treatment = row.type === 'prior' ? `${fmtINR(row.amt)} (Prior Period Adjustment)` : row.type === 'current' ? `${fmtINR(row.amt)} (Expense Header)` : `${fmtINR(row.amt)} (Prepaid Adjustment)`;
 
       output += `
           <tr class="${rowCls}" tabindex="0" aria-label="${row.label}, ${row.days} days, ${fmtINR(row.amt)}">
@@ -615,13 +534,12 @@
 
     output += `</tbody></table></div>`;
 
-    /* ── Month-wise Breakdown Table ── */
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     let mCursor  = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
 
     output += `<div class="section-title">&#128197; Month-wise Breakdown</div>`;
     output += `
-    <div class="table-card">
+    <div class="table-container">
       <table role="grid" aria-label="Month-wise breakdown">
         <thead>
           <tr>
@@ -666,10 +584,6 @@
     resultDiv.focus();
   }
 
-  /* ══════════════════════════════════════════════
-     DOWNLOAD CSV
-  ══════════════════════════════════════════════ */
-
   function downloadCSV() {
     if (csvRows.length === 0) {
       alert('Please calculate first before downloading.');
@@ -687,14 +601,10 @@
     URL.revokeObjectURL(url);
   }
 </script>
-    <!-- Main content ends -->
-    
-    <footer style="text-align: center; padding: 20px; color: #666; font-size: 0.8rem;">
-        <p>&copy; 2026 HS. All rights reserved.</p>
-        <p>Version: <span id="app-version">1.2.0</span></p>
-    </footer>
-</body>
-</html>
 
+<footer style="text-align: center; padding: 20px; color: #666; font-size: 0.8rem;">
+    <p>&copy; 2026 HS. All rights reserved.</p>
+    <p>Version: <span id="app-version">1.3.0</span></p>
+</footer>
 </body>
 </html>
