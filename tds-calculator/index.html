@@ -6,44 +6,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
             background: #f1f5ef;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            /* Replaced fixed 100vh to prevent keyboard-popup clipping on mobile */
+            min-height: 100vh;
             margin: 0;
+            padding: clamp(16px, 4vw, 32px);
         }
 
         .calculator {
             background: #f5faeb;
-            padding: 24px;
-            width: 420px;
-            border-radius: 8px;
-            box-shadow: 0 5px 10px rgba(158, 185, 122, 0.556);
+            padding: clamp(16px, 5vw, 28px);
+            /* Fluid design: Scales beautifully down to 320px widths while maxing out at 440px */
+            width: 100%;
+            max-width: 440px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(135, 160, 98, 0.25);
         }
 
         .calculator h2 {
             text-align: center;
+            margin-top: 0;
             margin-bottom: 20px;
-            font-size: 20px;
+            font-size: clamp(18px, 5vw, 22px);
+            color: #2c3e1b;
         }
 
         label {
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 6px;
             display: block;
-        }
-
-        /* Remove number arrows */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type=number] {
-            -moz-appearance: textfield;
+            font-weight: 500;
+            color: #4a5441;
         }
 
         input {
@@ -51,54 +53,91 @@
             padding: 12px;
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 16px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            border: 1px solid #b5c4a3;
             text-align: right;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            /* Ensures comfortable finger tapping target on phones */
+            min-height: 48px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #7c9a51;
+            box-shadow: 0 0 0 3px rgba(197, 225, 148, 0.4);
         }
 
         .tds-buttons {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* Dynamic columns that step down cleanly if viewports get ultra-thin */
+            grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .tds-buttons button {
-            padding: 12px;
+            min-height: 44px; /* Accessible mobile touch target */
+            padding: 10px 4px;
             font-size: 14px;
             font-weight: bold;
-            border-radius: 4px;
-            border: 1px solid #303030;
+            border-radius: 6px;
+            border: 1px solid #a3b58c;
             background: #eef2e3;
             cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tds-buttons button:hover {
+            background: #e4ebd2;
         }
 
         .tds-buttons button.active {
             background: #c5e194;
             color: #000000;
-            border-color: #303030;
+            border-color: #5d7539;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .result {
             background: #fcfff8;
-            padding: 14px;
-            border-radius: 4px;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2ebd5;
         }
 
         .result p {
-            margin: 8px 0;
-            font-size: 16px;
+            margin: 10px 0;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap; /* Prevents long numbers from punching out of rows */
+            gap: 8px;
+        }
+
+        .result p:first-child {
+            margin-top: 0;
         }
 
         .amount {
-            font-size: 20px;
+            font-size: clamp(16px, 4.5vw, 19px);
             font-weight: bold;
+            color: #1e2912;
+            word-break: break-all;
         }
 
         .words {
-            font-size: 14px;
+            font-size: 13px;
             font-style: italic;
+            color: #616e53;
+            line-height: 1.4;
+            margin-top: 12px !important;
+            display: block !important;
+            border-top: 1px dashed #e2ebd5;
+            padding-top: 12px;
+            text-align: left;
         }
     </style>
 </head>
@@ -108,7 +147,7 @@
     <h2>TDS Calculator (India)</h2>
 
     <label for="amount">Gross Amount (₹)</label>
-    <input type="text" id="amount" placeholder="Enter amount">
+    <input type="text" id="amount" placeholder="Enter amount" inputmode="decimal">
 
     <label>Select TDS Rate</label>
     <div class="tds-buttons">
@@ -119,15 +158,23 @@
     </div>
 
     <div class="result" id="result">
-        <p>TDS Amount: <span class="amount">₹0.00</span></p>
-        <p>Net Amount Payable: <span class="amount">₹0.00</span></p>
-        <p>Net Amount Payable (Rounded): <span class="amount">₹0</span></p>
+        <p><span>TDS Amount:</span> <span class="amount">₹0.00</span></p>
+        <p><span>Net Amount Payable:</span> <span class="amount">₹0.00</span></p>
+        <p><span>Net Amount Payable (Rounded):</span> <span class="amount">₹0</span></p>
         <p class="words">Rupees Zero Only</p>
     </div>
 </div>
 
 <script>
     const amountInput = document.getElementById('amount');
+    let currentRate = null;
+
+    // Auto-calculates instantly on typing or paste events for smoother mobile UX
+    amountInput.addEventListener('input', () => {
+        if (currentRate !== null) {
+            runCalculationSequence();
+        }
+    });
 
     amountInput.addEventListener('blur', () => {
         const value = parseIndianNumber(amountInput.value);
@@ -148,19 +195,22 @@
     }
 
     function selectTDS(rate, element) {
-        const amount = parseIndianNumber(amountInput.value);
-
-        if (isNaN(amount) || amount <= 0) {
-            alert("Please enter gross amount first");
-            return;
-        }
-
         document.querySelectorAll('.tds-buttons button').forEach(btn => {
             btn.classList.remove('active');
         });
         element.classList.add('active');
+        currentRate = rate;
 
-        calculateTDS(amount, rate);
+        runCalculationSequence();
+    }
+
+    function runCalculationSequence() {
+        const amount = parseIndianNumber(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            return;
+        }
+        calculateTDS(amount, currentRate);
     }
 
     function calculateTDS(amount, rate) {
@@ -170,9 +220,9 @@
         const words = numberToWords(roundedNetAmount);
 
         document.getElementById('result').innerHTML = `
-            <p>TDS Amount: <span class="amount">₹${formatIndian(tdsAmount)}</span></p>
-            <p>Net Amount Payable: <span class="amount">₹${formatIndian(netAmount)}</span></p>
-            <p>Net Amount Payable (Rounded): <span class="amount">₹${roundedNetAmount.toLocaleString('en-IN')}</span></p>
+            <p><span>TDS Amount:</span> <span class="amount">₹${formatIndian(tdsAmount)}</span></p>
+            <p><span>Net Amount Payable:</span> <span class="amount">₹${formatIndian(netAmount)}</span></p>
+            <p><span>Net Amount Payable (Rounded):</span> <span class="amount">₹${roundedNetAmount.toLocaleString('en-IN')}</span></p>
             <p class="words">Rupees ${words} Only</p>
         `;
     }
