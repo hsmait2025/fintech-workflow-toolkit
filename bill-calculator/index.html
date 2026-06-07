@@ -6,7 +6,6 @@
 <meta name="description" content="Bill Entry Tool — enter, cross-check, and export bill amounts in horizontal or vertical layout.">
 <title>Bill Entry Tool</title>
 
-<!-- SheetJS for real .xlsx export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -96,7 +95,7 @@ h1 {
 }
 .mode-btn {
   flex: 1;
-  padding: 10px;
+  padding: 12px 10px; /* Enhanced for touch targets */
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -113,8 +112,8 @@ h1 {
 .header-input label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
 .header-input input {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 15px;
+  padding: 12px;
+  font-size: 16px; /* 16px prevents automatic zoom-on-focus on iOS devices */
   border: 1px solid var(--border);
   border-radius: var(--radius);
   outline: none;
@@ -122,25 +121,25 @@ h1 {
 }
 .header-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
 
-/* ─── Triple Column Layout ─────────────────────────────────────── */
+/* ─── Responsive Layout (Mobile-First) ─────────────────────────── */
 .triple-entry {
   display: grid;
-  grid-template-columns: var(--col-left) 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr; /* Stacks vertically into 1 single column on mobile */
+  gap: 16px;
   margin-bottom: 12px;
   align-items: start;
 }
-.entry-box label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
+.entry-box label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 13px; }
 
 /* ─── Textarea ─────────────────────────────────────────────────── */
 textarea {
   width: 100%;
   height: var(--textarea-h);
   padding: 12px;
-  font-size: 15px;
+  font-size: 16px; /* Native feel on mobile browsers */
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  resize: none;
+  resize: vertical; /* Allow responsive height scaling */
   outline: none;
   line-height: 1.6;
   font-family: Arial, sans-serif;
@@ -159,7 +158,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   background: #6c757d;
   color: white;
   border: none;
-  padding: 7px 12px;
+  padding: 8px 12px; /* Slightly scaled touch targets */
   border-radius: 5px;
   font-size: 12px;
   font-weight: bold;
@@ -168,7 +167,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .auto-btn:hover { background: #5a6268; }
 .date-picker {
-  padding: 6px 8px;
+  padding: 7px 8px;
   border: 1px solid var(--border);
   border-radius: 5px;
   font-size: 12px;
@@ -176,7 +175,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 .counter-box {
   background: #f1f3f5;
   border: 1px solid #d6dbe1;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: 5px;
   font-size: 12px;
   font-weight: bold;
@@ -193,7 +192,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .bill-entry-header {
   display: grid;
-  grid-template-columns: 38px 1fr 1fr 42px;
+  grid-template-columns: 44px 1fr 1fr 44px; /* Enhanced sizing for accessibility margins */
   background: var(--accent);
   color: white;
   font-weight: bold;
@@ -202,16 +201,16 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   top: 0;
   z-index: 1;
 }
-.bill-entry-header div { padding: 6px; text-align: center; }
+.bill-entry-header div { padding: 8px 4px; text-align: center; }
 
-.bill-row { display: grid; grid-template-columns: 38px 1fr 1fr 42px; }
+.bill-row { display: grid; grid-template-columns: 44px 1fr 1fr 44px; }
 .bill-row:nth-child(even) { background: #f9fbff; }
 .bill-row input {
   border: none;
   border-bottom: 1px solid #e1e5ea;
   border-right: 1px solid #e1e5ea;
-  padding: 6px;
-  font-size: 12px;
+  padding: 10px 6px; /* Taller input items make targeting cells by thumb cleaner */
+  font-size: 14px;
   outline: none;
   width: 100%;
   min-width: 0;
@@ -231,25 +230,27 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   color: white;
   cursor: pointer;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
+  min-height: 38px; /* Safe human hand thumb interactions */
 }
 .delete-btn:hover { background: #b02a37; }
 
 /* ─── Cross-check Status ───────────────────────────────────────── */
 .crosscheck-status {
   margin-top: 8px;
-  padding: 10px;
+  padding: 12px;
   border-radius: var(--radius);
   font-weight: bold;
   text-align: center;
   border: 1px solid #ccc;
   background: var(--surface);
   transition: background 0.2s, color 0.2s;
+  font-size: 13px;
 }
 .match    { color: var(--success); border-color: var(--success); background: #f0fff4; }
 .mismatch { color: var(--danger);  border-color: var(--danger);  background: #fff5f5; }
@@ -260,17 +261,23 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   background: var(--surface);
   border: 1px solid #dfe3e8;
   border-radius: var(--radius);
-  padding: 10px;
+  padding: 12px;
   display: flex;
   gap: 15px;
   flex-wrap: wrap;
   align-items: center;
 }
-.control-group { display: flex; align-items: center; gap: 6px; }
-.control-group label { font-size: 13px; font-weight: bold; }
+.control-group { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+  flex: 1 1 140px; /* Adapts dynamically to row width wrappers */
+}
+.control-group label { font-size: 13px; font-weight: bold; white-space: nowrap; }
 .control-group input {
-  width: 80px;
-  padding: 6px;
+  width: 100%;
+  max-width: 100px;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: 5px;
   font-family: Arial, sans-serif;
@@ -279,27 +286,31 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 /* ─── Buttons ──────────────────────────────────────────────────── */
 .buttons {
   margin-top: 12px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Clean uniform grid balance on mobile screens */
   gap: 8px;
-  flex-wrap: wrap;
 }
 button {
-  padding: 10px 16px;
+  padding: 12px 14px; /* Scaled structural balance */
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
   font-size: 14px;
   transition: opacity 0.15s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 button:hover   { opacity: 0.88; }
 button:active  { transform: scale(0.97); }
-.process-btn   { background: var(--accent);   color: white; }
+.process-btn   { background: var(--accent);   color: white; grid-column: span 2; } /* Process is primary, spans full width */
 .clear-btn     { background: var(--danger);   color: white; }
 .print-btn     { background: var(--success);  color: white; }
 .font-btn      { background: var(--purple);   color: white; }
 .fit-btn       { background: var(--warning);  color: white; }
-.export-btn    { background: var(--teal);     color: white; }
+.export-btn    { background: var(--teal);     color: white; grid-column: span 2; } /* Primary Action spans base layout on mobile */
 
 /* ─── Summary Cards ────────────────────────────────────────────── */
 .summary {
@@ -309,19 +320,24 @@ button:active  { transform: scale(0.97); }
   flex-wrap: wrap;
 }
 .card {
-  flex: 1;
+  flex: 1 1 calc(50% - 5px); /* Balanced 2-wide columns layout grid split targets */
   background: var(--surface);
   border: 1px solid #dee2e6;
   border-radius: var(--radius);
-  padding: 10px;
+  padding: 12px;
   text-align: center;
-  min-width: 180px;
+  min-width: 140px;
 }
-.card h2 { margin: 0; font-size: 14px; color: var(--muted); }
-.card p  { font-size: 24px; font-weight: bold; margin: 6px 0 0; color: var(--text); }
+.card h2 { margin: 0; font-size: 13px; color: var(--muted); }
+.card p  { font-size: 20px; font-weight: bold; margin: 6px 0 0; color: var(--text); }
 
 /* ─── Preview Table ────────────────────────────────────────────── */
-.table-wrapper { overflow: auto; margin-top: 14px; }
+.table-wrapper { 
+  overflow-x: auto; /* Ensures wide summary grids slide effortlessly on small glass touch panels */
+  margin-top: 14px; 
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td {
   border: 2px solid black;
@@ -340,12 +356,41 @@ th { background: #ffffff; color: black; }
 .vertical-label { background: #f5f6f8; font-weight: bold; }
 .autofit { table-layout: auto !important; width: auto !important; }
 
+/* ─── Responsive Media Breakpoints (Desktop Upscaling) ─────────── */
+@media (min-width: 768px) {
+  body { padding: 20px; }
+  .container { padding: 24px; }
+  .buttons {
+    display: flex; /* Return buttons container layout grid to linear spacing on web clients */
+    flex-wrap: wrap;
+  }
+  .buttons button {
+    grid-column: auto !important;
+    flex: initial;
+  }
+  .card {
+    flex: 1;
+    padding: 16px;
+  }
+  .card p { font-size: 24px; }
+}
+
+@media (min-width: 1024px) {
+  /* Restore horizontal data workflow columns for massive workspace screens */
+  .triple-entry {
+    grid-template-columns: var(--col-left) 1fr 1fr;
+  }
+  .mode-switch {
+    max-width: 400px; /* Keep switch centered neatly */
+  }
+}
+
 /* ─── Print ────────────────────────────────────────────────────── */
 @media print {
   body { background: white !important; padding: 0; margin: 0; }
   .container { box-shadow: none !important; background: transparent !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
   .no-print, .container > *:not(.table-wrapper) { display: none !important; }
-  .table-wrapper { display: block !important; margin: 0; padding: 0; }
+  .table-wrapper { display: block !important; margin: 0; padding: 0; border: none; }
   table { width: 100%; }
 }
 </style>
@@ -366,22 +411,18 @@ th { background: #ffffff; color: black; }
     <strong>Tip:</strong> Press <kbd>Ctrl+Enter</kbd> anywhere to Process. Data auto-saves in browser.
   </div>
 
-  <!-- Mode -->
   <div class="mode-switch">
     <button class="mode-btn active" id="horizontalBtn" onclick="setMode('horizontal')">Horizontal Bill Entry</button>
     <button class="mode-btn"        id="verticalBtn"   onclick="setMode('vertical')">Vertical Bill Entry</button>
   </div>
 
-  <!-- Table Title -->
   <div class="header-input">
     <label for="tableTitle">Table Description / Party Name</label>
     <input type="text" id="tableTitle" placeholder="Example: Hostel Expense" autocomplete="off">
   </div>
 
-  <!-- Three columns -->
   <div class="triple-entry">
 
-    <!-- Left: Bill entry grid -->
     <div class="entry-box">
       <label>Bill No. &amp; Date Entry</label>
 
@@ -403,22 +444,19 @@ th { background: #ffffff; color: black; }
       </div>
     </div>
 
-    <!-- Middle: Amounts -->
     <div class="entry-box">
       <label>Bill Amount Entry</label>
-      <textarea id="billAmounts" placeholder="Enter bill amounts here..."></textarea>
+      <textarea id="billAmounts" placeholder="Enter bill amounts here..." inputmode="decimal"></textarea>
     </div>
 
-    <!-- Right: Cross-check -->
     <div class="entry-box">
       <label>Crosscheck</label>
-      <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..."></textarea>
+      <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..." inputmode="decimal"></textarea>
       <div class="crosscheck-status" id="crosscheckStatus">Waiting for Crosscheck…</div>
     </div>
 
   </div>
 
-  <!-- Table style controls -->
   <div class="table-controls">
     <div class="control-group">
       <label>Column Width</label>
@@ -434,7 +472,6 @@ th { background: #ffffff; color: black; }
     </div>
   </div>
 
-  <!-- Action buttons -->
   <div class="buttons">
     <button class="process-btn" onclick="processData()">Process</button>
     <button class="clear-btn"   onclick="clearAll()">Clear</button>
@@ -445,13 +482,11 @@ th { background: #ffffff; color: black; }
     <button class="export-btn"  onclick="exportExcel()">Export Excel</button>
   </div>
 
-  <!-- Summary cards -->
   <div class="summary">
     <div class="card"><h2>Total Bills</h2><p id="billCount">0</p></div>
     <div class="card"><h2>Grand Total</h2><p id="grandTotal">0</p></div>
   </div>
 
-  <!-- Output table -->
   <div class="table-wrapper">
     <table id="previewTable">
       <thead id="tableHead"></thead>
@@ -459,9 +494,7 @@ th { background: #ffffff; color: black; }
     </table>
   </div>
 
-</div><!-- /container -->
-
-<script>
+</div><script>
 /* ═══════════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════════ */
@@ -483,15 +516,11 @@ function showToast(msg, type = "success") {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SAFE MATH EVALUATOR (no eval / no Function constructor with arbitrary code)
-   Only allows digits, spaces, +  -  *  /  .  ( )
+   SAFE MATH EVALUATOR
 ═══════════════════════════════════════════════════════════════ */
 function safeCalc(expr) {
   if (!/^[\d\s+\-*/.()]+$/.test(expr)) return NaN;
   try {
-    // Using Function here is safe because we've already validated
-    // the expression contains only numeric operators and digits.
-    // eslint-disable-next-line no-new-func
     const result = new Function('"use strict"; return (' + expr + ')')();
     return (typeof result === "number" && isFinite(result)) ? result : NaN;
   } catch (e) {
@@ -506,7 +535,7 @@ const LS_KEYS = {
   amounts:    "bet_amounts",
   crosscheck: "bet_crosscheck",
   title:      "bet_title",
-  bills:      "bet_bills",   // JSON array of {invoice, date}
+  bills:      "bet_bills",
 };
 
 function saveToStorage() {
@@ -521,7 +550,7 @@ function saveToStorage() {
       date:    row.querySelector(".date-input").value,
     }));
     localStorage.setItem(LS_KEYS.bills, JSON.stringify(bills));
-  } catch (e) { /* storage might be full or disabled */ }
+  } catch (e) {}
 }
 
 function restoreFromStorage() {
@@ -537,7 +566,6 @@ function restoreFromStorage() {
 
     if (billsRaw) {
       const bills = JSON.parse(billsRaw);
-      // Clear the default empty row first
       const grid = document.getElementById("billEntryGrid");
       grid.querySelectorAll(".bill-row").forEach(r => r.remove());
       bills.forEach(b => createBillRow(b.invoice, b.date));
@@ -546,7 +574,7 @@ function restoreFromStorage() {
     if (amounts || crosscheck) {
       checkCrossTotal();
     }
-  } catch (e) { /* corrupt storage — silently ignore */ }
+  } catch (e) {}
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -557,7 +585,6 @@ function createBillRow(invoice = "", date = "") {
   const row  = document.createElement("div");
   row.className = "bill-row";
 
-  // Safe: values go into .value, not innerHTML
   row.innerHTML = `
     <input type="text" class="sno-input" readonly tabindex="-1">
     <input type="text" class="invoice-input" autocomplete="off">
@@ -576,7 +603,6 @@ function createBillRow(invoice = "", date = "") {
     inp.addEventListener("change",  saveToStorage);
   });
 
-  // Scroll new row into view
   row.scrollIntoView({ block: "end", behavior: "smooth" });
 }
 
@@ -589,7 +615,6 @@ function deleteRow(btn) {
   updateSNos();
   saveToStorage();
 
-  // Refocus neighbour
   const remaining = document.querySelectorAll(".bill-row");
   const target = remaining[Math.min(idx, remaining.length - 1)];
   target?.querySelector(".invoice-input")?.focus();
@@ -627,7 +652,7 @@ function handleNavigation(e) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DATE HELPERS  (all use local date constructor — no UTC shift)
+   DATE HELPERS
 ═══════════════════════════════════════════════════════════════ */
 function fmtDate(d) {
   return String(d.getDate()).padStart(2,"0") + "-" +
@@ -643,9 +668,8 @@ function parseDMY(str) {
 }
 
 function parseInputDate(val) {
-  // val from <input type="date"> is "YYYY-MM-DD"
   const p = val.split("-");
-  return new Date(+p[0], +p[1]-1, +p[2]); // local, no UTC shift
+  return new Date(+p[0], +p[1]-1, +p[2]);
 }
 
 function appendDateToRow(dateText) {
@@ -694,7 +718,7 @@ function setMode(mode) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INLINE CALCULATION ON ENTER  (safe — uses safeCalc)
+   INLINE CALCULATION ON ENTER
 ═══════════════════════════════════════════════════════════════ */
 function enableCalculation(id) {
   document.getElementById(id).addEventListener("keydown", function(e) {
@@ -755,7 +779,6 @@ function checkCrossTotal() {
   }
 }
 
-// Live update on paste or type (not just Enter)
 ["billAmounts","crossCheckBox"].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener("input", () => { checkCrossTotal(); saveToStorage(); });
@@ -787,7 +810,7 @@ function toggleAutofit() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DATA PARSING  (extracted from processData for testability)
+   DATA PARSING
 ═══════════════════════════════════════════════════════════════ */
 function parseAmountBlocks(raw) {
   return raw.split(/\n[ \t]*\n/).map(block => {
@@ -809,7 +832,7 @@ function getReferences() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   RENDER HELPERS  (safe DOM — no raw user HTML injected)
+   RENDER HELPERS
 ═══════════════════════════════════════════════════════════════ */
 function makeTH(text, cls) {
   const th = document.createElement("th");
@@ -835,25 +858,21 @@ function makeRow(...cells) {
    RENDER HORIZONTAL TABLE
 ═══════════════════════════════════════════════════════════════ */
 function renderHorizontal(billData, title, thead, tbody) {
-  // Title row
   const titleRow = document.createElement("tr");
   const titleTH  = makeTH(title, "main-header");
   titleTH.colSpan = billData.length;
   titleRow.appendChild(titleTH);
   thead.appendChild(titleRow);
 
-  // Bill header row
   const hRow = document.createElement("tr");
   billData.forEach((b, i) => hRow.appendChild(makeTH(`Bill No.${i+1} (${b.billNo})`)));
   thead.appendChild(hRow);
 
-  // Date row
   const dRow = document.createElement("tr");
   dRow.className = "bill-date";
   billData.forEach(b => dRow.appendChild(makeTD(b.date)));
   tbody.appendChild(dRow);
 
-  // Amount rows
   const maxRows = Math.max(...billData.map(b => b.amounts.length));
   for (let i = 0; i < maxRows; i++) {
     const row = document.createElement("tr");
@@ -861,13 +880,11 @@ function renderHorizontal(billData, title, thead, tbody) {
     tbody.appendChild(row);
   }
 
-  // Bill totals row
   const tRow = document.createElement("tr");
   tRow.className = "bill-total";
   billData.forEach(b => tRow.appendChild(makeTD(b.total.toLocaleString())));
   tbody.appendChild(tRow);
 
-  // Grand total
   const gRow = document.createElement("tr");
   gRow.className = "grand-total";
   const gTD = makeTD("GRAND TOTAL : " + billData.reduce((s,b) => s+b.total, 0).toLocaleString(), "");
@@ -915,7 +932,6 @@ function processData() {
   const raw = document.getElementById("billAmounts").value.trim();
   if (!raw) { showToast("No amounts entered yet.", "warn"); return; }
 
-  // Sanitise title via DOM, not innerHTML
   const title = document.getElementById("tableTitle").value.trim() || "Summary";
 
   const refs    = getReferences();
@@ -926,7 +942,6 @@ function processData() {
   thead.innerHTML = "";
   tbody.innerHTML = "";
 
-  // Warn on mismatch
   if (blocks.length !== refs.length) {
     showToast(
       `${blocks.length} amount block(s) but ${refs.length} bill row(s) — extra blocks use "-" for ref.`,
@@ -958,7 +973,7 @@ function processData() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   CLEAR ALL  (with confirmation)
+   CLEAR ALL
 ═══════════════════════════════════════════════════════════════ */
 function clearAll() {
   if (!confirm("Clear everything? This cannot be undone.")) return;
@@ -980,13 +995,12 @@ function clearAll() {
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
 
-  // Clear storage
   Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
   showToast("Cleared.", "success");
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   EXPORT EXCEL  (real .xlsx via SheetJS)
+   EXPORT EXCEL
 ═══════════════════════════════════════════════════════════════ */
 function exportExcel() {
   try {
@@ -1006,7 +1020,7 @@ function exportExcel() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   KEYBOARD SHORTCUT  Ctrl+Enter → Process
+   KEYBOARD SHORTCUT
 ═══════════════════════════════════════════════════════════════ */
 document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -1018,8 +1032,9 @@ document.addEventListener("keydown", e => {
 /* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
-createBillRow();        // Create default empty row
-restoreFromStorage();   // Restore any previously saved session
+createBillRow();
+restoreFromStorage();
 </script>
+
 </body>
 </html>
