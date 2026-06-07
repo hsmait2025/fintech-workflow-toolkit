@@ -5,50 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GST Bill Calculator with Bill Split</title>
 <style>
-*{box-sizing:border-box;font-family:Arial,sans-serif}
-body{background:#bbbbbb;padding:20px;margin:0}
-.container{max-width:700px;margin:auto;background:#fbfbfb;padding:25px;border-radius:12px;box-shadow:0 0 50px rgba(0, 0, 0, 0.323)}
-h2,h3{text-align:center}
-.item-row{display:flex;gap:10px;margin-bottom:10px}
-input{
-width:100%;
-padding:10px;
-border:1px solid #ccc;
-border-radius:6px;
-font-size:16px;
-appearance:textfield;
--moz-appearance:textfield;
+*, *::before, *::after {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
 }
+
+body {
+    background: #bbbbbb;
+    /* Uses fluid padding that scales down gracefully on small displays */
+    padding: clamp(12px, 3vw, 24px);
+    margin: 0;
+}
+
+.container {
+    max-width: 650px;
+    margin: auto;
+    background: #fbfbfb;
+    padding: clamp(16px, 4vw, 25px);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+h2, h3 {
+    text-align: center;
+    color: #222;
+}
+
+h2 { font-size: clamp(20px, 5vw, 24px); }
+h3 { font-size: clamp(16px, 4.5vw, 18px); margin-top: 24px; }
+
+.item-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    background: #fff;
+    min-height: 44px; /* Mobile tap friendly */
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
 input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button{
--webkit-appearance:none;
-margin:0;
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
-button{
-padding:5px 7px;
-border:none;
-border-radius:6px;
-cursor:pointer;
+
+button {
+    min-height: 44px; /* Optimized mobile action footprint */
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
 }
-.add-btn{background:#28a745;color:#fff}
-.delete-btn{background:#dc3545;color:#fff}
-.label{margin-top:15px;margin-bottom:5px;font-weight:bold}
-.summary-row{
-display:flex;
-justify-content:space-between;
-padding:10px 0;
-border-bottom:1px solid #eee;
+
+.add-btn {
+    background: #28a745;
+    color: #fff;
+    width: 100%; /* Spans full layout width on phone layouts */
+    margin-bottom: 16px;
 }
-.grand-total{font-size:22px;font-weight:bold;color:#0d6efd}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ddd;padding:8px;text-align:center}
-th{background:#f2f2f2}
-@media(max-width:700px){
-.item-row{flex-direction:column}
+.add-btn:hover { background: #218838; }
+
+.delete-btn {
+    background: #dc3545;
+    color: #fff;
+    white-space: nowrap;
+}
+.delete-btn:hover { background: #c82333; }
+
+.label {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #444;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 15px;
+}
+
+.grand-total {
+    font-size: clamp(18px, 4.5vw, 22px);
+    font-weight: bold;
+    color: #0d6efd;
+    border-bottom: 2px solid #0d6efd;
+}
+
+/* Scroll-wrapper isolates extensive text tables on tight viewports */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 500px; /* Forces stable column sizing during micro-scrolls */
+}
+
+th, td {
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background: #f2f2f2;
+    font-weight: bold;
+    color: #333;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+@media(max-width: 480px) {
+    .item-row {
+        gap: 6px;
+    }
+    .delete-btn {
+        padding: 10px 12px; /* Scales padding back slightly to favor field input view */
+    }
 }
 </style>
 </head>
 <body>
+
 <div class="container">
 <h2>Bill Splitter</h2>
 
@@ -76,19 +183,21 @@ th{background:#f2f2f2}
 </div>
 
 <h3>Bill Split Details</h3>
-<table id="splitTable">
-<thead>
-<tr>
-<th>Item No.</th>
-<th>Item Amount</th>
-<th>Freight Share</th>
-<th>Taxable Value</th>
-<th>GST Amount</th>
-<th>Total Amount</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
+<div class="table-container">
+    <table id="splitTable">
+    <thead>
+    <tr>
+    <th>Item No.</th>
+    <th>Item Amount</th>
+    <th>Freight Share</th>
+    <th>Taxable Value</th>
+    <th>GST Amount</th>
+    <th>Total Amount</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+    </table>
+</div>
 
 </div>
 
