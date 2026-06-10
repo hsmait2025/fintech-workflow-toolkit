@@ -85,7 +85,7 @@ h1 {
 #toast.show { opacity: 1; }
 #toast.toast-success { background: var(--success); }
 #toast.toast-error   { background: var(--danger); }
-#toast.toast-warn    { background: var(--warning); color: #222; }
+#toast.toast-warn     { background: var(--warning); color: #222; }
 
 /* ─── Mode Switch ──────────────────────────────────────────────── */
 .mode-switch {
@@ -309,6 +309,7 @@ button:active  { transform: scale(0.97); }
 .clear-btn     { background: var(--danger);   color: white; }
 .print-btn     { background: var(--success);  color: white; }
 .font-btn      { background: var(--purple);   color: white; }
+.font-btn      { background: var(--danger);   color: white; } /* Keep separate semantic styling */
 .fit-btn       { background: var(--warning);  color: white; }
 .export-btn    { background: var(--teal);     color: white; grid-column: span 2; }
 
@@ -427,7 +428,9 @@ th { background: #ffffff; color: black; }
 
       <div class="ref-toolbar">
         <button class="auto-btn" onclick="generateCurrentDate()">Current Date</button>
+        <button class="auto-btn" onclick="adjustDatePickerDate(-1)">▼</button>
         <input type="date" id="seriesDate" class="date-picker">
+        <button class="auto-btn" onclick="adjustDatePickerDate(1)">▲</button>
         <button class="auto-btn" onclick="generateSelectedDate()">Select Date</button>
         <button class="auto-btn" onclick="generateNextDate()">Next Date</button>
         <div class="counter-box">Headers : <span id="headerCounter">1</span></div>
@@ -477,7 +480,7 @@ th { background: #ffffff; color: black; }
     <button class="print-btn"   onclick="window.print()">Print</button>
     <button class="font-btn"    onclick="changeFont(1)">A+</button>
     <button class="font-btn"    onclick="changeFont(-1)">A−</button>
-    <button class="fit-btn"     id="autofitBtn" onclick="toggleAutofit()">Autofit Off</button>
+    <button class="fit-btn"      id="autofitBtn" onclick="toggleAutofit()">Autofit Off</button>
     <button class="export-btn"  onclick="exportExcel()">Export Excel</button>
   </div>
 
@@ -493,7 +496,9 @@ th { background: #ffffff; color: black; }
     </table>
   </div>
 
-</div><script>
+</div>
+
+<script>
 /* ═══════════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════════ */
@@ -524,6 +529,17 @@ function safeCalc(expr) {
     return (typeof result === "number" && isFinite(result)) ? result : NaN;
   } catch (e) {
     return NaN;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DYNAMIC FORMATTER ENGINE
+═══════════════════════════════════════════════════════════════ */
+function fmtValue(num) {
+  if (num % 1 === 0) {
+    return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  } else {
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }
 
@@ -650,6 +666,15 @@ function handleNavigation(e) {
   }
 }
 
+/* ─── Sync browser picker widget to specific local calendar Date object ─── */
+function syncPickerToDate(targetDate) {
+  const picker = document.getElementById("seriesDate");
+  const y = targetDate.getFullYear();
+  const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const d = String(targetDate.getDate()).padStart(2, '0');
+  picker.value = `${y}-${m}-${d}`;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    DATE HELPERS
 ═══════════════════════════════════════════════════════════════ */
@@ -689,7 +714,11 @@ function getLastEnteredDate() {
   return null;
 }
 
-function generateCurrentDate()  { appendDateToRow(fmtDate(new Date())); }
+function generateCurrentDate()  { 
+  const today = new Date();
+  syncPickerToDate(today);
+  appendDateToRow(fmtDate(today)); 
+}
 
 function generateSelectedDate() {
   const v = document.getElementById("seriesDate").value;
@@ -705,6 +734,13 @@ function generateNextDate() {
   }
   last.setDate(last.getDate() + 1);
   appendDateToRow(fmtDate(last));
+}
+
+function adjustDatePickerDate(days) {
+  const picker = document.getElementById("seriesDate");
+  let current = picker.value ? parseInputDate(picker.value) : new Date();
+  current.setDate(current.getDate() + days);
+  syncPickerToDate(current);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -735,7 +771,9 @@ function enableCalculation(id) {
     let replacement = line;
     if (line) {
       const result = safeCalc(line);
-      if (!isNaN(result)) replacement = String(Math.round(result));
+      if (!isNaN(result)) {
+        replacement = result % 1 === 0 ? String(result) : String(Number(result.toFixed(2)));
+      }
     }
 
     ta.value = val.substring(0, lineStart) + replacement + "\n" + val.substring(end);
@@ -754,7 +792,7 @@ enableCalculation("crossCheckBox");
 function sumLines(text) {
   return text.split("\n").reduce((acc, line) => {
     const n = parseFloat(line.trim());
-    return acc + (isNaN(n) ? 0 : Math.round(n));
+    return acc + (isNaN(n) ? 0 : n);
   }, 0);
 }
 
@@ -768,12 +806,12 @@ function checkCrossTotal() {
     el.className   = "crosscheck-status";
     return;
   }
-  if (billTotal === crossTotal) {
-    el.textContent = `✓ Match (${crossTotal.toLocaleString()})`;
+  if (Math.abs(billTotal - crossTotal) < 0.005) {
+    el.textContent = `✓ Match (${fmtValue(crossTotal)})`;
     el.className   = "crosscheck-status match";
   } else {
     const diff = Math.abs(billTotal - crossTotal);
-    el.textContent = `✗ Mismatch  Bill: ${billTotal.toLocaleString()}  |  Cross: ${crossTotal.toLocaleString()}  |  Diff: ${diff.toLocaleString()}`;
+    el.textContent = `✗ Mismatch  Bill: ${fmtValue(billTotal)}  |  Cross: ${fmtValue(crossTotal)}  |  Diff: ${fmtValue(diff)}`;
     el.className   = "crosscheck-status mismatch";
   }
 }
@@ -806,8 +844,6 @@ function changeFont(delta) {
 function toggleAutofit() {
   state.autofit = !state.autofit;
   document.getElementById("previewTable").classList.toggle("autofit", state.autofit);
-  
-  // Directly updates button layout display text dynamically
   document.getElementById("autofitBtn").textContent = state.autofit ? "Autofit On" : "Autofit Off";
 }
 
@@ -820,16 +856,19 @@ function parseAmountBlocks(raw) {
     let   total    = 0;
     block.split("\n").forEach(line => {
       const n = parseFloat(line.trim());
-      if (!isNaN(n)) { const r = Math.round(n); amounts.push(r); total += r; }
+      if (!isNaN(n)) { amounts.push(n); total += n; }
     });
     return { amounts, total };
   });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   REFERENCE RESOLUTION KEYS
+═══════════════════════════════════════════════════════════════ */
 function getReferences() {
   return Array.from(document.querySelectorAll(".bill-row")).map(row => ({
     invoice: row.querySelector(".invoice-input").value.trim() || "-",
-    date:    row.querySelector(".date-input").value.trim()    || "-",
+    date:    row.querySelector(".date-input").value.trim()     || "-",
   }));
 }
 
@@ -878,18 +917,22 @@ function renderHorizontal(billData, title, thead, tbody) {
   const maxRows = Math.max(...billData.map(b => b.amounts.length));
   for (let i = 0; i < maxRows; i++) {
     const row = document.createElement("tr");
-    billData.forEach(b => row.appendChild(makeTD(b.amounts[i] !== undefined ? b.amounts[i] : "-")));
+    billData.forEach(b => {
+      const displayVal = b.amounts[i] !== undefined ? fmtValue(b.amounts[i]) : "-";
+      row.appendChild(makeTD(displayVal));
+    });
     tbody.appendChild(row);
   }
 
   const tRow = document.createElement("tr");
   tRow.className = "bill-total";
-  billData.forEach(b => tRow.appendChild(makeTD(b.total.toLocaleString())));
+  billData.forEach(b => tRow.appendChild(makeTD(fmtValue(b.total))));
   tbody.appendChild(tRow);
 
   const gRow = document.createElement("tr");
   gRow.className = "grand-total";
-  const gTD = makeTD("GRAND TOTAL : " + billData.reduce((s,b) => s+b.total, 0).toLocaleString(), "");
+  const grandSum = fmtValue(billData.reduce((s,b) => s+b.total, 0));
+  const gTD = makeTD("GRAND TOTAL : " + grandSum, "");
   gTD.colSpan = billData.length;
   gRow.appendChild(gTD);
   tbody.appendChild(gRow);
@@ -913,7 +956,7 @@ function renderVertical(billData, title, thead, tbody) {
     const row = makeRow(
       makeTD(`Bill No.${i+1} (${b.billNo})`, "vertical-label"),
       makeTD(b.date),
-      makeTD(b.total.toLocaleString(), "bill-total")
+      makeTD(fmtValue(b.total), "bill-total")
     );
     tbody.appendChild(row);
   });
@@ -921,7 +964,7 @@ function renderVertical(billData, title, thead, tbody) {
   const grand = billData.reduce((s,b) => s+b.total, 0);
   const gRow  = document.createElement("tr");
   gRow.className = "grand-total";
-  const gTD = makeTD("GRAND TOTAL : " + grand.toLocaleString());
+  const gTD = makeTD("GRAND TOTAL : " + fmtValue(grand));
   gTD.colSpan = 3;
   gRow.appendChild(gTD);
   tbody.appendChild(gRow);
@@ -968,7 +1011,7 @@ function processData() {
 
   const grand = billData.reduce((s,b) => s+b.total, 0);
   document.getElementById("billCount").textContent = billData.length;
-  document.getElementById("grandTotal").textContent = grand.toLocaleString();
+  document.getElementById("grandTotal").textContent = fmtValue(grand);
 
   checkCrossTotal();
   showToast("Table generated successfully!", "success");
@@ -997,7 +1040,6 @@ function clearAll() {
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
 
-  // Reset Autofit State back to default Off text representation
   state.autofit = false;
   document.getElementById("autofitBtn").textContent = "Autofit Off";
 
@@ -1026,21 +1068,19 @@ function exportExcel() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   KEYBOARD SHORTCUT
+   DOM INITIALIZATION SETUP
 ═══════════════════════════════════════════════════════════════ */
-document.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-    e.preventDefault();
-    processData();
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  createBillRow();
+  restoreFromStorage();
+  
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "Enter") {
+      e.preventDefault();
+      processData();
+    }
+  });
 });
-
-/* ═══════════════════════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════════════════════ */
-createBillRow();
-restoreFromStorage();
 </script>
-
 </body>
 </html>
