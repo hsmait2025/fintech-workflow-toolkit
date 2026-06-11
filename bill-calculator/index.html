@@ -361,6 +361,40 @@ button:active  { transform: scale(0.97); }
 .card h2 { margin: 0; font-size: 13px; color: var(--muted); }
 .card p  { font-size: 20px; font-weight: bold; margin: 6px 0 0; color: var(--text); }
 
+/* ─── Expense Head Subtotals Section ───────────────────────────── */
+.expense-subtotals-box {
+  margin-top: 14px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.expense-subtotals-box h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #334155;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+}
+.expense-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.expense-chip {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.expense-chip span {
+  color: var(--accent);
+  margin-left: 4px;
+}
+
 /* ─── Preview Table ────────────────────────────────────────────── */
 .table-wrapper { 
   overflow-x: auto;
@@ -389,7 +423,6 @@ th { background: #ffffff; color: black; }
 
 /* ─── Responsive Media Breakpoints ─────────────────────────────── */
 @media (max-width: 576px) {
-  /* On compact standard mobile layouts, stack buttons uniformly so they don't break boundaries */
   .buttons button {
     flex: 1 1 calc(50% - 4px);
   }
@@ -520,6 +553,13 @@ th { background: #ffffff; color: black; }
   <div class="summary">
     <div class="card"><h2>Total Bills</h2><p id="billCount">0</p></div>
     <div class="card"><h2>Grand Total</h2><p id="grandTotal">0</p></div>
+  </div>
+
+  <div class="expense-subtotals-box">
+    <h3>Expense Head Subtotals</h3>
+    <div class="expense-chips" id="expenseChipsContainer">
+      <div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>
+    </div>
   </div>
 
   <div class="table-wrapper">
@@ -743,9 +783,14 @@ function parseInputDate(val) {
 }
 
 function appendDateToRow(dateText) {
-  for (const row of document.querySelectorAll(".bill-row")) {
+  const rows = document.querySelectorAll(".bill-row");
+  for (const row of rows) {
     const di = row.querySelector(".date-input");
-    if (!di.value.trim()) { di.value = dateText; saveToStorage(); return; }
+    if (!di.value.trim()) { 
+      di.value = dateText; 
+      saveToStorage(); 
+      return; 
+    }
   }
   createBillRow("", "", dateText);
   saveToStorage();
@@ -755,7 +800,7 @@ function getLastEnteredDate() {
   const rows = Array.from(document.querySelectorAll(".bill-row")).reverse();
   for (const row of rows) {
     const v = row.querySelector(".date-input").value.trim();
-    if (v) return parseDMY(v);
+    if (v && v !== "-") return parseDMY(v);
   }
   return null;
 }
@@ -777,8 +822,9 @@ function generateNextDate() {
   if (!last) {
     const v = document.getElementById("seriesDate").value;
     last = v ? parseInputDate(v) : new Date();
+  } else {
+    last.setDate(last.getDate() + 1);
   }
-  last.setDate(last.getDate() + 1);
   appendDateToRow(fmtDate(last));
 }
 
@@ -925,7 +971,7 @@ function parseAmountBlocks(raw) {
 function getReferences() {
   return Array.from(document.querySelectorAll(".bill-row")).map(row => ({
     invoice: row.querySelector(".invoice-input").value.trim() || "-",
-    expense: row.querySelector(".expense-input").value.trim() || "-",
+    expense: row.querySelector(".expense-input").value.trim() || "Unassigned",
     date:    row.querySelector(".date-input").value.trim()    || "-",
   }));
 }
@@ -963,7 +1009,6 @@ function renderHorizontal(billData, title, thead, tbody) {
   titleRow.appendChild(titleTH);
   thead.appendChild(titleRow);
 
-  // Optional Expense Header Row Stack
   if (state.showExpenseHead) {
     const expRow = document.createElement("tr");
     expRow.className = "bill-header-row";
@@ -971,13 +1016,11 @@ function renderHorizontal(billData, title, thead, tbody) {
     thead.appendChild(expRow);
   }
 
-  // Date Row Stack
   const dRow = document.createElement("tr");
   dRow.className = "bill-date";
   billData.forEach(b => dRow.appendChild(makeTD(b.date)));
   tbody.appendChild(dRow);
 
-  // Bill Reference Sequence Order Row Stack
   const hRow = document.createElement("tr");
   hRow.className = "bill-header-row";
   billData.forEach((b, idx) => {
@@ -1059,7 +1102,7 @@ function renderVertical(billData, title, thead, tbody) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PROCESS DATA
+   PROCESS DATA & CALCULATE EXPENSE SUB-TOTALS
 ═══════════════════════════════════════════════════════════════ */
 function processData() {
   const raw = document.getElementById("billAmounts").value.trim();
@@ -1084,7 +1127,7 @@ function processData() {
 
   const billData = blocks.map((block, i) => ({
     billNo:  refs[i]?.invoice || "-",
-    expense: refs[i]?.expense || "-",
+    expense: refs[i]?.expense || "Unassigned",
     date:    refs[i]?.date    ?? "-",
     amounts: block.amounts,
     total:   block.total,
@@ -1101,6 +1144,23 @@ function processData() {
   const grand = billData.reduce((s,b) => s+b.total, 0);
   document.getElementById("billCount").textContent = billData.length;
   document.getElementById("grandTotal").textContent = fmtValue(grand);
+
+  // Calculate Subtotals per Expense Head
+  const expenseTotals = {};
+  billData.forEach(b => {
+    const head = b.expense.trim() || "Unassigned";
+    expenseTotals[head] = (expenseTotals[head] || 0) + b.total;
+  });
+
+  // Render Subtotals section UI
+  const chipsContainer = document.getElementById("expenseChipsContainer");
+  chipsContainer.innerHTML = "";
+  Object.keys(expenseTotals).forEach(head => {
+    const chip = document.createElement("div");
+    chip.className = "expense-chip";
+    chip.innerHTML = `${head}: <span>${fmtValue(expenseTotals[head])}</span>`;
+    chipsContainer.appendChild(chip);
+  });
 
   checkCrossTotal();
   showToast("Table generated successfully!", "success");
@@ -1124,6 +1184,7 @@ function clearAll() {
   document.getElementById("tableBody").innerHTML = "";
   document.getElementById("billCount").textContent  = "0";
   document.getElementById("grandTotal").textContent = "0";
+  document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>';
 
   const cs = document.getElementById("crosscheckStatus");
   cs.textContent = "Waiting for Crosscheck…";
