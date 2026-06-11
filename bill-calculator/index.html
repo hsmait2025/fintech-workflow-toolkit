@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Bill Entry Tool — enter, cross-check, and export bill amounts in horizontal or vertical layout.">
+<meta name="description" content="Bill Entry Tool — enter, cross-check, and export bill amounts in horizontal or vertical layout with manual expense header tracking.">
 <title>Bill Entry Tool</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -11,7 +11,7 @@
 <style>
 /* ─── Reset & Base ─────────────────────────────────────────────── */
 :root {
-  --col-left: 420px;
+  --col-left: 440px;
   --grid-max-h: 320px;
   --textarea-h: 260px;
   --accent: #007bff;
@@ -87,15 +87,20 @@ h1 {
 #toast.toast-error   { background: var(--danger); }
 #toast.toast-warn     { background: var(--warning); color: #222; }
 
-/* ─── Mode Switch ──────────────────────────────────────────────── */
+/* ─── Layout & Options Toolbar ─────────────────────────────────── */
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
 .mode-switch {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
 }
 .mode-btn {
-  flex: 1;
-  padding: 12px 10px;
+  padding: 10px 16px;
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -104,8 +109,30 @@ h1 {
   color: #333;
   transition: background 0.2s, color 0.2s;
   font-size: 14px;
+  white-space: nowrap;
 }
 .mode-btn.active { background: var(--accent); color: white; }
+
+/* Toggle Option Switch */
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #dfe3e8;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.toggle-option input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
 
 /* ─── Header Input ─────────────────────────────────────────────── */
 .header-input { margin-bottom: 12px; }
@@ -192,7 +219,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .bill-entry-header {
   display: grid;
-  grid-template-columns: 44px 1fr 1fr 44px;
+  grid-template-columns: 44px 1fr 1fr 1fr 44px;
   background: var(--accent);
   color: white;
   font-weight: bold;
@@ -203,7 +230,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .bill-entry-header div { padding: 8px 4px; text-align: center; }
 
-.bill-row { display: grid; grid-template-columns: 44px 1fr 1fr 44px; }
+.bill-row { display: grid; grid-template-columns: 44px 1fr 1fr 1fr 44px; }
 .bill-row:nth-child(even) { background: #f9fbff; }
 .bill-row input {
   border: none;
@@ -283,15 +310,15 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   font-family: Arial, sans-serif;
 }
 
-/* ─── Buttons ──────────────────────────────────────────────────── */
+/* ─── Responsive Action Buttons ────────────────────────────────── */
 .buttons {
   margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 button {
-  padding: 12px 14px;
+  padding: 10px 16px;
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -302,16 +329,18 @@ button {
   align-items: center;
   justify-content: center;
   text-align: center;
+  white-space: nowrap;
 }
 button:hover   { opacity: 0.88; }
 button:active  { transform: scale(0.97); }
-.process-btn   { background: var(--accent);   color: white; grid-column: span 2; }
+
+/* Set precise, elegant button themes without structural stretching rules */
+.process-btn   { background: var(--accent);   color: white; }
 .clear-btn     { background: var(--danger);   color: white; }
 .print-btn     { background: var(--success);  color: white; }
 .font-btn      { background: var(--purple);   color: white; }
-.font-btn      { background: var(--danger);   color: white; } /* Keep separate semantic styling */
 .fit-btn       { background: var(--warning);  color: white; }
-.export-btn    { background: var(--teal);     color: white; grid-column: span 2; }
+.export-btn    { background: var(--teal);     color: white; }
 
 /* ─── Summary Cards ────────────────────────────────────────────── */
 .summary {
@@ -351,6 +380,7 @@ th, td {
 }
 th { background: #ffffff; color: black; }
 .main-header { background: #ffffff; color: black; font-size: 18px; }
+.bill-header-row { background: #ffffff; font-weight: bold; }
 .bill-date   { background: #ffffff; font-weight: bold; }
 .bill-total  { background: #f3f5f7; font-weight: bold; }
 .grand-total { background: #dff3e4; font-weight: bold; font-size: 15px; }
@@ -358,17 +388,16 @@ th { background: #ffffff; color: black; }
 .autofit { table-layout: auto !important; width: auto !important; }
 
 /* ─── Responsive Media Breakpoints ─────────────────────────────── */
+@media (max-width: 576px) {
+  /* On compact standard mobile layouts, stack buttons uniformly so they don't break boundaries */
+  .buttons button {
+    flex: 1 1 calc(50% - 4px);
+  }
+}
+
 @media (min-width: 768px) {
   body { padding: 20px; }
   .container { padding: 24px; }
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-  }
-  .buttons button {
-    grid-column: auto !important;
-    flex: initial;
-  }
   .card {
     flex: 1;
     padding: 16px;
@@ -379,9 +408,6 @@ th { background: #ffffff; color: black; }
 @media (min-width: 1024px) {
   .triple-entry {
     grid-template-columns: var(--col-left) 1fr 1fr;
-  }
-  .mode-switch {
-    max-width: 400px;
   }
 }
 
@@ -411,9 +437,15 @@ th { background: #ffffff; color: black; }
     <strong>Tip:</strong> Press <kbd>Ctrl+Enter</kbd> anywhere to Process. Data auto-saves in browser.
   </div>
 
-  <div class="mode-switch">
-    <button class="mode-btn active" id="horizontalBtn" onclick="setMode('horizontal')">Horizontal Bill Entry</button>
-    <button class="mode-btn"        id="verticalBtn"   onclick="setMode('vertical')">Vertical Bill Entry</button>
+  <div class="toolbar-row">
+    <div class="mode-switch">
+      <button class="mode-btn active" id="horizontalBtn" onclick="setMode('horizontal')">Horizontal Bill Entry</button>
+      <button class="mode-btn"        id="verticalBtn"   onclick="setMode('vertical')">Vertical Bill Entry</button>
+    </div>
+    <label class="toggle-option" for="toggleExpenseHead">
+      <input type="checkbox" id="toggleExpenseHead" onchange="handleExpenseToggle()">
+      Expense Head Column / Row
+    </label>
   </div>
 
   <div class="header-input">
@@ -424,7 +456,7 @@ th { background: #ffffff; color: black; }
   <div class="triple-entry">
 
     <div class="entry-box">
-      <label>Bill No. &amp; Date Entry</label>
+      <label>Bill No., Expense Head &amp; Date Entry</label>
 
       <div class="ref-toolbar">
         <button class="auto-btn" onclick="generateCurrentDate()">Current Date</button>
@@ -440,6 +472,7 @@ th { background: #ffffff; color: black; }
         <div class="bill-entry-header">
           <div>S.No.</div>
           <div>Invoice Number</div>
+          <div>Expense Head</div>
           <div>Date</div>
           <div>Del</div>
         </div>
@@ -506,6 +539,7 @@ const state = {
   mode: "horizontal",
   fontSize: 13,
   autofit: false,
+  showExpenseHead: false
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -551,6 +585,7 @@ const LS_KEYS = {
   crosscheck: "bet_crosscheck",
   title:      "bet_title",
   bills:      "bet_bills",
+  expToggle:  "bet_exp_toggle"
 };
 
 function saveToStorage() {
@@ -558,10 +593,12 @@ function saveToStorage() {
     localStorage.setItem(LS_KEYS.amounts,    document.getElementById("billAmounts").value);
     localStorage.setItem(LS_KEYS.crosscheck, document.getElementById("crossCheckBox").value);
     localStorage.setItem(LS_KEYS.title,      document.getElementById("tableTitle").value);
+    localStorage.setItem(LS_KEYS.expToggle,  document.getElementById("toggleExpenseHead").checked ? "1" : "0");
 
     const rows = document.querySelectorAll(".bill-row");
     const bills = Array.from(rows).map(row => ({
       invoice: row.querySelector(".invoice-input").value,
+      expense: row.querySelector(".expense-input").value,
       date:    row.querySelector(".date-input").value,
     }));
     localStorage.setItem(LS_KEYS.bills, JSON.stringify(bills));
@@ -574,16 +611,22 @@ function restoreFromStorage() {
     const crosscheck = localStorage.getItem(LS_KEYS.crosscheck);
     const title      = localStorage.getItem(LS_KEYS.title);
     const billsRaw   = localStorage.getItem(LS_KEYS.bills);
+    const expToggle  = localStorage.getItem(LS_KEYS.expToggle);
 
     if (amounts)    document.getElementById("billAmounts").value    = amounts;
     if (crosscheck) document.getElementById("crossCheckBox").value  = crosscheck;
     if (title)      document.getElementById("tableTitle").value     = title;
+    
+    if (expToggle !== null) {
+      document.getElementById("toggleExpenseHead").checked = (expToggle === "1");
+      state.showExpenseHead = (expToggle === "1");
+    }
 
     if (billsRaw) {
       const bills = JSON.parse(billsRaw);
       const grid = document.getElementById("billEntryGrid");
       grid.querySelectorAll(".bill-row").forEach(r => r.remove());
-      bills.forEach(b => createBillRow(b.invoice, b.date));
+      bills.forEach(b => createBillRow(b.invoice, b.expense, b.date));
     }
 
     if (amounts || crosscheck) {
@@ -595,7 +638,7 @@ function restoreFromStorage() {
 /* ═══════════════════════════════════════════════════════════════
    BILL ENTRY GRID
 ═══════════════════════════════════════════════════════════════ */
-function createBillRow(invoice = "", date = "") {
+function createBillRow(invoice = "", expense = "", date = "") {
   const grid = document.getElementById("billEntryGrid");
   const row  = document.createElement("div");
   row.className = "bill-row";
@@ -603,11 +646,13 @@ function createBillRow(invoice = "", date = "") {
   row.innerHTML = `
     <input type="text" class="sno-input" readonly tabindex="-1">
     <input type="text" class="invoice-input" autocomplete="off">
+    <input type="text" class="expense-input" autocomplete="off">
     <input type="text" class="date-input"    autocomplete="off">
     <button class="delete-btn" onclick="deleteRow(this)">✕</button>
   `;
 
   row.querySelector(".invoice-input").value = invoice;
+  row.querySelector(".expense-input").value = expense;
   row.querySelector(".date-input").value    = date;
 
   grid.appendChild(row);
@@ -648,8 +693,10 @@ function handleNavigation(e) {
   const rows   = Array.from(document.querySelectorAll(".bill-row"));
   const curRow = e.target.parentElement;
   const idx    = rows.indexOf(curRow);
-  const isInv  = e.target.classList.contains("invoice-input");
-  const sel    = isInv ? ".invoice-input" : ".date-input";
+  
+  let sel = ".invoice-input";
+  if (e.target.classList.contains("expense-input")) sel = ".expense-input";
+  if (e.target.classList.contains("date-input"))    sel = ".date-input";
 
   if (e.key === "ArrowDown") {
     e.preventDefault();
@@ -666,7 +713,6 @@ function handleNavigation(e) {
   }
 }
 
-/* ─── Sync browser picker widget to specific local calendar Date object ─── */
 function syncPickerToDate(targetDate) {
   const picker = document.getElementById("seriesDate");
   const y = targetDate.getFullYear();
@@ -701,7 +747,7 @@ function appendDateToRow(dateText) {
     const di = row.querySelector(".date-input");
     if (!di.value.trim()) { di.value = dateText; saveToStorage(); return; }
   }
-  createBillRow("", dateText);
+  createBillRow("", "", dateText);
   saveToStorage();
 }
 
@@ -744,12 +790,23 @@ function adjustDatePickerDate(days) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MODE SWITCH
+   MODE SWITCH & TOGGLES
 ═══════════════════════════════════════════════════════════════ */
 function setMode(mode) {
   state.mode = mode;
   document.getElementById("horizontalBtn").classList.toggle("active", mode === "horizontal");
   document.getElementById("verticalBtn").classList.toggle("active",   mode === "vertical");
+  if (document.getElementById("previewTable").rows.length > 0) {
+    processData();
+  }
+}
+
+function handleExpenseToggle() {
+  state.showExpenseHead = document.getElementById("toggleExpenseHead").checked;
+  saveToStorage();
+  if (document.getElementById("previewTable").rows.length > 0) {
+    processData();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -868,7 +925,8 @@ function parseAmountBlocks(raw) {
 function getReferences() {
   return Array.from(document.querySelectorAll(".bill-row")).map(row => ({
     invoice: row.querySelector(".invoice-input").value.trim() || "-",
-    date:    row.querySelector(".date-input").value.trim()     || "-",
+    expense: row.querySelector(".expense-input").value.trim() || "-",
+    date:    row.querySelector(".date-input").value.trim()    || "-",
   }));
 }
 
@@ -905,14 +963,27 @@ function renderHorizontal(billData, title, thead, tbody) {
   titleRow.appendChild(titleTH);
   thead.appendChild(titleRow);
 
-  const hRow = document.createElement("tr");
-  billData.forEach((b, i) => hRow.appendChild(makeTH(`Bill No.${i+1} (${b.billNo})`)));
-  thead.appendChild(hRow);
+  // Optional Expense Header Row Stack
+  if (state.showExpenseHead) {
+    const expRow = document.createElement("tr");
+    expRow.className = "bill-header-row";
+    billData.forEach(b => expRow.appendChild(makeTH(b.expense)));
+    thead.appendChild(expRow);
+  }
 
+  // Date Row Stack
   const dRow = document.createElement("tr");
   dRow.className = "bill-date";
   billData.forEach(b => dRow.appendChild(makeTD(b.date)));
   tbody.appendChild(dRow);
+
+  // Bill Reference Sequence Order Row Stack
+  const hRow = document.createElement("tr");
+  hRow.className = "bill-header-row";
+  billData.forEach((b, idx) => {
+    hRow.appendChild(makeTH(`Bill No.${idx + 1} (${b.billNo})`));
+  });
+  tbody.appendChild(hRow);
 
   const maxRows = Math.max(...billData.map(b => b.amounts.length));
   for (let i = 0; i < maxRows; i++) {
@@ -944,20 +1015,37 @@ function renderHorizontal(billData, title, thead, tbody) {
 function renderVertical(billData, title, thead, tbody) {
   const titleRow = document.createElement("tr");
   const titleTH  = makeTH(title, "main-header");
-  titleTH.colSpan = 3;
+  
+  const totalCols = state.showExpenseHead ? 4 : 3;
+  titleTH.colSpan = totalCols;
   titleRow.appendChild(titleTH);
   thead.appendChild(titleRow);
 
   const hRow = document.createElement("tr");
-  ["Bill Reference", "Date", "Total"].forEach(h => hRow.appendChild(makeTH(h)));
+  if (state.showExpenseHead) {
+    ["Bill Reference", "Expense Head", "Date", "Total"].forEach(h => hRow.appendChild(makeTH(h)));
+  } else {
+    ["Bill Reference", "Date", "Total"].forEach(h => hRow.appendChild(makeTH(h)));
+  }
   thead.appendChild(hRow);
 
-  billData.forEach((b, i) => {
-    const row = makeRow(
-      makeTD(`Bill No.${i+1} (${b.billNo})`, "vertical-label"),
-      makeTD(b.date),
-      makeTD(fmtValue(b.total), "bill-total")
-    );
+  billData.forEach((b, idx) => {
+    const labelSeq = `Bill No.${idx + 1} (${b.billNo})`;
+    let row;
+    if (state.showExpenseHead) {
+      row = makeRow(
+        makeTD(labelSeq, "vertical-label"),
+        makeTD(b.expense),
+        makeTD(b.date),
+        makeTD(fmtValue(b.total), "bill-total")
+      );
+    } else {
+      row = makeRow(
+        makeTD(labelSeq, "vertical-label"),
+        makeTD(b.date),
+        makeTD(fmtValue(b.total), "bill-total")
+      );
+    }
     tbody.appendChild(row);
   });
 
@@ -965,7 +1053,7 @@ function renderVertical(billData, title, thead, tbody) {
   const gRow  = document.createElement("tr");
   gRow.className = "grand-total";
   const gTD = makeTD("GRAND TOTAL : " + fmtValue(grand));
-  gTD.colSpan = 3;
+  gTD.colSpan = totalCols;
   gRow.appendChild(gTD);
   tbody.appendChild(gRow);
 }
@@ -989,13 +1077,14 @@ function processData() {
 
   if (blocks.length !== refs.length) {
     showToast(
-      `${blocks.length} amount block(s) but ${refs.length} bill row(s) — extra blocks use "-" for ref.`,
+      `${blocks.length} amount block(s) but ${refs.length} bill row(s) — extra blocks use "-" for defaults.`,
       "warn"
     );
   }
 
   const billData = blocks.map((block, i) => ({
-    billNo:  refs[i]?.invoice ?? "-",
+    billNo:  refs[i]?.invoice || "-",
+    expense: refs[i]?.expense || "-",
     date:    refs[i]?.date    ?? "-",
     amounts: block.amounts,
     total:   block.total,
@@ -1042,6 +1131,7 @@ function clearAll() {
 
   state.autofit = false;
   document.getElementById("autofitBtn").textContent = "Autofit Off";
+  document.getElementById("previewTable").classList.remove("autofit");
 
   Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
   showToast("Cleared.", "success");
