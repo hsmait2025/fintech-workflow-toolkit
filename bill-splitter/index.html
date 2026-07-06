@@ -161,7 +161,7 @@ tr:last-child td {
 
 <div id="itemContainer">
 <div class="item-row">
-<input type="text" class="itemAmount" placeholder="Item Amount (e.g. 1000+500)">
+<input type="text" class="itemAmount" placeholder="Enter Item Amount Before GST (e.g. 350+250)">
 <button class="delete-btn" onclick="deleteRow(this)">Delete</button>
 </div>
 </div>
@@ -216,7 +216,7 @@ function addRow(){
  let row=document.createElement('div');
  row.className='item-row';
  row.innerHTML=`
- <input type="text" class="itemAmount" placeholder="Item Amount (e.g. 1000+500)">
+ <input type="text" class="itemAmount" placeholder="Enter Item Amount Before GST (e.g. 350+250)">
  <button class="delete-btn" onclick="deleteRow(this)">Delete</button>`;
  document.getElementById('itemContainer').appendChild(row);
  attachEvents();
