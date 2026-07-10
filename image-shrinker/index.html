@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Image Compressor & Print Optimizer</title>
+    <title>Document Image Compressor & Advanced Scanner</title>
     <style>
         :root {
             --primary: #1a73e8;
@@ -12,6 +12,7 @@
             --card-bg: #ffffff;
             --text: #202124;
             --border: #dadce0;
+            --danger: #d93025;
         }
 
         * {
@@ -68,13 +69,12 @@
         }
         #file-input { display: none; }
 
-        /* Responsive workspace split */
         .workspace {
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
             margin-top: 20px;
-            display: none; /* Ingest shows this */
+            display: none;
         }
 
         .panel-controls {
@@ -136,6 +136,20 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
         }
 
+        .crop-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn-secondary {
+            background: #e8eaed !important;
+            color: #3c4043 !important;
+        }
+        .btn-danger {
+            background: var(--danger) !important;
+            color: white !important;
+        }
+
         input[type="range"] { 
             width: 100%; 
             accent-color: var(--primary); 
@@ -143,17 +157,43 @@
             cursor: pointer;
         }
 
-        /* Responsive Canvas Viewport Window */
         .comparison-window {
             position: relative;
             width: 100%;
-            height: 380px; /* Base for phone screens */
+            height: 380px;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid var(--border);
             background: #eef0f1;
             user-select: none;
             touch-action: none;
+        }
+
+        .rotate-toolbar {
+            position: absolute;
+            bottom: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 21;
+        }
+        .rotate-circle-btn {
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+        .rotate-circle-btn:hover {
+            background: var(--primary);
+            transform: scale(1.05);
         }
 
         .zoom-toolbar {
@@ -231,7 +271,7 @@
             background: #f1f3f4; 
             padding: 12px; 
             border-radius: 6px; 
-            font-size: 13px; 
+            font-size: 13px;
         }
         .stats-box div { 
             display: flex; 
@@ -249,7 +289,61 @@
         #download-btn:disabled { background: #dadce0; cursor: not-allowed; color: #80868b; }
         .processing-indicator { display: none; text-align: center; font-size: 14px; color: var(--primary); font-weight: 500; }
 
-        /* Media Queries for Large Screen Scaling profiles */
+        #crop-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5;
+            display: none;
+        }
+        .crop-handle {
+            fill: var(--primary);
+            stroke: white;
+            stroke-width: 2.5px;
+            cursor: pointer;
+        }
+        .crop-handle-mid {
+            fill: #00e676;
+        }
+        .crop-box-outline {
+            fill: rgba(26, 115, 232, 0.12);
+            stroke: var(--primary);
+            stroke-width: 2px;
+        }
+        .crop-shroud {
+            fill: rgba(0, 0, 0, 0.65);
+        }
+
+        #magnifier-loupe {
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 3px solid var(--primary);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+            background: #222;
+            overflow: hidden;
+            z-index: 30;
+            pointer-events: none;
+            display: none;
+        }
+        #magnifier-canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+        #magnifier-crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 12px; height: 12px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #magnifier-crosshair::before, #magnifier-crosshair::after {
+            content: ''; position: absolute; background: #ff3d00;
+        }
+        #magnifier-crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
+        #magnifier-crosshair::after { left: 5px; top: 0; width: 2px; height: 12px; }
+
         @media (min-width: 768px) {
             body { padding: 24px; }
             .container { padding: 32px; }
@@ -263,7 +357,7 @@
 
 <div class="container">
     <h1>Document Image Compressor</h1>
-    <p>Optimize, format, sharpen, and filter text documents for storage or precise eco-printing.</p>
+    <p>Flexible 8-point perimeter geometry ring. Distortion mesh stretches warped sheets perfectly into square proportions.</p>
 
     <div class="upload-zone" id="drop-zone">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" style="margin-bottom: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -273,46 +367,59 @@
 
     <div class="workspace" id="app-workspace">
         <div class="panel-controls">
+            
             <div class="control-group">
-                <label>Optimization Mode</label>
-                <div class="mode-tabs">
-                    <button class="tab-btn active" id="mode-auto" onclick="setMode('auto')">Auto Match</button>
-                    <button class="tab-btn" id="mode-manual" onclick="setMode('manual')">Manual Quality</button>
+                <label>Document Framing</label>
+                <div class="crop-btn-group">
+                    <button class="tab-btn active" id="crop-toggle-btn" onclick="enterCropMode()">Crop Image</button>
+                    <button class="tab-btn btn-secondary" id="crop-edit-btn" onclick="enterCropMode(true)" style="display:none; background: #f1f3f4 !important; border: 1px solid var(--primary);">Edit Crop</button>
+                    <button class="tab-btn btn-secondary" id="crop-apply-btn" onclick="commitCropSelection()" style="display:none; background: var(--primary) !important; color: white !important;">Apply Crop</button>
+                    <button class="tab-btn btn-danger" id="crop-cancel-btn" onclick="exitCropMode(false)" style="display:none;">Cancel Crop</button>
                 </div>
             </div>
 
-            <div class="control-group" id="auto-settings">
-                <label for="target-size">Max Allowed Size (KB)</label>
-                <input type="number" id="target-size" value="200" min="10">
-            </div>
+            <div id="filter-controls-group">
+                <div class="control-group" style="margin-bottom: 16px;">
+                    <label>Optimization Mode</label>
+                    <div class="mode-tabs">
+                        <button class="tab-btn active" id="mode-auto" onclick="setMode('auto')">Auto Match</button>
+                        <button class="tab-btn" id="mode-manual" onclick="setMode('manual')">Manual Quality</button>
+                    </div>
+                </div>
 
-            <div class="control-group" id="manual-settings" style="display:none;">
-                <label for="quality-range">Output Quality: <span id="quality-lbl">80%</span></label>
-                <input type="range" id="quality-range" min="5" max="100" value="80">
-            </div>
+                <div class="control-group" id="auto-settings">
+                    <label for="target-size">Max Allowed Size (KB)</label>
+                    <input type="number" id="target-size" value="200" min="10">
+                </div>
 
-            <div class="control-group">
-                <label for="filter-mode">Print Color Presets</label>
-                <select id="filter-mode">
-                    <option value="none">Original Color Profile</option>
-                    <option value="grayscale">Grayscale (Standard Xerox Eco)</option>
-                    <option value="monochrome">Black & White (High Contrast Text)</option>
-                </select>
-            </div>
+                <div class="control-group" id="manual-settings" style="display:none;">
+                    <label for="quality-range">Output Quality: <span id="quality-lbl">80%</span></label>
+                    <input type="range" id="quality-range" min="5" max="100" value="80">
+                </div>
 
-            <div class="control-group" id="grayscale-settings" style="display: none;">
-                <label for="grayscale-range">Grayscale Contrast: <span id="grayscale-lbl">Normal</span></label>
-                <input type="range" id="grayscale-range" min="-100" max="100" value="0">
-            </div>
+                <div class="control-group" style="margin-top: 16px;">
+                    <label for="filter-mode">Print Color Presets</label>
+                    <select id="filter-mode">
+                        <option value="none">Original Color Profile</option>
+                        <option value="grayscale">Grayscale (Standard Xerox Eco)</option>
+                        <option value="monochrome">Black & White (High Contrast Text)</option>
+                    </select>
+                </div>
 
-            <div class="control-group" id="threshold-settings" style="display: none;">
-                <label for="threshold-range">B&W Text Thickness: <span id="threshold-lbl">127</span></label>
-                <input type="range" id="threshold-range" min="30" max="220" value="127">
-            </div>
+                <div class="control-group" id="grayscale-settings" style="display: none;">
+                    <label for="grayscale-range">Grayscale Contrast: <span id="grayscale-lbl">Normal</span></label>
+                    <input type="range" id="grayscale-range" min="-100" max="100" value="0">
+                </div>
 
-            <div class="control-group">
-                <label for="sharpen-range">Text Sharpness: <span id="sharpen-lbl">Off</span></label>
-                <input type="range" id="sharpen-range" min="0" max="100" value="0">
+                <div class="control-group" id="threshold-settings" style="display: none;">
+                    <label for="threshold-range">B&W Text Thickness: <span id="threshold-lbl">127</span></label>
+                    <input type="range" id="threshold-range" min="30" max="220" value="127">
+                </div>
+
+                <div class="control-group" style="margin-top: 16px;">
+                    <label for="sharpen-range">Text Sharpness: <span id="sharpen-lbl">Off</span></label>
+                    <input type="range" id="sharpen-range" min="0" max="100" value="0">
+                </div>
             </div>
 
             <div class="stats-box">
@@ -327,10 +434,19 @@
         </div>
 
         <div class="comparison-window" id="comp-window">
-            <div class="badge badge-orig">ORIGINAL</div>
-            <div class="badge badge-comp">COMPRESSED (JPEG)</div>
+            <div class="badge badge-orig" id="lbl-orig">ORIGINAL</div>
+            <div class="badge badge-comp" id="lbl-comp">COMPRESSED (JPEG)</div>
 
-            <div class="zoom-toolbar">
+            <div id="magnifier-loupe">
+                <canvas id="magnifier-canvas"></canvas>
+                <div id="magnifier-crosshair"></div>
+            </div>
+
+            <div class="rotate-toolbar" id="toolbar-rotate">
+                <button class="rotate-circle-btn" onclick="executeCanvasRotation90Deg()" title="Rotate 90° Clockwise">↺</button>
+            </div>
+
+            <div class="zoom-toolbar" id="toolbar-zoom">
                 <button onclick="adjustZoom(-0.25)">−</button>
                 <span id="zoom-readout">100%</span>
                 <button onclick="adjustZoom(0.25)">+</button>
@@ -341,6 +457,27 @@
                 <img id="view-original" src="" alt="Original Document">
                 <img id="view-compressed" class="compressed-layer" src="" alt="Compressed Output">
                 <div class="slider-handle" id="ui-handle"></div>
+
+                <svg id="crop-overlay">
+                    <defs>
+                        <mask id="shroud-mask">
+                            <rect width="100%" height="100%" fill="white"/>
+                            <polygon id="mask-cutout" points="0,0" fill="black"/>
+                        </mask>
+                    </defs>
+                    <rect width="100%" height="100%" class="crop-shroud" mask="url(#shroud-mask)"/>
+                    <polygon id="crop-box" points="0,0" class="crop-box-outline"/>
+                    
+                    <circle id="handle-tl" cx="0" cy="0" r="14" class="crop-handle"/>
+                    <circle id="handle-tr" cx="0" cy="0" r="14" class="crop-handle"/>
+                    <circle id="handle-br" cx="0" cy="0" r="14" class="crop-handle"/>
+                    <circle id="handle-bl" cx="0" cy="0" r="14" class="crop-handle"/>
+                    
+                    <circle id="handle-mt" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-mr" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-mb" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-ml" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
+                </svg>
             </div>
         </div>
     </div>
@@ -350,13 +487,9 @@
     const workerCode = `
         self.onmessage = async function(e) {
             const { bitmap, mode, targetSize, quality, filterMode, thresholdValue, grayscaleValue, sharpenValue } = e.data;
-            const w = bitmap.width;
-            const h = bitmap.height;
-
+            const w = bitmap.width; const h = bitmap.height;
             const canvas = new OffscreenCanvas(w, h);
             const ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(bitmap, 0, 0);
 
             let imgData = ctx.getImageData(0, 0, w, h);
@@ -364,22 +497,13 @@
 
             if (filterMode !== 'none') {
                 const contrastFactor = (259 * (grayscaleValue + 255)) / (255 * (259 - grayscaleValue));
-                const len = data.length;
-
-                for (let i = 0; i < len; i += 4) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    const v = 0.299 * r + 0.587 * g + 0.114 * b;
-
+                for (let i = 0; i < data.length; i += 4) {
+                    const v = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
                     if (filterMode === 'grayscale') {
-                        let finalV = contrastFactor * (v - 128) + 128;
-                        if (finalV < 0) finalV = 0;
-                        if (finalV > 255) finalV = 255;
-                        data[i] = data[i + 1] = data[i + 2] = finalV;
+                        let fV = contrastFactor * (v - 128) + 128;
+                        data[i] = data[i+1] = data[i+2] = Math.max(0, Math.min(255, fV));
                     } else if (filterMode === 'monochrome') {
-                        const thresh = v > thresholdValue ? 255 : 0;
-                        data[i] = data[i + 1] = data[i + 2] = thresh;
+                        data[i] = data[i+1] = data[i+2] = v > thresholdValue ? 255 : 0;
                     }
                 }
             }
@@ -387,66 +511,45 @@
             if (sharpenValue > 0) {
                 const src = new Uint8ClampedArray(data);
                 const mix = sharpenValue / 100;
-                const kCenter = 1 + 4 * mix;
-                const kEdge = -mix;
-
+                const kCenter = 1 + 4 * mix; const kEdge = -mix;
                 for (let y = 1; y < h - 1; y++) {
                     for (let x = 1; x < w - 1; x++) {
                         const idx = (y * w + x) * 4;
-                        const top = idx - (w * 4);
-                        const btm = idx + (w * 4);
-
                         for (let c = 0; c < 3; c++) {
-                            const val = src[idx + c] * kCenter +
-                                        (src[top + c] + src[idx - 4 + c] + src[idx + 4 + c] + src[btm + c]) * kEdge;
-                            data[idx + c] = val < 0 ? 0 : (val > 255 ? 255 : val);
+                            const val = src[idx+c]*kCenter + (src[idx-(w*4)+c] + src[idx-4+c] + src[idx+4+c] + src[idx+(w*4)+c])*kEdge;
+                            data[idx+c] = Math.max(0, Math.min(255, val));
                         }
                     }
                 }
             }
 
             ctx.putImageData(imgData, 0, 0);
-
-            let blob;
-            const maxSizeBytes = targetSize * 1024;
-            const outputFormat = 'image/jpeg';
+            let blob; const maxSizeBytes = targetSize * 1024;
 
             if (mode === 'manual') {
-                blob = await canvas.convertToBlob({ type: outputFormat, quality: quality / 100 });
+                blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: quality / 100 });
             } else {
-                let minQ = 0.01, maxQ = 0.98, iterations = 8;
-                let bestBlob = null;
-
-                for (let i = 0; i < iterations; i++) {
+                let minQ = 0.01, maxQ = 0.98;
+                for (let i = 0; i < 8; i++) {
                     const midQ = (minQ + maxQ) / 2;
-                    let testBlob = await canvas.convertToBlob({ type: outputFormat, quality: midQ });
-                    if (testBlob.size <= maxSizeBytes) {
-                        bestBlob = testBlob;
-                        minQ = midQ;
-                    } else {
-                        maxQ = midQ;
-                    }
+                    let testBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: midQ });
+                    if (testBlob.size <= maxSizeBytes) minQ = midQ; else maxQ = midQ;
                 }
-                blob = bestBlob || await canvas.convertToBlob({ type: outputFormat, quality: 0.05 });
+                blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: minQ });
 
                 if (blob.size > maxSizeBytes) {
                     let scale = 0.9;
                     while (scale > 0.1) {
-                        const sW = Math.floor(w * scale);
-                        const sH = Math.floor(h * scale);
+                        const sW = Math.floor(w * scale); const sH = Math.floor(h * scale);
                         const sCanvas = new OffscreenCanvas(sW, sH);
                         const sCtx = sCanvas.getContext('2d');
-                        sCtx.imageSmoothingEnabled = true;
-                        sCtx.imageSmoothingQuality = 'high';
                         sCtx.drawImage(canvas, 0, 0, sW, sH);
-
-                        let testBlob = await sCanvas.convertToBlob({ type: outputFormat, quality: 0.60 });
+                        let testBlob = await sCanvas.convertToBlob({ type: 'image/jpeg', quality: 0.60 });
                         if (testBlob.size <= maxSizeBytes) { blob = testBlob; break; }
                         scale -= 0.1;
                     }
                 }
             }
-
             const arrayBuffer = await blob.arrayBuffer();
             self.postMessage({ buffer: arrayBuffer, type: blob.type }, [arrayBuffer]);
         };
@@ -455,17 +558,22 @@
     const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
     const imageWorker = new Worker(URL.createObjectURL(workerBlob));
 
-    let currentMode = 'auto';
-    let sourceFile = null;
-    let finalBlobOutput = null; 
-    let compressedUrl = null;
+    let currentMode = 'auto', sourceFile = null, baseFileName = "optimized_document";
+    let baselineImageElement = new Image(), rawSourceImageBackup = new Image(); 
+    let finalBlobOutput = null, compressedUrl = null, isCropAltered = false;
+    let zoomScale = 1, panX = 0, panY = 0, isPanning = false, startX, startY, clipPercent = 50, isDraggingSlider = false;
 
-    let zoomScale = 1;
-    let panX = 0;
-    let panY = 0;
-    let isPanning = false;
-    let startX, startY;
-    let clipPercent = 50;
+    let isCropModeActive = false, activeCropHandle = null;
+    
+    let cropState = {
+        tl: {x: 0.15, y: 0.15}, tr: {x: 0.85, y: 0.15},
+        br: {x: 0.85, y: 0.85}, bl: {x: 0.15, y: 0.85},
+        mt: {x: 0.50, y: 0.15}, mr: {x: 0.85, y: 0.50},
+        mb: {x: 0.50, y: 0.85}, ml: {x: 0.15, y: 0.50}
+    };
+
+    let savedCropCoordinates = null;
+    let nodeOrder = ['tl', 'mt', 'tr', 'mr', 'br', 'mb', 'bl', 'ml'];
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -475,248 +583,442 @@
     const uiHandle = document.getElementById('ui-handle');
     const compWindow = document.getElementById('comp-window');
     const viewBounds = document.getElementById('view-bounds');
-    
     const targetSizeInput = document.getElementById('target-size');
     const qualityRange = document.getElementById('quality-range');
     const qualityLbl = document.getElementById('quality-lbl');
     const filterModeSelect = document.getElementById('filter-mode');
-    
     const grayscaleSettings = document.getElementById('grayscale-settings');
     const grayscaleRange = document.getElementById('grayscale-range');
     const grayscaleLbl = document.getElementById('grayscale-lbl');
-    
     const thresholdSettings = document.getElementById('threshold-settings');
     const thresholdRange = document.getElementById('threshold-range');
     const thresholdLbl = document.getElementById('threshold-lbl');
-
     const sharpenRange = document.getElementById('sharpen-range');
     const sharpenLbl = document.getElementById('sharpen-lbl');
-    
     const workerLoader = document.getElementById('worker-loader');
     const downloadBtn = document.getElementById('download-btn');
     const zoomReadout = document.getElementById('zoom-readout');
+    const cropOverlay = document.getElementById('crop-overlay');
+    
+    const loupe = document.getElementById('magnifier-loupe');
+    const loupeCanvas = document.getElementById('magnifier-canvas');
+    const loupeCtx = loupeCanvas.getContext('2d');
 
     function applyTransformations() {
         viewBounds.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
         zoomReadout.textContent = `${Math.round(zoomScale * 100)}%`;
-        
-        const clipStyle = `polygon(${clipPercent}% -1000px, 2000px -1000px, 2000px 1000px, ${clipPercent}% 1000px)`;
-        viewCompressed.style.clipPath = clipStyle;
         uiHandle.style.left = `${clipPercent}%`;
+        viewCompressed.style.clipPath = `polygon(${clipPercent}% -1000px, 2000px -1000px, 2000px 1000px, ${clipPercent}% 1000px)`;
+        if (isCropModeActive) renderCropOverlaySVG();
     }
 
-    let isDraggingSlider = false;
-    const updateSlider = (clientX) => {
-        const rect = viewBounds.getBoundingClientRect();
-        let position = ((clientX - rect.left) / rect.width) * 100;
-        if (position < 0) position = 0;
-        if (position > 100) position = 100;
+    function renderCropOverlaySVG() {
+        const w = viewOriginal.offsetWidth, h = viewOriginal.offsetHeight;
+        if(!w || !h) return;
+        cropOverlay.style.width = `${w}px`; cropOverlay.style.height = `${h}px`;
+        cropOverlay.style.left = `${viewOriginal.offsetLeft}px`; cropOverlay.style.top = `${viewOriginal.offsetTop}px`;
+
+        let ptsArr = nodeOrder.map(id => `${cropState[id].x * w},${cropState[id].y * h}`);
+        let ptsString = ptsArr.join(' ');
         
-        clipPercent = position;
-        applyTransformations();
-    };
+        document.getElementById('crop-box').setAttribute('points', ptsString);
+        document.getElementById('mask-cutout').setAttribute('points', ptsString);
 
-    // Unified Input Listeners for Dragging & Panning (Mouse + Touch)
-    compWindow.addEventListener('mousedown', (e) => {
-        if (e.target === uiHandle) {
-            isDraggingSlider = true;
+        nodeOrder.forEach(id => {
+            const circle = document.getElementById(`handle-${id}`);
+            if (circle) {
+                circle.setAttribute('cx', cropState[id].x * w);
+                circle.setAttribute('cy', cropState[id].y * h);
+            }
+        });
+    }
+
+    function updateLoupeView(targetNode, clientX, clientY) {
+        const nativeW = baselineImageElement.width, nativeH = baselineImageElement.height;
+        let imgX = targetNode.x * nativeW;
+        let imgY = targetNode.y * nativeH;
+
+        loupe.style.display = 'block';
+        loupe.style.left = `${clientX - compWindow.getBoundingClientRect().left - 65}px`;
+        loupe.style.top = `${clientY - compWindow.getBoundingClientRect().top - 150}px`;
+
+        const size = 130;
+        loupeCanvas.width = size; loupeCanvas.height = size;
+        loupeCtx.clearRect(0,0,size,size);
+
+        const zoomFactor = 4; 
+        const sSize = size / zoomFactor; 
+        
+        loupeCtx.drawImage(
+            baselineImageElement,
+            imgX - sSize/2, imgY - sSize/2, sSize, sSize,
+            0, 0, size, size
+        );
+    }
+
+    function enterCropMode(isEditingExisting = false) {
+        isCropModeActive = true;
+        cropOverlay.style.display = 'block';
+        uiHandle.style.display = 'none';
+        viewCompressed.style.display = 'none';
+        document.getElementById('lbl-orig').style.display = 'none';
+        document.getElementById('lbl-comp').style.display = 'none';
+        document.getElementById('toolbar-rotate').style.display = 'none';
+        document.getElementById('filter-controls-group').style.opacity = '0.3';
+        document.getElementById('filter-controls-group').style.pointerEvents = 'none';
+        
+        document.getElementById('crop-toggle-btn').style.display = 'none';
+        document.getElementById('crop-edit-btn').style.display = 'none';
+        document.getElementById('crop-apply-btn').style.display = 'block';
+        document.getElementById('crop-cancel-btn').style.display = 'block';
+        
+        if (isEditingExisting && savedCropCoordinates) {
+            cropState = JSON.parse(JSON.stringify(savedCropCoordinates));
+            if (compressedUrl) URL.revokeObjectURL(compressedUrl);
+            viewCompressed.src = "";
+            viewOriginal.src = rawSourceImageBackup.src;
+            
+            baselineImageElement.src = rawSourceImageBackup.src;
+            baselineImageElement.onload = () => {
+                resetZoomAndPan();
+                applyTransformations();
+                baselineImageElement.onload = null;
+            };
         } else {
-            isPanning = true;
-            startX = e.clientX - panX;
-            startY = e.clientY - panY;
-        }
-    });
-
-    window.addEventListener('mouseup', () => {
-        isDraggingSlider = false;
-        isPanning = false;
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (isDraggingSlider) {
-            updateSlider(e.clientX);
-        } else if (isPanning) {
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
+            cropState = {
+                tl: {x: 0.15, y: 0.15}, tr: {x: 0.85, y: 0.15},
+                br: {x: 0.85, y: 0.85}, bl: {x: 0.15, y: 0.85},
+                mt: {x: 0.50, y: 0.15}, mr: {x: 0.85, y: 0.50},
+                mb: {x: 0.50, y: 0.85}, ml: {x: 0.15, y: 0.50}
+            };
             applyTransformations();
         }
+    }
+
+    function exitCropMode(shouldSave = false) {
+        isCropModeActive = false;
+        cropOverlay.style.display = 'none';
+        uiHandle.style.display = 'block';
+        viewCompressed.style.display = 'block';
+        document.getElementById('lbl-orig').style.display = 'block';
+        document.getElementById('lbl-comp').style.display = 'block';
+        document.getElementById('toolbar-rotate').style.display = 'block';
+        document.getElementById('filter-controls-group').style.opacity = '1';
+        document.getElementById('filter-controls-group').style.pointerEvents = 'auto';
+        
+        document.getElementById('crop-apply-btn').style.display = 'none';
+        document.getElementById('crop-cancel-btn').style.display = 'none';
+        loupe.style.display = 'none';
+        
+        if (isCropAltered) {
+            document.getElementById('crop-toggle-btn').style.display = 'none';
+            document.getElementById('crop-edit-btn').style.display = 'block';
+        } else {
+            document.getElementById('crop-toggle-btn').style.display = 'block';
+            document.getElementById('crop-edit-btn').style.display = 'none';
+        }
+
+        if (!shouldSave) applyTransformations();
+    }
+
+    // HIGH INTENSITY TRUE ROTATION PIPELINE
+    function executeCanvasRotation90Deg() {
+        const targetImage = isCropAltered ? baselineImageElement : rawSourceImageBackup;
+        if (!targetImage.src || isCropModeActive) return;
+
+        workerLoader.style.display = 'block';
+
+        const rotCanvas = document.createElement('canvas');
+        rotCanvas.width = targetImage.height;
+        rotCanvas.height = targetImage.width;
+        const rotCtx = rotCanvas.getContext('2d');
+
+        // Translate and execute exact 90 deg canvas matrix rotation transformation
+        rotCtx.translate(rotCanvas.width / 2, rotCanvas.height / 2);
+        rotCtx.rotate(90 * Math.PI / 180);
+        rotCtx.drawImage(targetImage, -targetImage.width / 2, -targetImage.height / 2);
+
+        const rotatedDataUrl = rotCanvas.toDataURL('image/jpeg', 0.98);
+
+        if (isCropAltered) {
+            // Update master active layout streams 
+            baselineImageElement.src = rotatedDataUrl;
+            baselineImageElement.onload = () => {
+                viewOriginal.src = rotatedDataUrl;
+                savedCropCoordinates = null; // Wipe out localized bounding structures post rotation sequence
+                dispatchCompressionPipeline();
+                baselineImageElement.onload = null;
+            };
+        } else {
+            // Update raw backing structure and active display system simultaneously
+            rawSourceImageBackup.src = rotatedDataUrl;
+            rawSourceImageBackup.onload = () => {
+                baselineImageElement.src = rotatedDataUrl;
+                baselineImageElement.onload = () => {
+                    viewOriginal.src = rotatedDataUrl;
+                    dispatchCompressionPipeline();
+                    baselineImageElement.onload = null;
+                };
+                rawSourceImageBackup.onload = null;
+            };
+        }
+    }
+
+    function bilinearMapPixel(srcData, srcW, srcH, outData, outW, outH) {
+        const p = {};
+        nodeOrder.forEach(id => { p[id] = { x: cropState[id].x * srcW, y: cropState[id].y * srcH }; });
+
+        for (let y = 0; y < outH; y++) {
+            const v = y / (outH - 1);
+            for (let x = 0; x < outW; x++) {
+                const u = x / (outW - 1);
+
+                let srcX, srcY;
+                if (v <= 0.5) {
+                    const relV = v * 2;
+                    srcX = (1 - u) * (1 - relV) * p.tl.x + u * (1 - relV) * p.tr.x + (1 - u) * relV * p.ml.x + u * relV * p.mr.x;
+                    srcY = (1 - u) * (1 - relV) * p.tl.y + u * (1 - relV) * p.tr.y + (1 - u) * relV * p.ml.y + u * relV * p.mr.y;
+                } else {
+                    const relV = (v - 0.5) * 2;
+                    srcX = (1 - u) * (1 - relV) * p.ml.x + u * (1 - relV) * p.mr.x + (1 - u) * relV * p.bl.x + u * relV * p.br.x;
+                    srcY = (1 - u) * (1 - relV) * p.ml.y + u * (1 - relV) * p.mr.y + (1 - u) * relV * p.bl.y + u * relV * p.br.y;
+                }
+
+                const sX = Math.floor(Math.max(0, Math.min(srcW - 1, srcX)));
+                const sY = Math.floor(Math.max(0, Math.min(srcH - 1, srcY)));
+
+                const outIdx = (y * outW + x) * 4;
+                const srcIdx = (sY * srcW + sX) * 4;
+
+                outData.data[outIdx] = srcData.data[srcIdx];
+                outData.data[outIdx+1] = srcData.data[srcIdx+1];
+                outData.data[outIdx+2] = srcData.data[srcIdx+2];
+                outData.data[outIdx+3] = srcData.data[srcIdx+3];
+            }
+        }
+    }
+
+    function commitCropSelection() {
+        const nativeW = baselineImageElement.width, nativeH = baselineImageElement.height;
+
+        let sideTop = Math.hypot((cropState.tr.x - cropState.tl.x)*nativeW, (cropState.tr.y - cropState.tl.y)*nativeH);
+        let sideBot = Math.hypot((cropState.br.x - cropState.bl.x)*nativeW, (cropState.br.y - cropState.bl.y)*nativeH);
+        let sideLeft = Math.hypot((cropState.bl.x - cropState.tl.x)*nativeW, (cropState.bl.y - cropState.tl.y)*nativeH);
+        let sideRight = Math.hypot((cropState.br.x - cropState.tr.x)*nativeW, (cropState.br.y - cropState.tr.y)*nativeH);
+
+        let targetW = Math.floor(Math.max(sideTop, sideBot));
+        let targetH = Math.floor(Math.max(sideLeft, sideRight));
+
+        if (targetW < 20 || targetH < 20) {
+            alert("Selection area is too narrow. Please expand."); return;
+        }
+
+        savedCropCoordinates = JSON.parse(JSON.stringify(cropState));
+
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = nativeW; srcCanvas.height = nativeH;
+        const srcCtx = srcCanvas.getContext('2d');
+        srcCtx.drawImage(baselineImageElement, 0, 0);
+        const srcData = srcCtx.getImageData(0, 0, nativeW, nativeH);
+
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = targetW; outCanvas.height = targetH;
+        const outCtx = outCanvas.getContext('2d');
+        const outData = outCtx.createImageData(targetW, targetH);
+
+        bilinearMapPixel(srcData, nativeW, nativeH, outData, targetW, targetH);
+        outCtx.putImageData(outData, 0, 0);
+
+        if (compressedUrl) URL.revokeObjectURL(compressedUrl);
+        viewCompressed.src = "";
+
+        isCropAltered = true;
+        exitCropMode(true);
+        viewOriginal.src = outCanvas.toDataURL('image/jpeg', 0.95);
+        viewOriginal.onload = () => { 
+            baselineImageElement.src = viewOriginal.src;
+            baselineImageElement.onload = () => {
+                dispatchCompressionPipeline(); 
+                baselineImageElement.onload = null;
+            };
+            viewOriginal.onload = null; 
+        };
+    }
+
+    compWindow.addEventListener('pointerdown', (e) => {
+        if (isCropModeActive && e.target.classList.contains('crop-handle')) {
+            activeCropHandle = e.target.id.replace('handle-', '');
+            e.stopPropagation(); compWindow.setPointerCapture(e.pointerId);
+            
+            let match = cropState[activeCropHandle];
+            if(match) updateLoupeView(match, e.clientX, e.clientY);
+            return;
+        }
+        if (e.target === uiHandle) {
+            isDraggingSlider = true; compWindow.setPointerCapture(e.pointerId);
+        } else {
+            // Ensure clicking the floating rotate button doesn't trigger canvas panning
+            if (e.target.classList.contains('rotate-circle-btn')) return;
+            isPanning = true; startX = e.clientX - panX; startY = e.clientY - panY;
+            compWindow.setPointerCapture(e.pointerId);
+        }
     });
+
+    compWindow.addEventListener('pointermove', (e) => {
+        if (isCropModeActive && activeCropHandle) {
+            const rect = cropOverlay.getBoundingClientRect();
+            let pX = (e.clientX - rect.left) / rect.width;
+            let pY = (e.clientY - rect.top) / rect.height;
+            
+            pX = Math.max(0, Math.min(1, pX));
+            pY = Math.max(0, Math.min(1, pY));
+
+            cropState[activeCropHandle].x = pX;
+            cropState[activeCropHandle].y = pY;
+
+            if (['tl', 'tr', 'br', 'bl'].includes(activeCropHandle)) {
+                cropState.mt.x = (cropState.tl.x + cropState.tr.x) / 2;
+                cropState.mt.y = (cropState.tl.y + cropState.tr.y) / 2;
+
+                cropState.mr.x = (cropState.tr.x + cropState.br.x) / 2;
+                cropState.mr.y = (cropState.tr.y + cropState.br.y) / 2;
+
+                cropState.mb.x = (cropState.bl.x + cropState.br.x) / 2;
+                cropState.mb.y = (cropState.bl.y + cropState.br.y) / 2;
+
+                cropState.ml.x = (cropState.tl.x + cropState.bl.x) / 2;
+                cropState.ml.y = (cropState.tl.y + cropState.bl.y) / 2;
+            }
+
+            updateLoupeView(cropState[activeCropHandle], e.clientX, e.clientY);
+            renderCropOverlaySVG(); 
+            return;
+        }
+        if (isDraggingSlider) {
+            const rect = viewBounds.getBoundingClientRect();
+            clipPercent = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+            applyTransformations();
+        } else if (isPanning) {
+            panX = e.clientX - startX; panY = e.clientY - startY; applyTransformations();
+        }
+    });
+
+    const endMove = () => { 
+        activeCropHandle = null; isDraggingSlider = false; isPanning = false; 
+        loupe.style.display = 'none';
+    };
+    compWindow.addEventListener('pointerup', endMove); compWindow.addEventListener('pointercancel', endMove);
 
     compWindow.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-        const newScale = zoomScale * zoomFactor;
-        if (newScale >= 0.5 && newScale <= 10) {
-            zoomScale = newScale;
-            applyTransformations();
-        }
+        const nextScale = zoomScale * (e.deltaY < 0 ? 1.1 : 0.9);
+        if (nextScale >= 0.5 && nextScale <= 10) { zoomScale = nextScale; applyTransformations(); }
     }, { passive: false });
 
-    function adjustZoom(delta) {
-        const newScale = zoomScale + delta;
-        if (newScale >= 0.5 && newScale <= 10) {
-            zoomScale = newScale;
-            applyTransformations();
-        }
-    }
-
-    function resetZoomAndPan() {
-        zoomScale = 1;
-        panX = 0;
-        panY = 0;
-        clipPercent = 50;
-        applyTransformations();
-    }
-
-    // Native Mobile Touch Layer Bindings
-    compWindow.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-            if (e.target === uiHandle) {
-                isDraggingSlider = true;
-            } else {
-                isPanning = true;
-                startX = e.touches[0].clientX - panX;
-                startY = e.touches[0].clientY - panY;
-            }
-        }
-    }, { passive: true });
-    
-    window.addEventListener('touchend', () => { isDraggingSlider = false; isPanning = false; });
-    
-    window.addEventListener('touchmove', (e) => {
-        if (isDraggingSlider && e.touches.length) {
-            updateSlider(e.touches[0].clientX);
-        } else if (isPanning && e.touches.length) {
-            panX = e.touches[0].clientX - startX;
-            panY = e.touches[0].clientY - startY;
-            applyTransformations();
-        }
-    }, { passive: true });
+    function adjustZoom(d) { const s = zoomScale + d; if (s >= 0.5 && s <= 10) { zoomScale = s; applyTransformations(); } }
+    function resetZoomAndPan() { zoomScale = 1; panX = 0; panY = 0; clipPercent = 50; applyTransformations(); }
 
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
+        e.preventDefault(); dropZone.classList.remove('dragover');
         if (e.dataTransfer.files.length) ingestFile(e.dataTransfer.files[0]);
     });
     fileInput.addEventListener('change', (e) => { if (e.target.files.length) ingestFile(e.target.files[0]); });
-
     targetSizeInput.addEventListener('change', () => dispatchCompressionPipeline());
-    
     filterModeSelect.addEventListener('change', () => {
-        const value = filterModeSelect.value;
-        grayscaleSettings.style.display = value === 'grayscale' ? 'flex' : 'none';
-        thresholdSettings.style.display = value === 'monochrome' ? 'flex' : 'none';
+        grayscaleSettings.style.display = filterModeSelect.value === 'grayscale' ? 'flex' : 'none';
+        thresholdSettings.style.display = filterModeSelect.value === 'monochrome' ? 'flex' : 'none';
         dispatchCompressionPipeline();
     });
-
     grayscaleRange.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value);
-        let lbl = "Normal";
-        if (val > 0) lbl = `+${val}% Contrast`;
-        if (val < 0) lbl = `${val}% Contrast`;
-        grayscaleLbl.textContent = lbl;
+        grayscaleLbl.textContent = parseInt(e.target.value) === 0 ? "Normal" : `${e.target.value}% Contrast`;
         dispatchCompressionPipeline();
     });
-
-    thresholdRange.addEventListener('input', (e) => {
-        thresholdLbl.textContent = e.target.value;
-        dispatchCompressionPipeline();
-    });
-
+    thresholdRange.addEventListener('input', (e) => { thresholdLbl.textContent = e.target.value; dispatchCompressionPipeline(); });
     sharpenRange.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value);
-        sharpenLbl.textContent = val === 0 ? 'Off' : `+${val}% Edge Power`;
+        sharpenLbl.textContent = parseInt(e.target.value) === 0 ? 'Off' : `+${e.target.value}% Edge Power`;
         dispatchCompressionPipeline();
     });
+    qualityRange.addEventListener('input', (e) => { qualityLbl.textContent = e.target.value + '%'; dispatchCompressionPipeline(); });
 
-    qualityRange.addEventListener('input', (e) => {
-        qualityLbl.textContent = e.target.value + '%';
-        dispatchCompressionPipeline();
-    });
-
-    function setMode(mode) {
-        currentMode = mode;
-        document.getElementById('mode-auto').classList.toggle('active', mode === 'auto');
-        document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
-        document.getElementById('auto-settings').style.display = mode === 'auto' ? 'flex' : 'none';
-        document.getElementById('manual-settings').style.display = mode === 'manual' ? 'flex' : 'none';
+    function setMode(m) {
+        currentMode = m;
+        document.getElementById('mode-auto').classList.toggle('active', m === 'auto');
+        document.getElementById('mode-manual').classList.toggle('active', m === 'manual');
+        document.getElementById('auto-settings').style.display = m === 'auto' ? 'flex' : 'none';
+        document.getElementById('manual-settings').style.display = m === 'manual' ? 'flex' : 'none';
         dispatchCompressionPipeline();
     }
 
-    function formatBytes(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024, sizes = ['Bytes', 'KB', 'MB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
+    function formatBytes(b) { if (b === 0) return '0 B'; const k = 1024, s = ['B', 'KB', 'MB'], i = Math.floor(Math.log(b)/Math.log(k)); return parseFloat((b/Math.pow(k,i)).toFixed(2)) + ' ' + s[i]; }
 
     function ingestFile(file) {
-        sourceFile = file;
+        sourceFile = file; const dotIdx = file.name.lastIndexOf('.');
+        baseFileName = dotIdx !== -1 ? file.name.substring(0, dotIdx) : file.name;
         const url = URL.createObjectURL(file);
-        viewOriginal.src = url;
-        appWorkspace.style.display = 'grid';
-        document.getElementById('stat-orig-size').textContent = formatBytes(file.size);
-        resetZoomAndPan();
-        dispatchCompressionPipeline();
+        
+        if (compressedUrl) URL.revokeObjectURL(compressedUrl);
+        compressedUrl = null;
+        viewCompressed.src = ""; 
+        document.getElementById('stat-comp-size').textContent = "-";
+        document.getElementById('stat-delta').textContent = "-";
+
+        isCropAltered = false;
+        savedCropCoordinates = null;
+        document.getElementById('crop-toggle-btn').style.display = 'block';
+        document.getElementById('crop-edit-btn').style.display = 'none';
+        document.getElementById('toolbar-rotate').style.display = 'block';
+        
+        document.getElementById('filter-mode').value = 'none';
+        grayscaleSettings.style.display = 'none';
+        thresholdSettings.style.display = 'none';
+        document.getElementById('sharpen-range').value = 0;
+        document.getElementById('sharpen-lbl').textContent = 'Off';
+        
+        baselineImageElement.src = url;
+        rawSourceImageBackup.src = url;
+        
+        baselineImageElement.onload = () => {
+            viewOriginal.src = url; appWorkspace.style.display = 'grid';
+            document.getElementById('stat-orig-size').textContent = formatBytes(file.size);
+            exitCropMode(false);
+            setTimeout(resetZoomAndPan, 50);
+            dispatchCompressionPipeline();
+        };
     }
 
     async function dispatchCompressionPipeline() {
-        if (!sourceFile) return;
-        workerLoader.style.display = 'block';
-        downloadBtn.disabled = true;
-
-        const img = new Image();
-        img.src = viewOriginal.src;
+        if (!sourceFile || isCropModeActive) return;
+        workerLoader.style.display = 'block'; downloadBtn.disabled = true;
+        const img = new Image(); img.src = viewOriginal.src;
         img.onload = async () => {
             const bitmap = await createImageBitmap(img);
             imageWorker.postMessage({
-                bitmap: bitmap,
-                mode: currentMode,
-                targetSize: parseInt(targetSizeInput.value),
-                quality: parseInt(qualityRange.value),
-                filterMode: filterModeSelect.value,
-                thresholdValue: parseInt(thresholdRange.value),
-                grayscaleValue: parseInt(grayscaleRange.value),
+                bitmap, mode: currentMode, targetSize: parseInt(targetSizeInput.value),
+                quality: parseInt(qualityRange.value), filterMode: filterModeSelect.value,
+                thresholdValue: parseInt(thresholdRange.value), grayscaleValue: parseInt(grayscaleRange.value),
                 sharpenValue: parseInt(sharpenRange.value)
             }, [bitmap]);
         };
     }
 
     imageWorker.onmessage = function(e) {
-        const { buffer, type } = e.data;
-        finalBlobOutput = new Blob([buffer], { type: type });
-        
-        if (compressedUrl) URL.revokeObjectURL(compressedUrl);
-        compressedUrl = URL.createObjectURL(finalBlobOutput);
+        const { buffer, type } = e.data; finalBlobOutput = new Blob([buffer], { type });
+        if (compressedUrl) URL.revokeObjectURL(compressedUrl); compressedUrl = URL.createObjectURL(finalBlobOutput);
         viewCompressed.src = compressedUrl;
-
-        const compSize = finalBlobOutput.size;
-        document.getElementById('stat-comp-size').textContent = formatBytes(compSize);
-        
-        const savings = ((sourceFile.size - compSize) / sourceFile.size * 100).toFixed(1);
+        document.getElementById('stat-comp-size').textContent = formatBytes(finalBlobOutput.size);
+        const savings = ((sourceFile.size - finalBlobOutput.size) / sourceFile.size * 100).toFixed(1);
         document.getElementById('stat-delta').textContent = savings > 0 ? `Reduced by ${savings}%` : `Size Unchanged`;
-
-        workerLoader.style.display = 'none';
-        downloadBtn.disabled = false;
-        applyTransformations();
+        workerLoader.style.display = 'none'; downloadBtn.disabled = false; applyTransformations();
     };
 
     downloadBtn.addEventListener('click', () => {
         if (!finalBlobOutput || !compressedUrl) return;
-        
-        const link = document.createElement('a');
-        link.href = compressedUrl;
-        link.download = `compressed_${sourceFile.name.split('.')[0]}.jpg`;
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(link);
-        }, 100);
+        const link = document.createElement('a'); link.href = compressedUrl; link.download = `${baseFileName}_compressed.jpg`;
+        document.body.appendChild(link); link.click();
+        setTimeout(() => document.body.removeChild(link), 100);
     });
 </script>
 </body>
