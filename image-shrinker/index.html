@@ -207,7 +207,7 @@
             display: flex;
             gap: 12px;
             align-items: center;
-            z-index: 20;
+            z-index: 25;
             color: white;
             font-size: 12px;
             white-space: nowrap;
@@ -298,8 +298,8 @@
         .crop-handle {
             fill: var(--primary);
             stroke: white;
-            stroke-width: 2.5px;
             cursor: pointer;
+            vector-effect: non-scaling-stroke;
         }
         .crop-handle-mid {
             fill: #00e676;
@@ -307,7 +307,7 @@
         .crop-box-outline {
             fill: rgba(26, 115, 232, 0.12);
             stroke: var(--primary);
-            stroke-width: 2px;
+            vector-effect: non-scaling-stroke;
         }
         .crop-shroud {
             fill: rgba(0, 0, 0, 0.65);
@@ -468,15 +468,15 @@
                     <rect width="100%" height="100%" class="crop-shroud" mask="url(#shroud-mask)"/>
                     <polygon id="crop-box" points="0,0" class="crop-box-outline"/>
                     
-                    <circle id="handle-tl" cx="0" cy="0" r="14" class="crop-handle"/>
-                    <circle id="handle-tr" cx="0" cy="0" r="14" class="crop-handle"/>
-                    <circle id="handle-br" cx="0" cy="0" r="14" class="crop-handle"/>
-                    <circle id="handle-bl" cx="0" cy="0" r="14" class="crop-handle"/>
+                    <circle id="handle-tl" cx="0" cy="0" r="12" class="crop-handle"/>
+                    <circle id="handle-tr" cx="0" cy="0" r="12" class="crop-handle"/>
+                    <circle id="handle-br" cx="0" cy="0" r="12" class="crop-handle"/>
+                    <circle id="handle-bl" cx="0" cy="0" r="12" class="crop-handle"/>
                     
-                    <circle id="handle-mt" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
-                    <circle id="handle-mr" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
-                    <circle id="handle-mb" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
-                    <circle id="handle-ml" cx="0" cy="0" r="12" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-mt" cx="0" cy="0" r="10" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-mr" cx="0" cy="0" r="10" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-mb" cx="0" cy="0" r="10" class="crop-handle crop-handle-mid"/>
+                    <circle id="handle-ml" cx="0" cy="0" r="10" class="crop-handle crop-handle-mid"/>
                 </svg>
             </div>
         </div>
@@ -609,7 +609,7 @@
         zoomReadout.textContent = `${Math.round(zoomScale * 100)}%`;
         uiHandle.style.left = `${clipPercent}%`;
         viewCompressed.style.clipPath = `polygon(${clipPercent}% -1000px, 2000px -1000px, 2000px 1000px, ${clipPercent}% 1000px)`;
-        if (isCropModeActive) renderCropOverlaySVG();
+        renderCropOverlaySVG();
     }
 
     function renderCropOverlaySVG() {
@@ -624,13 +624,24 @@
         document.getElementById('crop-box').setAttribute('points', ptsString);
         document.getElementById('mask-cutout').setAttribute('points', ptsString);
 
+        // Explicit structural sizing offsets designed to completely cancel container matrix scale variations
+        const calculatedBaseCornerRadius = 11 / zoomScale;
+        const calculatedBaseMidRadius = 9 / zoomScale;
+        const dynamicStrokeWidth = 2 / zoomScale;
+
         nodeOrder.forEach(id => {
             const circle = document.getElementById(`handle-${id}`);
             if (circle) {
                 circle.setAttribute('cx', cropState[id].x * w);
                 circle.setAttribute('cy', cropState[id].y * h);
+                
+                const finalRadius = ['tl', 'tr', 'br', 'bl'].includes(id) ? calculatedBaseCornerRadius : calculatedBaseMidRadius;
+                circle.setAttribute('r', finalRadius);
+                circle.style.strokeWidth = `${dynamicStrokeWidth}px`;
             }
         });
+        
+        document.getElementById('crop-box').style.strokeWidth = `${2 / zoomScale}px`;
     }
 
     function updateLoupeView(targetNode, clientX, clientY) {
@@ -681,7 +692,6 @@
             baselineImageElement.src = rawSourceImageBackup.src;
             baselineImageElement.onload = () => {
                 resetZoomAndPan();
-                applyTransformations();
                 baselineImageElement.onload = null;
             };
         } else {
@@ -712,6 +722,7 @@
         
         if (isCropAltered) {
             document.getElementById('crop-toggle-btn').style.display = 'none';
+            document.getElementById('crop-edit-btn').style.block;
             document.getElementById('crop-edit-btn').style.display = 'block';
         } else {
             document.getElementById('crop-toggle-btn').style.display = 'block';
@@ -721,7 +732,6 @@
         if (!shouldSave) applyTransformations();
     }
 
-    // HIGH INTENSITY TRUE ROTATION PIPELINE
     function executeCanvasRotation90Deg() {
         const targetImage = isCropAltered ? baselineImageElement : rawSourceImageBackup;
         if (!targetImage.src || isCropModeActive) return;
@@ -733,24 +743,25 @@
         rotCanvas.height = targetImage.width;
         const rotCtx = rotCanvas.getContext('2d');
 
-        // Translate and execute exact 90 deg canvas matrix rotation transformation
         rotCtx.translate(rotCanvas.width / 2, rotCanvas.height / 2);
         rotCtx.rotate(90 * Math.PI / 180);
+        
+        // Disable anti-alias smoothing to prevent interpolation file bloat
+        rotCtx.imageSmoothingEnabled = false;
         rotCtx.drawImage(targetImage, -targetImage.width / 2, -targetImage.height / 2);
 
-        const rotatedDataUrl = rotCanvas.toDataURL('image/jpeg', 0.98);
+        // Keep explicit image preservation compression matrix bounds
+        const rotatedDataUrl = rotCanvas.toDataURL('image/jpeg', 0.95);
 
         if (isCropAltered) {
-            // Update master active layout streams 
             baselineImageElement.src = rotatedDataUrl;
             baselineImageElement.onload = () => {
                 viewOriginal.src = rotatedDataUrl;
-                savedCropCoordinates = null; // Wipe out localized bounding structures post rotation sequence
+                savedCropCoordinates = null;
                 dispatchCompressionPipeline();
                 baselineImageElement.onload = null;
             };
         } else {
-            // Update raw backing structure and active display system simultaneously
             rawSourceImageBackup.src = rotatedDataUrl;
             rawSourceImageBackup.onload = () => {
                 baselineImageElement.src = rotatedDataUrl;
@@ -857,8 +868,7 @@
         if (e.target === uiHandle) {
             isDraggingSlider = true; compWindow.setPointerCapture(e.pointerId);
         } else {
-            // Ensure clicking the floating rotate button doesn't trigger canvas panning
-            if (e.target.classList.contains('rotate-circle-btn')) return;
+            if (e.target.classList.contains('rotate-circle-btn') || e.target.closest('#toolbar-zoom')) return;
             isPanning = true; startX = e.clientX - panX; startY = e.clientY - panY;
             compWindow.setPointerCapture(e.pointerId);
         }
