@@ -624,7 +624,6 @@
         document.getElementById('crop-box').setAttribute('points', ptsString);
         document.getElementById('mask-cutout').setAttribute('points', ptsString);
 
-        // Explicit structural sizing offsets designed to completely cancel container matrix scale variations
         const calculatedBaseCornerRadius = 11 / zoomScale;
         const calculatedBaseMidRadius = 9 / zoomScale;
         const dynamicStrokeWidth = 2 / zoomScale;
@@ -645,7 +644,8 @@
     }
 
     function updateLoupeView(targetNode, clientX, clientY) {
-        const nativeW = baselineImageElement.width, nativeH = baselineImageElement.height;
+        // Compute inside crop configuration which always reflects the absolute full canvas scale asset
+        const nativeW = rawSourceImageBackup.width, nativeH = rawSourceImageBackup.height;
         let imgX = targetNode.x * nativeW;
         let imgY = targetNode.y * nativeH;
 
@@ -661,7 +661,7 @@
         const sSize = size / zoomFactor; 
         
         loupeCtx.drawImage(
-            baselineImageElement,
+            rawSourceImageBackup,
             imgX - sSize/2, imgY - sSize/2, sSize, sSize,
             0, 0, size, size
         );
@@ -680,20 +680,15 @@
         
         document.getElementById('crop-toggle-btn').style.display = 'none';
         document.getElementById('crop-edit-btn').style.display = 'none';
+        document.getElementById('crop-apply-btn').style.block;
         document.getElementById('crop-apply-btn').style.display = 'block';
         document.getElementById('crop-cancel-btn').style.display = 'block';
         
+        // Always reset image display viewport to match raw original image matrix bounds
+        viewOriginal.src = rawSourceImageBackup.src;
+
         if (isEditingExisting && savedCropCoordinates) {
             cropState = JSON.parse(JSON.stringify(savedCropCoordinates));
-            if (compressedUrl) URL.revokeObjectURL(compressedUrl);
-            viewCompressed.src = "";
-            viewOriginal.src = rawSourceImageBackup.src;
-            
-            baselineImageElement.src = rawSourceImageBackup.src;
-            baselineImageElement.onload = () => {
-                resetZoomAndPan();
-                baselineImageElement.onload = null;
-            };
         } else {
             cropState = {
                 tl: {x: 0.15, y: 0.15}, tr: {x: 0.85, y: 0.15},
@@ -701,8 +696,13 @@
                 mt: {x: 0.50, y: 0.15}, mr: {x: 0.85, y: 0.50},
                 mb: {x: 0.50, y: 0.85}, ml: {x: 0.15, y: 0.50}
             };
-            applyTransformations();
         }
+        
+        // Fast wait layout pass rendering cycle tick alignment
+        setTimeout(() => {
+            resetZoomAndPan();
+            applyTransformations();
+        }, 30);
     }
 
     function exitCropMode(shouldSave = false) {
@@ -722,57 +722,104 @@
         
         if (isCropAltered) {
             document.getElementById('crop-toggle-btn').style.display = 'none';
-            document.getElementById('crop-edit-btn').style.block;
             document.getElementById('crop-edit-btn').style.display = 'block';
+            viewOriginal.src = baselineImageElement.src; // Restore cropped canvas configuration
         } else {
             document.getElementById('crop-toggle-btn').style.display = 'block';
             document.getElementById('crop-edit-btn').style.display = 'none';
+            viewOriginal.src = rawSourceImageBackup.src;
         }
 
-        if (!shouldSave) applyTransformations();
+        setTimeout(() => {
+            resetZoomAndPan();
+            applyTransformations();
+        }, 30);
+    }
+
+    function transposeVectorPoints90Deg(stateObj) {
+        // Standard spatial mapping expression parameters: X_new = 1 - Y_old; Y_new = X_old;
+        let trans = {};
+        for (let key in stateObj) {
+            trans[key] = {
+                x: 1 - stateObj[key].y,
+                y: stateObj[key].x
+            };
+        }
+        // Shift handle label roles systematically to align clockwise sequence order contextually
+        return {
+            tl: trans.bl, mt: trans.ml, tr: trans.tl, mr: trans.mt,
+            br: trans.tr, mb: trans.mr, bl: trans.br, ml: trans.mb
+        };
     }
 
     function executeCanvasRotation90Deg() {
-        const targetImage = isCropAltered ? baselineImageElement : rawSourceImageBackup;
-        if (!targetImage.src || isCropModeActive) return;
-
+        if (isCropModeActive) return;
         workerLoader.style.display = 'block';
 
-        const rotCanvas = document.createElement('canvas');
-        rotCanvas.width = targetImage.height;
-        rotCanvas.height = targetImage.width;
-        const rotCtx = rotCanvas.getContext('2d');
-
-        rotCtx.translate(rotCanvas.width / 2, rotCanvas.height / 2);
-        rotCtx.rotate(90 * Math.PI / 180);
+        // 1. First track: Always rotate raw uncropped master file backup to preserve framing pipeline history
+        const masterCanvas = document.createElement('canvas');
+        masterCanvas.width = rawSourceImageBackup.height;
+        masterCanvas.height = rawSourceImageBackup.width;
+        const masterCtx = masterCanvas.getContext('2d');
+        masterCtx.translate(masterCanvas.width / 2, masterCanvas.height / 2);
+        masterCtx.rotate(90 * Math.PI / 180);
+        masterCtx.imageSmoothingEnabled = false;
+        masterCtx.drawImage(rawSourceImageBackup, -rawSourceImageBackup.width / 2, -rawSourceImageBackup.height / 2);
         
-        // Disable anti-alias smoothing to prevent interpolation file bloat
-        rotCtx.imageSmoothingEnabled = false;
-        rotCtx.drawImage(targetImage, -targetImage.width / 2, -targetImage.height / 2);
+        const rotatedMasterUrl = masterCanvas.toDataURL('image/jpeg', 0.95);
 
-        // Keep explicit image preservation compression matrix bounds
-        const rotatedDataUrl = rotCanvas.toDataURL('image/jpeg', 0.95);
+        // 2. Transpose geometrical 8-point values clockwise matching full context coordinates
+        cropState = transposeVectorPoints90Deg(cropState);
+        if (savedCropCoordinates) {
+            savedCropCoordinates = transposeVectorPoints90Deg(savedCropCoordinates);
+        }
 
-        if (isCropAltered) {
-            baselineImageElement.src = rotatedDataUrl;
-            baselineImageElement.onload = () => {
-                viewOriginal.src = rotatedDataUrl;
-                savedCropCoordinates = null;
-                dispatchCompressionPipeline();
-                baselineImageElement.onload = null;
-            };
-        } else {
-            rawSourceImageBackup.src = rotatedDataUrl;
-            rawSourceImageBackup.onload = () => {
-                baselineImageElement.src = rotatedDataUrl;
+        // 3. Complete structural execution pass mapping updates safely
+        rawSourceImageBackup.src = rotatedMasterUrl;
+        rawSourceImageBackup.onload = () => {
+            if (isCropAltered) {
+                // If a crop selection exists, rotate that view tracking matrix simultaneously
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = baselineImageElement.height;
+                cropCanvas.height = baselineImageElement.width;
+                const cropCtx = cropCanvas.getContext('2d');
+                cropCtx.translate(cropCanvas.width / 2, cropCanvas.height / 2);
+                cropCtx.rotate(90 * Math.PI / 180);
+                cropCtx.imageSmoothingEnabled = false;
+                cropCtx.drawImage(baselineImageElement, -baselineImageElement.width / 2, -baselineImageElement.height / 2);
+                
+                const rotatedCropUrl = cropCanvas.toDataURL('image/jpeg', 0.95);
+                baselineImageElement.src = rotatedCropUrl;
                 baselineImageElement.onload = () => {
-                    viewOriginal.src = rotatedDataUrl;
+                    viewOriginal.src = rotatedCropUrl;
                     dispatchCompressionPipeline();
                     baselineImageElement.onload = null;
                 };
-                rawSourceImageBackup.onload = null;
-            };
-        }
+            } else {
+                // If unmodified, keep alignment with master backup file configuration
+                baselineImageElement.src = rotatedMasterUrl;
+                baselineImageElement.onload = () => {
+                    viewOriginal.src = rotatedMasterUrl;
+                    dispatchCompressionPipeline();
+                    baselineImageElement.onload = null;
+                };
+            }
+            rawSourceImageBackup.onload = null;
+        };
+    }
+
+    function recalculateMidpoints() {
+        cropState.mt.x = (cropState.tl.x + cropState.tr.x) / 2;
+        cropState.mt.y = (cropState.tl.y + cropState.tr.y) / 2;
+
+        cropState.mr.x = (cropState.tr.x + cropState.br.x) / 2;
+        cropState.mr.y = (cropState.tr.y + cropState.br.y) / 2;
+
+        cropState.mb.x = (cropState.bl.x + cropState.br.x) / 2;
+        cropState.mb.y = (cropState.bl.y + cropState.br.y) / 2;
+
+        cropState.ml.x = (cropState.tl.x + cropState.bl.x) / 2;
+        cropState.ml.y = (cropState.tl.y + cropState.bl.y) / 2;
     }
 
     function bilinearMapPixel(srcData, srcW, srcH, outData, outW, outH) {
@@ -810,7 +857,7 @@
     }
 
     function commitCropSelection() {
-        const nativeW = baselineImageElement.width, nativeH = baselineImageElement.height;
+        const nativeW = rawSourceImageBackup.width, nativeH = rawSourceImageBackup.height;
 
         let sideTop = Math.hypot((cropState.tr.x - cropState.tl.x)*nativeW, (cropState.tr.y - cropState.tl.y)*nativeH);
         let sideBot = Math.hypot((cropState.br.x - cropState.bl.x)*nativeW, (cropState.br.y - cropState.bl.y)*nativeH);
@@ -829,7 +876,7 @@
         const srcCanvas = document.createElement('canvas');
         srcCanvas.width = nativeW; srcCanvas.height = nativeH;
         const srcCtx = srcCanvas.getContext('2d');
-        srcCtx.drawImage(baselineImageElement, 0, 0);
+        srcCtx.drawImage(rawSourceImageBackup, 0, 0);
         const srcData = srcCtx.getImageData(0, 0, nativeW, nativeH);
 
         const outCanvas = document.createElement('canvas');
@@ -844,15 +891,13 @@
         viewCompressed.src = "";
 
         isCropAltered = true;
-        exitCropMode(true);
-        viewOriginal.src = outCanvas.toDataURL('image/jpeg', 0.95);
-        viewOriginal.onload = () => { 
-            baselineImageElement.src = viewOriginal.src;
-            baselineImageElement.onload = () => {
-                dispatchCompressionPipeline(); 
-                baselineImageElement.onload = null;
-            };
-            viewOriginal.onload = null; 
+        
+        const croppedDataUrl = outCanvas.toDataURL('image/jpeg', 0.95);
+        baselineImageElement.src = croppedDataUrl;
+        baselineImageElement.onload = () => {
+            exitCropMode(true);
+            dispatchCompressionPipeline(); 
+            baselineImageElement.onload = null;
         };
     }
 
@@ -887,17 +932,14 @@
             cropState[activeCropHandle].y = pY;
 
             if (['tl', 'tr', 'br', 'bl'].includes(activeCropHandle)) {
-                cropState.mt.x = (cropState.tl.x + cropState.tr.x) / 2;
-                cropState.mt.y = (cropState.tl.y + cropState.tr.y) / 2;
-
-                cropState.mr.x = (cropState.tr.x + cropState.br.x) / 2;
-                cropState.mr.y = (cropState.tr.y + cropState.br.y) / 2;
-
-                cropState.mb.x = (cropState.bl.x + cropState.br.x) / 2;
-                cropState.mb.y = (cropState.bl.y + cropState.br.y) / 2;
-
-                cropState.ml.x = (cropState.tl.x + cropState.bl.x) / 2;
-                cropState.ml.y = (cropState.tl.y + cropState.bl.y) / 2;
+                recalculateMidpoints();
+            } else {
+                // Handle dragging midpoints cleanly by scaling the corresponding edge sets contextually
+                if (activeCropHandle === 'mt') { cropState.tl.y = cropState.tr.y = pY; }
+                else if (activeCropHandle === 'mr') { cropState.tr.x = cropState.br.x = pX; }
+                else if (activeCropHandle === 'mb') { cropState.bl.y = cropState.br.y = pY; }
+                else if (activeCropHandle === 'ml') { cropState.tl.x = cropState.bl.x = pX; }
+                recalculateMidpoints();
             }
 
             updateLoupeView(cropState[activeCropHandle], e.clientX, e.clientY);
@@ -994,7 +1036,6 @@
             viewOriginal.src = url; appWorkspace.style.display = 'grid';
             document.getElementById('stat-orig-size').textContent = formatBytes(file.size);
             exitCropMode(false);
-            setTimeout(resetZoomAndPan, 50);
             dispatchCompressionPipeline();
         };
     }
