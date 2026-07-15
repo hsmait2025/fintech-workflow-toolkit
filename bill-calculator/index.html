@@ -301,7 +301,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   flex: 1 1 140px;
 }
 .control-group.width-control-group {
-  flex: 2 1 280px; /* Give more physical breathing room for the slider */
+  flex: 2 1 280px;
 }
 .control-group label { font-size: 13px; font-weight: bold; white-space: nowrap; }
 .control-group input[type="number"] {
@@ -342,7 +342,6 @@ button {
 button:hover   { opacity: 0.88; }
 button:active  { transform: scale(0.97); }
 
-/* Set precise, elegant button themes without structural stretching rules */
 .process-btn   { background: var(--accent);   color: white; }
 .clear-btn     { background: var(--danger);   color: white; }
 .print-btn     { background: var(--success);  color: white; }
@@ -506,7 +505,7 @@ th { background: #ffffff; color: black; }
         <button class="auto-btn" onclick="adjustDatePickerDate(1)">▲</button>
         <button class="auto-btn" onclick="generateSelectedDate()">Select Date</button>
         <button class="auto-btn" onclick="generateNextDate()">Next Date</button>
-        <div class="counter-box">Headers : <span id="headerCounter">1</span></div>
+        <div class="counter-box">Total Invoices : <span id="headerCounter">1</span></div>
       </div>
 
       <div class="bill-entry-grid" id="billEntryGrid">
@@ -521,7 +520,10 @@ th { background: #ffffff; color: black; }
     </div>
 
     <div class="entry-box">
-      <label>Bill Amount Entry</label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label style="margin: 0;">Bill Amount Entry</label>
+        <div class="counter-box" style="padding: 4px 8px; font-size: 11px;">Total Bills : <span id="textBillCounter">0</span></div>
+      </div>
       <textarea id="billAmounts" placeholder="Enter bill amounts here..."></textarea>
     </div>
 
@@ -680,6 +682,8 @@ function restoreFromStorage() {
     if (amounts || crosscheck) {
       checkCrossTotal();
     }
+    // MODIFICATION: Sync text area counter on app init load
+    updateTextBillCounter();
   } catch (e) {}
 }
 
@@ -733,6 +737,7 @@ function updateSNos() {
     const sno = row.querySelector(".sno-input");
     if (sno) sno.value = i + 1;
   });
+  // MODIFICATION: Target updated Total Invoices container element
   document.getElementById("headerCounter").innerText =
     document.querySelectorAll(".bill-row").length;
 }
@@ -776,6 +781,19 @@ function fmtDate(d) {
   return String(d.getDate()).padStart(2,"0") + "-" +
          String(d.getMonth()+1).padStart(2,"0") + "-" +
          d.getFullYear();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODIFICATION: TEXTAREA BILL COUNT ENGINE
+═══════════════════════════════════════════════════════════════ */
+function updateTextBillCounter() {
+  const raw = document.getElementById("billAmounts").value.trim();
+  if (!raw) {
+    document.getElementById("textBillCounter").textContent = "0";
+    return;
+  }
+  const blocks = parseAmountBlocks(raw);
+  document.getElementById("textBillCounter").textContent = blocks.length;
 }
 
 function parseDMY(str) {
@@ -890,6 +908,8 @@ function enableCalculation(id) {
     ta.value = val.substring(0, lineStart) + replacement + "\n" + val.substring(end);
     ta.selectionStart = ta.selectionEnd = lineStart + replacement.length + 1;
     checkCrossTotal();
+    // MODIFICATION: Keep amount block track on custom inline execution
+    updateTextBillCounter();
     saveToStorage();
   });
 }
@@ -929,7 +949,12 @@ function checkCrossTotal() {
 
 ["billAmounts","crossCheckBox"].forEach(id => {
   const el = document.getElementById(id);
-  el.addEventListener("input", () => { checkCrossTotal(); saveToStorage(); });
+  el.addEventListener("input", () => { 
+    checkCrossTotal(); 
+    // MODIFICATION: Keep live count metrics synchronized as they write
+    if (id === "billAmounts") updateTextBillCounter();
+    saveToStorage(); 
+  });
 });
 document.getElementById("tableTitle").addEventListener("input", saveToStorage);
 
@@ -953,7 +978,6 @@ function syncWidthFromSlider(val) {
 }
 
 function syncWidthFromNumber(val) {
-  // Bound the input dynamically to keep the slider UI matching perfectly
   const numVal = Math.max(50, Math.min(400, parseInt(val) || 100));
   document.getElementById("columnWidth").value = numVal;
   document.getElementById("columnWidthSlider").value = numVal;
@@ -1160,14 +1184,12 @@ function processData() {
   document.getElementById("billCount").textContent = billData.length;
   document.getElementById("grandTotal").textContent = fmtValue(grand);
 
-  // Calculate Subtotals per Expense Head
   const expenseTotals = {};
   billData.forEach(b => {
     const head = b.expense.trim() || "Unassigned";
     expenseTotals[head] = (expenseTotals[head] || 0) + b.total;
   });
 
-  // Render Subtotals section UI
   const chipsContainer = document.getElementById("expenseChipsContainer");
   chipsContainer.innerHTML = "";
   Object.keys(expenseTotals).forEach(head => {
@@ -1178,6 +1200,8 @@ function processData() {
   });
 
   checkCrossTotal();
+  // MODIFICATION: Sync textbox counter display upon execution
+  updateTextBillCounter();
   showToast("Table generated successfully!", "success");
 }
 
@@ -1199,13 +1223,14 @@ function clearAll() {
   document.getElementById("tableBody").innerHTML = "";
   document.getElementById("billCount").textContent  = "0";
   document.getElementById("grandTotal").textContent = "0";
+  // MODIFICATION: Clear reactive textbox counter
+  document.getElementById("textBillCounter").textContent = "0";
   document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>';
 
   const cs = document.getElementById("crosscheckStatus");
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
 
-  // Reset slider defaults
   document.getElementById("columnWidth").value = "100";
   document.getElementById("columnWidthSlider").value = "100";
 
