@@ -300,14 +300,22 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   gap: 8px;
   flex: 1 1 140px;
 }
+.control-group.width-control-group {
+  flex: 2 1 280px; /* Give more physical breathing room for the slider */
+}
 .control-group label { font-size: 13px; font-weight: bold; white-space: nowrap; }
-.control-group input {
+.control-group input[type="number"] {
   width: 100%;
-  max-width: 100px;
+  max-width: 80px;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 5px;
   font-family: Arial, sans-serif;
+}
+.control-group input[type="range"] {
+  flex-grow: 1;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 
 /* ─── Responsive Action Buttons ────────────────────────────────── */
@@ -526,9 +534,10 @@ th { background: #ffffff; color: black; }
   </div>
 
   <div class="table-controls">
-    <div class="control-group">
-      <label>Column Width</label>
-      <input type="number" id="columnWidth" value="100" onchange="updateTableStyle()">
+    <div class="control-group width-control-group">
+      <label for="columnWidth">Column Width</label>
+      <input type="number" id="columnWidth" value="100" min="50" max="400" onchange="syncWidthFromNumber(this.value)">
+      <input type="range" id="columnWidthSlider" value="100" min="50" max="400" oninput="syncWidthFromSlider(this.value)">
     </div>
     <div class="control-group">
       <label>Row Height</label>
@@ -938,6 +947,19 @@ function updateTableStyle() {
   });
 }
 
+function syncWidthFromSlider(val) {
+  document.getElementById("columnWidth").value = val;
+  updateTableStyle();
+}
+
+function syncWidthFromNumber(val) {
+  // Bound the input dynamically to keep the slider UI matching perfectly
+  const numVal = Math.max(50, Math.min(400, parseInt(val) || 100));
+  document.getElementById("columnWidth").value = numVal;
+  document.getElementById("columnWidthSlider").value = numVal;
+  updateTableStyle();
+}
+
 function changeFont(delta) {
   state.fontSize = Math.max(8, state.fontSize + delta);
   document.getElementById("previewTable").style.fontSize = state.fontSize + "px";
@@ -1182,6 +1204,10 @@ function clearAll() {
   const cs = document.getElementById("crosscheckStatus");
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
+
+  // Reset slider defaults
+  document.getElementById("columnWidth").value = "100";
+  document.getElementById("columnWidthSlider").value = "100";
 
   state.autofit = true;
   document.getElementById("previewTable").classList.add("autofit");
