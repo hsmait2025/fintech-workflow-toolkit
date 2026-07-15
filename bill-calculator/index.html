@@ -546,7 +546,6 @@ th { background: #ffffff; color: black; }
     <button class="print-btn"   onclick="window.print()">Print</button>
     <button class="font-btn"    onclick="changeFont(1)">A+</button>
     <button class="font-btn"    onclick="changeFont(-1)">A−</button>
-    <button class="fit-btn"      id="autofitBtn" onclick="toggleAutofit()">Autofit Off</button>
     <button class="export-btn"  onclick="exportExcel()">Export Excel</button>
   </div>
 
@@ -563,7 +562,7 @@ th { background: #ffffff; color: black; }
   </div>
 
   <div class="table-wrapper">
-    <table id="previewTable">
+    <table id="previewTable" class="autofit">
       <thead id="tableHead"></thead>
       <tbody id="tableBody"></tbody>
     </table>
@@ -578,7 +577,7 @@ th { background: #ffffff; color: black; }
 const state = {
   mode: "horizontal",
   fontSize: 13,
-  autofit: false,
+  autofit: true,
   showExpenseHead: false
 };
 
@@ -944,12 +943,6 @@ function changeFont(delta) {
   document.getElementById("previewTable").style.fontSize = state.fontSize + "px";
 }
 
-function toggleAutofit() {
-  state.autofit = !state.autofit;
-  document.getElementById("previewTable").classList.toggle("autofit", state.autofit);
-  document.getElementById("autofitBtn").textContent = state.autofit ? "Autofit On" : "Autofit Off";
-}
-
 /* ═══════════════════════════════════════════════════════════════
    DATA PARSING
 ═══════════════════════════════════════════════════════════════ */
@@ -1190,9 +1183,8 @@ function clearAll() {
   cs.textContent = "Waiting for Crosscheck…";
   cs.className   = "crosscheck-status";
 
-  state.autofit = false;
-  document.getElementById("autofitBtn").textContent = "Autofit Off";
-  document.getElementById("previewTable").classList.remove("autofit");
+  state.autofit = true;
+  document.getElementById("previewTable").classList.add("autofit");
 
   Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
   showToast("Cleared.", "success");
