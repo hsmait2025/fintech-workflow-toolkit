@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narration Maker</title>
+    <style>
+        :root {
+            --bg-primary: #f3f4f6;
+            --bg-card: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --border: #d1d5db;
+            --radius: 10px;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-light: #fee2e2;
+            --success: #16a34a;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --focus-ring: rgba(37, 99, 235, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.5;
+            margin: 0;
+            padding: 20px 10px;
+        }
+
+        @media (min-width: 640px) {
+            body {
+                padding: 40px 20px;
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 750px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        @media (min-width: 640px) {
+            .container {
+                padding: 36px;
+            }
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+
+        @media (min-width: 640px) {
+            h1 {
+                font-size: 1.75rem;
+            }
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 16px;
+        }
+
+        .outer-config {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (min-width: 500px) {
+            .outer-config {
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+        }
+
+        .middle-config-container {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 640px) {
+            .middle-config-container {
+                padding: 20px;
+            }
+        }
+
+        .middle-config-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.75px;
+        }
+
+        .middle-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        @media (min-width: 640px) {
+            .form-group {
+                margin-bottom: 24px;
+            }
+        }
+
+        .inline-group {
+            margin-bottom: 0;
+        }
+
+        .input-with-action {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .label-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .counter {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            background: #f3f4f6;
+            padding: 2px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+
+        .counter.warning {
+            color: var(--danger);
+            background: var(--danger-light);
+            font-weight: 600;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px 14px;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) - 2px);
+            font-family: inherit;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            -webkit-appearance: none;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+
+        textarea {
+            height: 140px;
+            resize: vertical;
+        }
+
+        textarea.limit-exceeded {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        @media (min-width: 520px) {
+            .button-group {
+                flex-direction: row;
+                gap: 14px;
+                margin-bottom: 28px;
+            }
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: calc(var(--radius) - 2px);
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @media (min-width: 520px) {
+            button {
+                width: auto;
+            }
+            button.clear-btn {
+                margin-left: auto;
+            }
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button.secondary {
+            background-color: transparent;
+            color: #4b5563;
+            border: 1px solid var(--border);
+        }
+
+        button.secondary:hover {
+            background-color: #f9fafb;
+            color: #111827;
+            border-color: #9ca3af;
+        }
+
+        button.clear-btn {
+            background-color: transparent;
+            color: var(--danger);
+            border: 1px solid #fca5a5;
+        }
+
+        button.clear-btn:hover {
+            background-color: var(--danger-light);
+            border-color: var(--danger);
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 1.1rem;
+            font-weight: normal;
+            box-shadow: none;
+        }
+
+        .delete-btn:hover {
+            background-color: var(--danger-light);
+            color: var(--danger);
+            border-color: #fca5a5;
+        }
+
+        .toast {
+            display: none;
+            color: var(--success);
+            font-size: 0.875rem;
+            margin-top: 10px;
+            font-weight: 600;
+            animation: fadeIn 0.2s ease;
+        }
+        
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-2px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Narration Maker</h1>
+    <p class="subtitle">Quickly combine lists into a single continuous sentence without exceeding Tally's character limit.</p>
+
+    <!-- Outer Configurations -->
+    <div class="outer-config">
+        <div class="form-group">
+            <label for="textBefore">Prefix (Start text)</label>
+            <input type="text" id="textBefore" value="" placeholder="eg. Being">
+        </div>
+        <div class="form-group">
+            <label for="textAfter">Suffix (End text)</label>
+            <input type="text" id="textAfter" value="" placeholder="eg. total amount paid">
+        </div>
+    </div>
+
+    <!-- Dynamic In-Between Context Box Target -->
+    <div class="middle-config-container">
+        <div class="middle-config-title">Add Middle Text</div>
+        <div id="middleBoxesContainer" class="middle-grid">
+            <!-- JavaScript populates fields dynamically -->
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="label-container">
+            <label for="rawInput">Input</label>
+            <span id="inputCounter" class="counter">0 chars</span>
+        </div>
+        <textarea id="rawInput" placeholder="List 1&#10;&#10;List 2" oninput="handleInputChanges()"></textarea>
+        <div class="hint">Leave a completely empty line between rows to group separate categories.</div>
+    </div>
+
+    <div class="button-group">
+        <button onclick="formatText()">Generate Narration</button>
+        <button class="secondary" onclick="copyToClipboard()">Copy Result</button>
+        <button class="clear-btn" onclick="clearAllFields()">Clear All</button>
+    </div>
+
+    <div class="form-group">
+        <div class="label-container">
+            <label for="output">Output</label>
+            <span id="outputCounter" class="counter">0 / 250 chars</span>
+        </div>
+        <textarea id="output" placeholder="Your compiled output text will be generated here..." oninput="updateOutputCounter()"></textarea>
+        <div id="toast" class="toast">✓ Copied to clipboard successfully!</div>
+    </div>
+</div>
+
+<script>
+    let savedMiddleValues = [];
+    let explicitDeleteFlags = [];
+
+    function toTitleCase(str) {
+        return str.toLowerCase().split(' ').map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    function handleInputChanges() {
+        updateInputCounter();
+        generateMiddleBoxes();
+    }
+
+    function updateInputCounter() {
+        const inputStr = document.getElementById('rawInput').value;
+        document.getElementById('inputCounter').innerText = `${inputStr.length} chars`;
+    }
+
+    function updateOutputCounter() {
+        const outputArea = document.getElementById('output');
+        const outputCounter = document.getElementById('outputCounter');
+        const currentLength = outputArea.value.length;
+
+        outputCounter.innerText = `${currentLength} / 250 chars`;
+
+        if (currentLength > 250) {
+            outputCounter.classList.add('warning');
+            outputArea.classList.add('limit-exceeded');
+        } else {
+            outputCounter.classList.remove('warning');
+            outputArea.classList.remove('limit-exceeded');
+        }
+    }
+
+    function generateMiddleBoxes() {
+        const inputStr = document.getElementById('rawInput').value;
+        const container = document.getElementById('middleBoxesContainer');
+        
+        const rawBlocks = inputStr.split(/\n\s*\n/).filter(block => block.trim().length > 0);
+        const requiredMiddleBoxesCount = Math.max(0, rawBlocks.length - 1);
+
+        // Before resetting DOM container, retain any values typed manually by the user
+        const currentInputs = document.querySelectorAll('.dynamic-middle-input');
+        currentInputs.forEach((input) => {
+            const index = parseInt(input.getAttribute('data-index') || "0");
+            savedMiddleValues[index] = input.value;
+        });
+
+        container.innerHTML = "";
+        
+        if (requiredMiddleBoxesCount === 0) {
+            container.innerHTML = `
+                <div class="form-group inline-group">
+                    <label for="mid_0">Add Text 1</label>
+                    <div class="input-with-action">
+                        <input type="text" id="mid_0" class="dynamic-middle-input" data-index="0" value="${savedMiddleValues[0] || ''}" placeholder="eg. vide receipt">
+                        <button class="delete-btn" onclick="deleteMiddleBox(0)">×</button>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        let displayedLabelIndex = 1;
+        for (let i = 0; i < requiredMiddleBoxesCount; i++) {
+            if (explicitDeleteFlags[i] === true) continue;
+
+            let presetValue = savedMiddleValues[i] || "";
+            let egHint = i === 0 ? "vide receipt" : (i === 1 ? "dated" : "drawn on");
+
+            const boxMarkup = `
+                <div class="form-group inline-group" style="margin-bottom: 14px;">
+                    <label for="mid_${i}">Add Text ${displayedLabelIndex}</label>
+                    <div class="input-with-action">
+                        <input type="text" id="mid_${i}" class="dynamic-middle-input" data-index="${i}" value="${presetValue}" placeholder="eg. ${egHint}">
+                        <button class="delete-btn" onclick="deleteMiddleBox(${i})">×</button>
+                    </div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', boxMarkup);
+            displayedLabelIndex++;
+        }
+    }
+
+    function deleteMiddleBox(index) {
+        explicitDeleteFlags[index] = true;
+        savedMiddleValues[index] = "";
+        generateMiddleBoxes();
+        formatText();
+    }
+
+    function clearAllFields() {
+        // 1. Wipe text inputs clean
+        document.getElementById('textBefore').value = "";
+        document.getElementById('textAfter').value = "";
+        document.getElementById('rawInput').value = "";
+        document.getElementById('output').value = "";
+        
+        // 2. Clear out application logic arrays completely
+        savedMiddleValues = [];
+        explicitDeleteFlags = [];
+        
+        // 3. Force clean DOM rebuild of dynamic boxes to match a fresh application startup
+        const container = document.getElementById('middleBoxesContainer');
+        container.innerHTML = `
+            <div class="form-group inline-group">
+                <label for="mid_0">Add Text 1</label>
+                <div class="input-with-action">
+                    <input type="text" id="mid_0" class="dynamic-middle-input" data-index="0" value="" placeholder="eg. vide receipt">
+                    <button class="delete-btn" onclick="deleteMiddleBox(0)">×</button>
+                </div>
+            </div>`;
+            
+        // 4. Update individual structural counters back to zero state
+        updateInputCounter();
+        updateOutputCounter();
+    }
+
+    function formatText() {
+        const inputStr = document.getElementById('rawInput').value;
+        const outputArea = document.getElementById('output');
+        
+        const textBefore = document.getElementById('textBefore').value.trim();
+        const textAfter = document.getElementById('textAfter').value.trim();
+
+        const rawBlocks = inputStr.split(/\n\s*\n/);
+        
+        const processedBlocks = rawBlocks.map(block => {
+            return block.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+        }).filter(block => block.length > 0);
+
+        if (processedBlocks.length === 0) {
+            outputArea.value = "Please provide data items separated by a blank row.";
+            updateOutputCounter();
+            return;
+        }
+
+        const numericRegex = /^\d+$/;
+        let compiledSegments = [];
+
+        processedBlocks.forEach((blockItems, index) => {
+            const formattedBlockString = blockItems.map(item => {
+                return numericRegex.test(item) ? item : toTitleCase(item);
+            }).join(', ');
+
+            if (index > 0) {
+                if (explicitDeleteFlags[index - 1] !== true) {
+                    const midInputEl = document.getElementById(`mid_${index - 1}`);
+                    const connector = midInputEl ? midInputEl.value.trim() : "";
+                    if (connector) {
+                        compiledSegments.push(connector);
+                    }
+                }
+            }
+
+            compiledSegments.push(formattedBlockString);
+        });
+
+        let finalOutput = "";
+        if (textBefore) finalOutput += textBefore + " ";
+        
+        finalOutput += compiledSegments.join(" ");
+        
+        if (textAfter) finalOutput += " " + textAfter;
+
+        outputArea.value = finalOutput.replace(/\s+/g, ' ').trim();
+        updateOutputCounter();
+    }
+
+    function copyToClipboard() {
+        const outputArea = document.getElementById('output');
+        const outputText = outputArea.value;
+        if (outputText && !outputText.startsWith("Please provide") && !outputText.startsWith("Your compiled")) {
+            navigator.clipboard.writeText(outputText).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 2000);
+            });
+        }
+    }
+    
+    // Initial configuration run on first boot
+    generateMiddleBoxes();
+</script>
+
+</body>
+</html>
