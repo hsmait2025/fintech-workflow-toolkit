@@ -45,10 +45,29 @@
             margin-bottom: 20px;
             border-bottom: 1px solid var(--border);
             padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         h1 { font-size: 24px; font-weight: 500; color: #1f1f1f; }
         p { color: #5f6368; font-size: 14px; margin-top: 4px; }
+
+        .btn-clear-all {
+            background: #fce8e6;
+            color: var(--danger);
+            border: 1px solid #fad2cf;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-clear-all:hover {
+            background: var(--danger);
+            color: white;
+        }
 
         .upload-zone {
             border: 2px dashed var(--border);
@@ -97,7 +116,7 @@
             background: white;
             border: 2px solid var(--border);
             border-radius: 6px;
-            cursor: pointer;
+            cursor: grab;
             flex-shrink: 0;
             overflow: hidden;
             display: flex;
@@ -105,10 +124,19 @@
             align-items: center;
             justify-content: space-between;
             padding: 4px;
+            transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
         }
         .thumb-card.active {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+        .thumb-card.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
+        }
+        .thumb-card.drag-over-target {
+            border-color: var(--primary);
+            transform: scale(1.05);
         }
         .thumb-card img {
             max-width: 100%;
@@ -384,12 +412,15 @@
             fill: #00e676;
         }
         .crop-box-outline {
-            fill: rgba(26, 115, 232, 0.12);
+            fill: rgba(26, 115, 232, 0.18);
             stroke: var(--primary);
             vector-effect: non-scaling-stroke;
+            cursor: move;
+            pointer-events: auto;
         }
         .crop-shroud {
             fill: rgba(0, 0, 0, 0.65);
+            pointer-events: none;
         }
 
         #magnifier-loupe {
@@ -433,8 +464,11 @@
 
 <div class="container">
     <div class="app-header">
-        <h1>Enterprise Intelligent Document Scanner</h1>
-        <p>Real-time local filter rendering, automated sheet boundary scanning, history stack tracking, and continuous PDF generation loop.</p>
+        <div>
+            <h1>Enterprise Intelligent Document Scanner</h1>
+            <p>Real-time local filter rendering, automated sheet boundary scanning, history stack tracking, and continuous PDF generation loop.</p>
+        </div>
+        <button class="btn-clear-all" onclick="clearAllDataAndRestart()">Reset / Clear All</button>
     </div>
 
     <div class="upload-zone" id="drop-zone">
@@ -525,7 +559,7 @@
             <div class="processing-indicator" id="worker-loader">Optimizing page calculations...</div>
 
             <div class="batch-action-row">
-                <button id="download-btn" class="btn-main" disabled>Save Active Page</button>
+                <button id="download-btn" class="btn-main" disabled>Save All Pages</button>
                 <button id="compile-pdf-btn" class="btn-main btn-success-action" onclick="generateMultiPagePDF()" disabled>Compile PDF</button>
             </div>
         </div>
@@ -583,7 +617,7 @@
 <script>
     const workerCode = `
         self.onmessage = async function(e) {
-            const { bitmap, mode, targetSize, quality, filterMode, thresholdValue, grayscaleValue, sharpenValue } = e.data;
+            const { pageIndex, bitmap, mode, targetSize, quality, filterMode, thresholdValue, grayscaleValue, sharpenValue } = e.data;
             const w = bitmap.width; const h = bitmap.height;
             const canvas = new OffscreenCanvas(w, h);
             const ctx = canvas.getContext('2d');
@@ -648,7 +682,7 @@
                 }
             }
             const arrayBuffer = await blob.arrayBuffer();
-            self.postMessage({ buffer: arrayBuffer, type: blob.type }, [arrayBuffer]);
+            self.postMessage({ pageIndex, buffer: arrayBuffer, type: blob.type }, [arrayBuffer]);
         };
     `;
 
@@ -658,10 +692,14 @@
     let documentPages = []; 
     let activePageIndex = null;
     let debounceTimer = null;
+    let draggedIndex = null;
     
-    let currentMode = 'auto';
+    let globalAutoMode = 'auto';
+    let globalAutoTargetSize = 200;
+    let isBatchUpdating = false;
+
     let zoomScale = 1, panX = 0, panY = 0, isPanning = false, startX, startY, clipPercent = 50, isDraggingSlider = false;
-    let isCropModeActive = false, activeCropHandle = null;
+    let isCropModeActive = false, activeCropHandle = null, isDraggingCropBox = false, cropBoxDragStart = null;
     let nodeOrder = ['tl', 'mt', 'tr', 'mr', 'br', 'mb', 'bl', 'ml'];
 
     const dropZone = document.getElementById('drop-zone');
@@ -689,6 +727,7 @@
     const compilePdfBtn = document.getElementById('compile-pdf-btn');
     const zoomReadout = document.getElementById('zoom-readout');
     const cropOverlay = document.getElementById('crop-overlay');
+    const cropBoxPolygon = document.getElementById('crop-box');
     const loupe = document.getElementById('magnifier-loupe');
     const loupeCanvas = document.getElementById('magnifier-canvas');
     const loupeCtx = loupeCanvas.getContext('2d');
@@ -701,6 +740,37 @@
         if (e.dataTransfer.files.length) processImportedFiles(e.dataTransfer.files);
     });
     fileInput.addEventListener('change', (e) => { if (e.target.files.length) processImportedFiles(e.target.files); });
+
+    function clearAllDataAndRestart() {
+        documentPages.forEach(p => {
+            if (p.masterUrl) URL.revokeObjectURL(p.masterUrl);
+            if (p.croppedUrl) URL.revokeObjectURL(p.croppedUrl);
+            if (p.processedUrl) URL.revokeObjectURL(p.processedUrl);
+        });
+
+        documentPages = [];
+        activePageIndex = null;
+        fileInput.value = "";
+
+        globalAutoMode = 'auto';
+        globalAutoTargetSize = 200;
+        setMode('auto');
+        targetSizeInput.value = 200;
+        
+        renderBatchGallery();
+    }
+
+    function createDefaultPageSettings() {
+        return {
+            mode: globalAutoMode,
+            targetSize: globalAutoTargetSize,
+            quality: 80,
+            filterMode: 'none',
+            grayscaleValue: 0,
+            thresholdValue: 127,
+            sharpenValue: 0
+        };
+    }
 
     function processImportedFiles(fileList) {
         Array.from(fileList).forEach(file => {
@@ -716,6 +786,7 @@
                 processedUrl: null,
                 finalBlob: null,
                 isCropAltered: false,
+                settings: createDefaultPageSettings(),
                 cropState: {
                     tl: {x: 0.15, y: 0.15}, tr: {x: 0.85, y: 0.15},
                     br: {x: 0.85, y: 0.85}, bl: {x: 0.15, y: 0.85},
@@ -733,9 +804,12 @@
         });
 
         renderBatchGallery();
+
         if (activePageIndex === null && documentPages.length > 0) {
             loadActivePageSession(0);
         }
+
+        processAllQueuePages();
     }
 
     function estimateDocumentBoundaries(srcUrl, targetCropState) {
@@ -785,6 +859,7 @@
             container.style.display = 'none';
             appWorkspace.style.display = 'none';
             compilePdfBtn.disabled = true;
+            downloadBtn.disabled = true;
             activePageIndex = null;
             return;
         }
@@ -796,6 +871,33 @@
         documentPages.forEach((page, idx) => {
             const card = document.createElement('div');
             card.className = `thumb-card ${idx === activePageIndex ? 'active' : ''}`;
+            card.setAttribute('draggable', 'true');
+            card.dataset.index = idx;
+
+            card.addEventListener('dragstart', (e) => {
+                draggedIndex = idx;
+                card.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                card.classList.add('drag-over-target');
+            });
+
+            card.addEventListener('dragleave', () => {
+                card.classList.remove('drag-over-target');
+            });
+
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                card.classList.remove('drag-over-target');
+                if (draggedIndex !== null && draggedIndex !== idx) {
+                    reorderPageSequence(draggedIndex, idx);
+                }
+            });
+
             card.onclick = () => loadActivePageSession(idx);
 
             const removeBtn = document.createElement('button');
@@ -807,7 +909,7 @@
             };
 
             const img = document.createElement('img');
-            img.src = page.processedUrl || page.masterUrl;
+            img.src = page.croppedUrl || page.masterUrl;
 
             const label = document.createElement('div');
             label.className = 'page-num';
@@ -820,6 +922,20 @@
         });
         
         compilePdfBtn.disabled = documentPages.length === 0;
+        downloadBtn.disabled = documentPages.length === 0;
+    }
+
+    function reorderPageSequence(fromIndex, toIndex) {
+        const activePageObj = documentPages[activePageIndex];
+        
+        const [movedPage] = documentPages.splice(fromIndex, 1);
+        documentPages.splice(toIndex, 0, movedPage);
+
+        if (activePageObj) {
+            activePageIndex = documentPages.indexOf(activePageObj);
+        }
+
+        renderBatchGallery();
     }
 
     function removePageTrackIndex(idx) {
@@ -844,6 +960,9 @@
         document.getElementById('stat-orig-size').textContent = formatBytes(page.file.size);
         
         viewOriginal.src = page.isCropAltered ? page.croppedUrl : page.masterUrl;
+        
+        syncControlsFromPageSettings(page.settings);
+
         if (page.processedUrl) {
             viewCompressed.src = page.processedUrl;
             document.getElementById('stat-comp-size').textContent = formatBytes(page.finalBlob.size);
@@ -852,7 +971,7 @@
             downloadBtn.disabled = false;
         } else {
             viewCompressed.src = "";
-            dispatchCompressionPipeline();
+            dispatchCompressionPipelineForPage(activePageIndex);
         }
 
         if (page.isCropAltered) {
@@ -867,7 +986,50 @@
         resetZoomAndPan();
     }
 
+    function syncControlsFromPageSettings(s) {
+        isBatchUpdating = true;
+        document.getElementById('mode-auto').classList.toggle('active', s.mode === 'auto');
+        document.getElementById('mode-manual').classList.toggle('active', s.mode === 'manual');
+        document.getElementById('auto-settings').style.display = s.mode === 'auto' ? 'flex' : 'none';
+        document.getElementById('manual-settings').style.display = s.mode === 'manual' ? 'flex' : 'none';
+        
+        targetSizeInput.value = s.targetSize;
+        qualityRange.value = s.quality;
+        qualityLbl.textContent = `${s.quality}%`;
+        
+        filterModeSelect.value = s.filterMode;
+        grayscaleSettings.style.display = s.filterMode === 'grayscale' ? 'flex' : 'none';
+        thresholdSettings.style.display = s.filterMode === 'monochrome' ? 'flex' : 'none';
+        
+        grayscaleRange.value = s.grayscaleValue;
+        grayscaleLbl.textContent = s.grayscaleValue === 0 ? "Normal" : `${s.grayscaleValue}% Contrast`;
+        
+        thresholdRange.value = s.thresholdValue;
+        thresholdLbl.textContent = s.thresholdValue;
+        
+        sharpenRange.value = s.sharpenValue;
+        sharpenLbl.textContent = s.sharpenValue === 0 ? 'Off' : `+${s.sharpenValue}% Edge Power`;
+        isBatchUpdating = false;
+    }
+
+    function saveControlsToActivePageSettings() {
+        if (activePageIndex === null || isBatchUpdating) return;
+        const page = documentPages[activePageIndex];
+        
+        page.settings.mode = document.getElementById('mode-auto').classList.contains('active') ? 'auto' : 'manual';
+        page.settings.targetSize = parseInt(targetSizeInput.value);
+        page.settings.quality = parseInt(qualityRange.value);
+        page.settings.filterMode = filterModeSelect.value;
+        page.settings.grayscaleValue = parseInt(grayscaleRange.value);
+        page.settings.thresholdValue = parseInt(thresholdRange.value);
+        page.settings.sharpenValue = parseInt(sharpenRange.value);
+    }
+
     function applyZeroLatencyHardwareFilterPreview() {
+        if (isBatchUpdating) return;
+
+        saveControlsToActivePageSettings();
+        
         const filterVal = filterModeSelect.value;
         const sharpVal = parseInt(sharpenRange.value);
         let cssFilterString = "";
@@ -887,7 +1049,20 @@
         
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            dispatchCompressionPipeline();
+            const activeMode = document.getElementById('mode-auto').classList.contains('active') ? 'auto' : 'manual';
+            
+            if (activeMode === 'auto') {
+                globalAutoTargetSize = parseInt(targetSizeInput.value);
+                documentPages.forEach(p => {
+                    p.settings.mode = 'auto';
+                    p.settings.targetSize = globalAutoTargetSize;
+                });
+                processAllQueuePages();
+            } else {
+                if (activePageIndex !== null) {
+                    dispatchCompressionPipelineForPage(activePageIndex);
+                }
+            }
         }, 150);
     }
 
@@ -925,7 +1100,8 @@
             savedCropCoordinates: JSON.stringify(pageObj.savedCropCoordinates),
             isCropAltered: pageObj.isCropAltered,
             masterUrl: pageObj.masterUrl,
-            croppedUrl: pageObj.croppedUrl
+            croppedUrl: pageObj.croppedUrl,
+            settings: JSON.stringify(pageObj.settings)
         });
         pageObj.historyPointer++;
         updateUndoRedoUI();
@@ -953,10 +1129,13 @@
         page.isCropAltered = frame.isCropAltered;
         page.masterUrl = frame.masterUrl;
         page.croppedUrl = frame.croppedUrl;
+        if (frame.settings) page.settings = JSON.parse(frame.settings);
 
+        syncControlsFromPageSettings(page.settings);
         viewOriginal.src = page.isCropAltered ? page.croppedUrl : page.masterUrl;
         updateUndoRedoUI();
-        applyZeroLatencyHardwareFilterPreview();
+        dispatchCompressionPipelineForPage(activePageIndex);
+        renderBatchGallery();
         
         if (isCropModeActive) {
             renderCropOverlaySVG();
@@ -1103,13 +1282,14 @@
         img.src = page.masterUrl;
         img.onload = () => {
             const nativeW = img.width, nativeH = img.height;
+            
             let sideTop = Math.hypot((page.cropState.tr.x - page.cropState.tl.x)*nativeW, (page.cropState.tr.y - page.cropState.tl.y)*nativeH);
             let sideBot = Math.hypot((page.cropState.br.x - page.cropState.bl.x)*nativeW, (page.cropState.br.y - page.cropState.bl.y)*nativeH);
             let sideLeft = Math.hypot((page.cropState.bl.x - page.cropState.tl.x)*nativeW, (page.cropState.bl.y - page.cropState.tl.y)*nativeH);
             let sideRight = Math.hypot((page.cropState.br.x - page.cropState.tr.x)*nativeW, (page.cropState.br.y - page.cropState.tr.y)*nativeH);
 
-            let targetW = Math.floor(Math.max(sideTop, sideBot));
-            let targetH = Math.floor(Math.max(sideLeft, sideRight));
+            let targetW = Math.max(10, Math.floor(Math.max(sideTop, sideBot)));
+            let targetH = Math.max(10, Math.floor(Math.max(sideLeft, sideRight)));
 
             const computedRatio = targetH / targetW;
             const internationalA4Ratio = Math.sqrt(2); 
@@ -1142,19 +1322,28 @@
             page.isCropAltered = true;
 
             captureHistorySnapshot(page);
+            renderBatchGallery();
             exitCropMode(true);
-            applyZeroLatencyHardwareFilterPreview();
+            dispatchCompressionPipelineForPage(activePageIndex);
         };
     }
 
     function bilinearMapPerspectiveExecution(srcData, srcW, srcH, outData, outW, outH, statePoints) {
         const p = {};
-        nodeOrder.forEach(id => { p[id] = { x: statePoints[id].x * srcW, y: statePoints[id].y * srcH }; });
+        nodeOrder.forEach(id => { 
+            p[id] = { 
+                x: (statePoints[id] ? statePoints[id].x : 0) * srcW, 
+                y: (statePoints[id] ? statePoints[id].y : 0) * srcH 
+            }; 
+        });
+
+        const denominatorX = outW > 1 ? outW - 1 : 1;
+        const denominatorY = outH > 1 ? outH - 1 : 1;
 
         for (let y = 0; y < outH; y++) {
-            const v = y / (outH - 1);
+            const v = y / denominatorY;
             for (let x = 0; x < outW; x++) {
-                const u = x / (outW - 1);
+                const u = x / denominatorX;
                 let srcX, srcY;
 
                 if (v <= 0.5) {
@@ -1167,8 +1356,8 @@
                     srcY = (1 - u) * (1 - relV) * p.ml.y + u * (1 - relV) * p.mr.y + (1 - u) * relV * p.bl.y + u * relV * p.br.y;
                 }
 
-                const sX = Math.floor(Math.max(0, Math.min(srcW - 1, srcX)));
-                const sY = Math.floor(Math.max(0, Math.min(srcH - 1, srcY)));
+                const sX = Math.max(0, Math.min(srcW - 1, Math.floor(srcX || 0)));
+                const sY = Math.max(0, Math.min(srcH - 1, Math.floor(srcY || 0)));
 
                 const outIdx = (y * outW + x) * 4;
                 const srcIdx = (sY * srcW + sX) * 4;
@@ -1226,12 +1415,14 @@
                     page.croppedUrl = cCanvas.toDataURL('image/jpeg', 0.95);
                     viewOriginal.src = page.croppedUrl;
                     captureHistorySnapshot(page);
-                    applyZeroLatencyHardwareFilterPreview();
+                    renderBatchGallery();
+                    dispatchCompressionPipelineForPage(activePageIndex);
                 };
             } else {
                 viewOriginal.src = page.masterUrl;
                 captureHistorySnapshot(page);
-                applyZeroLatencyHardwareFilterPreview();
+                renderBatchGallery();
+                dispatchCompressionPipelineForPage(activePageIndex);
             }
         };
     }
@@ -1264,31 +1455,23 @@
         workerLoader.textContent = "Compiling enterprise standard PDF bundle...";
 
         const { jsPDF } = window.jspdf;
-        // Initialize the basic A4 landscape context frame
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-
-        // --- GLOBAL MARGIN CONFIGURATION ---
-        const margin = 12; // 12mm uniform border padding on all sides
+        const margin = 12;
 
         for (let i = 0; i < documentPages.length; i++) {
             const page = documentPages[i];
             if (!page.processedUrl) continue;
             
-            // If it's the first loop index, use the slot built during initialization. 
-            // Otherwise, append a crisp new A4 sheet canvas.
             if (i > 0) {
                 pdf.addPage();
             }
 
-            // DYNAMIC INNER METRIC CALCULATIONS
-            // Re-read page sizes per iteration to guarantee the first page layout matches later indices.
-            const pdfW = pdf.internal.pageSize.getWidth(); // 210mm
-            const pdfH = pdf.internal.pageSize.getHeight(); // 297mm
+            const pdfW = pdf.internal.pageSize.getWidth();
+            const pdfH = pdf.internal.pageSize.getHeight();
             
-            const maxPrintW = pdfW - (margin * 2); // Printable width bounds inside margin
-            const maxPrintH = pdfH - (margin * 2); // Printable height bounds inside margin
+            const maxPrintW = pdfW - (margin * 2);
+            const maxPrintH = pdfH - (margin * 2);
             
-            // Extract cropped source dimensions directly from the decoded image cache
             const imgProps = pdf.getImageProperties(page.processedUrl);
             const imgW = imgProps.width;
             const imgH = imgProps.height;
@@ -1298,7 +1481,6 @@
 
             let printW, printH;
 
-            // Compute proportional constraints to optimize full bounding box containment
             if (imgRatio > targetRatio) {
                 printW = maxPrintW;
                 printH = maxPrintW / imgRatio;
@@ -1307,8 +1489,6 @@
                 printW = maxPrintH * imgRatio;
             }
 
-            // Precisely center the scaled cropped image within the inner boundary box, 
-            // then offset it by the base margin uniformly across ALL pages.
             const offsetX = margin + ((maxPrintW - printW) / 2);
             const offsetY = margin + ((maxPrintH - printH) / 2);
 
@@ -1320,60 +1500,90 @@
         workerLoader.textContent = "Optimizing page calculations...";
     }
 
-    async function dispatchCompressionPipeline() {
-        if (activePageIndex === null || isCropModeActive) return;
+    function processAllQueuePages() {
+        if (documentPages.length === 0) return;
+        documentPages.forEach((_, idx) => {
+            dispatchCompressionPipelineForPage(idx);
+        });
+    }
+
+    async function dispatchCompressionPipelineForPage(pageIdx) {
+        if (pageIdx === null || pageIdx < 0 || pageIdx >= documentPages.length) return;
+        const targetPage = documentPages[pageIdx];
+
         workerLoader.style.display = 'block';
         
         const img = new Image();
-        img.src = viewOriginal.src;
+        img.src = targetPage.isCropAltered ? targetPage.croppedUrl : targetPage.masterUrl;
         img.onload = async () => {
             const bitmap = await createImageBitmap(img);
             imageWorker.postMessage({
-                bitmap, mode: currentMode, targetSize: parseInt(targetSizeInput.value),
-                quality: parseInt(qualityRange.value), filterMode: filterModeSelect.value,
-                thresholdValue: parseInt(thresholdRange.value), grayscaleValue: parseInt(grayscaleRange.value),
-                sharpenValue: parseInt(sharpenRange.value)
+                pageIndex: pageIdx,
+                bitmap, 
+                mode: targetPage.settings.mode, 
+                targetSize: targetPage.settings.targetSize,
+                quality: targetPage.settings.quality, 
+                filterMode: targetPage.settings.filterMode,
+                thresholdValue: targetPage.settings.thresholdValue, 
+                grayscaleValue: targetPage.settings.grayscaleValue,
+                sharpenValue: targetPage.settings.sharpenValue
             }, [bitmap]);
         };
     }
 
     imageWorker.onmessage = function(e) {
-        const { buffer, type } = e.data;
-        const page = documentPages[activePageIndex];
+        const { pageIndex, buffer, type } = e.data;
+        const page = documentPages[pageIndex];
         if (!page) return;
 
         page.finalBlob = new Blob([buffer], { type });
         if (page.processedUrl) URL.revokeObjectURL(page.processedUrl);
         page.processedUrl = URL.createObjectURL(page.finalBlob);
 
-        viewCompressed.style.filter = 'none';
-        viewCompressed.src = page.processedUrl;
+        if (pageIndex === activePageIndex) {
+            viewCompressed.style.filter = 'none';
+            viewCompressed.src = page.processedUrl;
 
-        document.getElementById('stat-comp-size').textContent = formatBytes(page.finalBlob.size);
-        const savings = ((page.file.size - page.finalBlob.size) / page.file.size * 100).toFixed(1);
-        document.getElementById('stat-delta').textContent = savings > 0 ? `Reduced by ${savings}%` : `Size Unchanged`;
-        
+            document.getElementById('stat-comp-size').textContent = formatBytes(page.finalBlob.size);
+            const savings = ((page.file.size - page.finalBlob.size) / page.file.size * 100).toFixed(1);
+            document.getElementById('stat-delta').textContent = savings > 0 ? `Reduced by ${savings}%` : `Size Unchanged`;
+            
+            applyTransformations();
+        }
+
         workerLoader.style.display = 'none'; 
         downloadBtn.disabled = false;
-        
-        const activeThumb = document.querySelectorAll('.thumb-card')[activePageIndex];
-        if (activeThumb) activeThumb.querySelector('img').src = page.processedUrl;
-        
-        applyTransformations();
+        compilePdfBtn.disabled = false;
     };
 
     compWindow.addEventListener('pointerdown', (e) => {
         if (activePageIndex === null) return;
         const page = documentPages[activePageIndex];
 
-        if (isCropModeActive && e.target.classList.contains('crop-handle')) {
-            activeCropHandle = e.target.id.replace('handle-', '');
-            e.stopPropagation(); 
-            compWindow.setPointerCapture(e.pointerId);
-            let match = page.cropState[activeCropHandle];
-            if(match) updateLoupeView(match, e.clientX, e.clientY);
-            return;
+        if (isCropModeActive) {
+            if (e.target.classList.contains('crop-handle')) {
+                activeCropHandle = e.target.id.replace('handle-', '');
+                e.stopPropagation(); 
+                compWindow.setPointerCapture(e.pointerId);
+                let match = page.cropState[activeCropHandle];
+                if(match) updateLoupeView(match, e.clientX, e.clientY);
+                return;
+            }
+            
+            if (e.target === cropBoxPolygon) {
+                isDraggingCropBox = true;
+                const rect = cropOverlay.getBoundingClientRect();
+                cropBoxDragStart = {
+                    x: (e.clientX - rect.left) / rect.width,
+                    y: (e.clientY - rect.top) / rect.height,
+                    initialCropState: JSON.parse(JSON.stringify(page.cropState))
+                };
+                e.stopPropagation();
+                compWindow.setPointerCapture(e.pointerId);
+                return;
+            }
         }
+
         if (e.target === uiHandle) {
             isDraggingSlider = true; 
             compWindow.setPointerCapture(e.pointerId);
@@ -1389,6 +1599,37 @@
     compWindow.addEventListener('pointermove', (e) => {
         if (activePageIndex === null) return;
         const page = documentPages[activePageIndex];
+
+        if (isCropModeActive && isDraggingCropBox && cropBoxDragStart) {
+            const rect = cropOverlay.getBoundingClientRect();
+            const currentX = (e.clientX - rect.left) / rect.width;
+            const currentY = (e.clientY - rect.top) / rect.height;
+
+            let deltaX = currentX - cropBoxDragStart.x;
+            let deltaY = currentY - cropBoxDragStart.y;
+
+            let minX = 1, maxX = 0, minY = 1, maxY = 0;
+            nodeOrder.forEach(key => {
+                const pt = cropBoxDragStart.initialCropState[key];
+                if (pt.x < minX) minX = pt.x;
+                if (pt.x > maxX) maxX = pt.x;
+                if (pt.y < minY) minY = pt.y;
+                if (pt.y > maxY) maxY = pt.y;
+            });
+
+            if (minX + deltaX < 0) deltaX = -minX;
+            if (maxX + deltaX > 1) deltaX = 1 - maxX;
+            if (minY + deltaY < 0) deltaY = -minY;
+            if (maxY + deltaY > 1) deltaY = 1 - maxY;
+
+            nodeOrder.forEach(key => {
+                page.cropState[key].x = cropBoxDragStart.initialCropState[key].x + deltaX;
+                page.cropState[key].y = cropBoxDragStart.initialCropState[key].y + deltaY;
+            });
+
+            renderCropOverlaySVG();
+            return;
+        }
 
         if (isCropModeActive && activeCropHandle) {
             const rect = cropOverlay.getBoundingClientRect();
@@ -1443,7 +1684,14 @@
         }
     });
 
-    const endMove = () => { activeCropHandle = null; isDraggingSlider = false; isPanning = false; loupe.style.display = 'none'; };
+    const endMove = () => { 
+        activeCropHandle = null; 
+        isDraggingCropBox = false;
+        cropBoxDragStart = null;
+        isDraggingSlider = false; 
+        isPanning = false; 
+        loupe.style.display = 'none'; 
+    };
     compWindow.addEventListener('pointerup', endMove); compWindow.addEventListener('pointercancel', endMove);
 
     compWindow.addEventListener('wheel', (e) => {
@@ -1456,22 +1704,35 @@
     function resetZoomAndPan() { zoomScale = 1; panX = 0; panY = 0; clipPercent = 50; applyTransformations(); }
     
     function setMode(m) {
-        currentMode = m;
         document.getElementById('mode-auto').classList.toggle('active', m === 'auto');
         document.getElementById('mode-manual').classList.toggle('active', m === 'manual');
         document.getElementById('auto-settings').style.display = m === 'auto' ? 'flex' : 'none';
         document.getElementById('manual-settings').style.display = m === 'manual' ? 'flex' : 'none';
+        
+        if (m === 'auto') {
+            globalAutoMode = 'auto';
+        }
         applyZeroLatencyHardwareFilterPreview();
     }
     
     function formatBytes(b) { if (b === 0) return '0 B'; const k = 1024, s = ['B', 'KB', 'MB'], i = Math.floor(Math.log(b)/Math.log(k)); return parseFloat((b/Math.pow(k,i)).toFixed(2)) + ' ' + s[i]; }
 
     downloadBtn.addEventListener('click', () => {
-        const page = documentPages[activePageIndex];
-        if (!page || !page.finalBlob) return;
-        const link = document.createElement('a'); link.href = page.processedUrl; link.download = `${page.fileName}_scanned.jpg`;
-        document.body.appendChild(link); link.click();
-        setTimeout(() => document.body.removeChild(link), 100);
+        if (documentPages.length === 0) return;
+
+        documentPages.forEach((page, index) => {
+            const urlToSave = page.processedUrl || page.croppedUrl || page.masterUrl;
+            if (!urlToSave) return;
+
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = urlToSave;
+                link.download = `${page.fileName}_page_${index + 1}_scanned.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, index * 200);
+        });
     });
 </script>
 </body>
