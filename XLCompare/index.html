@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XLCompare</title>
+  <!-- SheetJS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    }
+    body {
+      padding: 1.5rem;
+      background-color: #f6f8fa;
+      color: #1f2328;
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    p.subtitle {
+      color: #636c76;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+      color: #1f2328;
+    }
+    .step-num {
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      background: #1f883d;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+    .step-hint {
+      font-size: 0.76rem;
+      color: #8c959f;
+      margin: -0.35rem 0 0.6rem 1.9rem;
+    }
+    .upload-group {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    input[type="file"] {
+      padding: 0.35rem 0.5rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      background: #f6f8fa;
+      flex-grow: 1;
+    }
+    select {
+      padding: 0.35rem 0.5rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      background: #ffffff;
+      color: #1f2328;
+    }
+    button {
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.82rem;
+      border: 1px solid rgba(31,35,40,0.15);
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background-color: #1f883d;
+      color: #ffffff;
+    }
+    .btn-primary:hover { background-color: #1a7f37; }
+    .btn-primary:disabled {
+      background-color: #80c793;
+      cursor: not-allowed;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.75rem;
+      background-color: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      margin-top: 0.6rem;
+    }
+    .file-item-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .file-badge {
+      background-color: #dafbe1;
+      color: #1a7f37;
+      padding: 0.1rem 0.4rem;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .header-detect-box {
+      margin-top: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+    .header-detect-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .header-detect-row label {
+      font-weight: 600;
+      color: #424a53;
+    }
+    .header-detect-row input[type="number"] {
+      width: 4.5rem;
+      padding: 0.25rem 0.4rem;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+    .header-preview {
+      color: #57606a;
+    }
+    .header-preview strong { color: #1f2328; }
+    .header-preview.warn { color: #9a6700; }
+
+    .align-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px dashed #d0d7de;
+      flex-wrap: wrap;
+    }
+    .align-group label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #424a53;
+    }
+    .align-group .hint {
+      font-size: 0.72rem;
+      color: #8c959f;
+    }
+    .run-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.9rem;
+    }
+    .warning-banner {
+      background: #fff8c5;
+      border: 1px solid #d4a72c;
+      color: #7d4e00;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.78rem;
+      margin-top: 0.6rem;
+      display: none;
+    }
+
+    /* Results header */
+    .diff-summary-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .diff-stats {
+      display: flex;
+      gap: 0.9rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .stat-changed { color: #9a6700; }
+    .stat-base-only { color: #cf222e; }
+    .stat-compare-only { color: #0969da; }
+    .stat-matching { color: #1a7f37; }
+
+    .file-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.2rem;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-bottom: 1px solid #d0d7de;
+      padding: 0.55rem 0.8rem;
+      font-size: 0.78rem;
+    }
+    .legend-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      color: #1f2328;
+    }
+    .legend-swatch {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .legend-role {
+      font-weight: 400;
+      color: #636c76;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      max-height: 650px;
+      border: 1px solid #d0d7de;
+      border-radius: 0 0 6px 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.75rem;
+      text-align: left;
+    }
+    th, td {
+      padding: 0.3rem 0.5rem;
+      border-right: 1px solid #d0d7de;
+      border-bottom: 1px solid #d0d7de;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th {
+      background-color: #f6f8fa;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      font-weight: 600;
+      color: #636c76;
+      border-bottom: 2px solid #d0d7de;
+    }
+    td.row-num {
+      background-color: #f6f8fa;
+      color: #1f2328;
+      text-align: center;
+      user-select: none;
+      width: 65px;
+      min-width: 65px;
+      font-weight: 600;
+    }
+    td.row-num.missing-cell {
+      color: #8c959f;
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    .diff-cell-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .diff-line {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.18rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.74rem;
+      border-left: 3px solid transparent;
+      background-color: var(--line-bg, #f6f8fa);
+      border-left-color: var(--line-accent, #8c959f);
+    }
+    .diff-line.missing {
+      background-color: #f6f8fa;
+      color: #8c959f;
+      font-style: italic;
+      border-left-color: #d0d7de;
+    }
+    .diff-dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--line-accent, #8c959f);
+    }
+    .diff-line.missing .diff-dot { background: #d0d7de; }
+    .file-ref {
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin-right: 0.1rem;
+      color: var(--line-accent, #57606a);
+      white-space: nowrap;
+    }
+    .no-diff-placeholder {
+      color: #8c959f;
+      text-align: center;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>
+    <svg height="20" viewBox="0 0 16 16" version="1.1" width="20" aria-hidden="true" fill="currentColor">
+      <path d="M11.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3.5 1.872v1.756a2.25 2.25 0 1 1-1.5 0V5.122A2.25 2.25 0 0 1 9.5 3.25zM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3.5 1.872v1.756a2.25 2.25 0 1 1-1.5 0v-1.756A2.25 2.25 0 0 1 2 12.75zm8.25-7.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zM8 6a2.25 2.25 0 1 1 3.5 1.872v1.756a2.25 2.25 0 1 1-1.5 0V7.872A2.25 2.25 0 0 1 8 6z"></path>
+    </svg>
+    XLCompare
+  </h1>
+  <p class="subtitle">Upload your base cash book and the file you want to check it against — differences are shown row by row.</p>
+
+  <div class="card">
+    <div class="step-title"><span class="step-num">1</span> Upload the Base File</div>
+    <div class="step-hint">The older / original version of the cash book — this is what everything else gets compared against.</div>
+    <div class="upload-group">
+      <input type="file" id="baseFileInput" accept=".xlsx, .xls" onchange="handleBaseFileSelection()">
+    </div>
+    <div id="baseFileStatus"></div>
+    <div id="baseHeaderDetect"></div>
+  </div>
+
+  <div class="card" id="compareCard" style="display: none;">
+    <div class="step-title"><span class="step-num">2</span> Upload the Comparison File</div>
+    <div class="step-hint">The updated / newer version you want to check against the base file.</div>
+    <div class="upload-group">
+      <input type="file" id="compareFileInput" accept=".xlsx, .xls" onchange="handleCompareFileSelection()">
+    </div>
+    <div id="compareFileStatus"></div>
+    <div id="compareHeaderDetect"></div>
+
+    <div class="align-group" id="alignGroup" style="display: none;">
+      <label for="keyColumnSelect">Match rows by:</label>
+      <select id="keyColumnSelect" onchange="onKeyColumnChange()">
+        <option value="">Row position (default)</option>
+      </select>
+      <span class="hint">If entries were inserted or deleted (not just edited), pick a unique column like "Voucher No." or "Cheque No." so rows still match correctly.</span>
+    </div>
+
+    <div class="warning-banner" id="headerWarning"></div>
+
+    <div class="run-row">
+      <button class="btn-primary" id="compareBtn" onclick="compareFiles()" disabled>Run Comparison</button>
+      <span id="statusText" style="color: #636c76; font-size: 0.8rem;"></span>
+    </div>
+  </div>
+
+  <div id="resultsCard" style="display: none;">
+    <div class="diff-summary-header">
+      <div>Row-by-row comparison result</div>
+      <div class="diff-stats">
+        <span>Total Rows: <strong id="totalRows">0</strong></span>
+        <span class="stat-matching">Matching: <strong id="matchingRows">0</strong></span>
+        <span class="stat-changed">Changed: <strong id="changedRows">0</strong></span>
+        <span class="stat-base-only">Only in Base: <strong id="baseOnlyRows">0</strong></span>
+        <span class="stat-compare-only">Only in Comparison: <strong id="compareOnlyRows">0</strong></span>
+      </div>
+    </div>
+
+    <div class="file-legend" id="fileLegend"></div>
+
+    <div class="table-container">
+      <table id="resultsTable">
+        <thead>
+          <tr id="tableHeader"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let baseFile = null;
+    let compareFile = null;
+    let baseRawSheet = null;
+    let compareRawSheet = null;
+
+    const BASE_COLOR = '#cf222e';
+    const COMPARE_COLOR = '#0969da';
+
+    // Cache of parsed data so switching the "match rows by" dropdown doesn't re-read the files
+    let cache = {
+      baseFileName: '',
+      compareFileName: '',
+      baseRows: [],
+      compareRows: [],
+      headers: [],
+      headerOrder: [],       // normalized header keys, in display order
+      baseHeaderKeyMap: new Map(),
+      compareHeaderKeyMap: new Map()
+    };
+
+    async function handleBaseFileSelection() {
+      const input = document.getElementById('baseFileInput');
+      const statusDiv = document.getElementById('baseFileStatus');
+      const compareCard = document.getElementById('compareCard');
+      const detectDiv = document.getElementById('baseHeaderDetect');
+
+      if (!input.files.length) {
+        baseFile = null;
+        baseRawSheet = null;
+        statusDiv.innerHTML = '';
+        detectDiv.innerHTML = '';
+        compareCard.style.display = 'none';
+        return;
+      }
+
+      baseFile = input.files[0];
+      const sizeKB = (baseFile.size / 1024).toFixed(1);
+      statusDiv.innerHTML = `
+        <div class="file-item">
+          <div class="file-item-info"><strong>Base:</strong> ${baseFile.name} <span style="color:#636c76;">(${sizeKB} KB)</span></div>
+          <span class="file-badge">✓ Loaded</span>
+        </div>
+      `;
+
+      try {
+        baseRawSheet = await readRawSheet(baseFile);
+        renderHeaderDetectBox('baseHeaderDetect', 'baseHeaderRow', baseRawSheet, 'base');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to read the base file.');
+        return;
+      }
+
+      compareCard.style.display = 'block';
+      resetResults();
+    }
+
+    async function handleCompareFileSelection() {
+      const input = document.getElementById('compareFileInput');
+      const statusDiv = document.getElementById('compareFileStatus');
+      const compareBtn = document.getElementById('compareBtn');
+      const detectDiv = document.getElementById('compareHeaderDetect');
+
+      if (!input.files.length) {
+        compareFile = null;
+        compareRawSheet = null;
+        statusDiv.innerHTML = '';
+        detectDiv.innerHTML = '';
+        compareBtn.disabled = true;
+        return;
+      }
+
+      compareFile = input.files[0];
+      const sizeKB = (compareFile.size / 1024).toFixed(1);
+      statusDiv.innerHTML = `
+        <div class="file-item">
+          <div class="file-item-info"><strong>Comparison:</strong> ${compareFile.name} <span style="color:#636c76;">(${sizeKB} KB)</span></div>
+          <span class="file-badge">✓ Loaded</span>
+        </div>
+      `;
+
+      try {
+        compareRawSheet = await readRawSheet(compareFile);
+        renderHeaderDetectBox('compareHeaderDetect', 'compareHeaderRow', compareRawSheet, 'compare');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to read the comparison file.');
+        return;
+      }
+
+      compareBtn.disabled = false;
+      document.getElementById('statusText').innerText = 'Ready to compare. Click "Run Comparison".';
+      resetResults();
+    }
+
+    function resetResults() {
+      document.getElementById('resultsCard').style.display = 'none';
+      document.getElementById('alignGroup').style.display = 'none';
+      document.getElementById('headerWarning').style.display = 'none';
+      cache = { baseFileName: '', compareFileName: '', baseRows: [], compareRows: [], headers: [], headerOrder: [], baseHeaderKeyMap: new Map(), compareHeaderKeyMap: new Map() };
+    }
+
+    // Normalize header text so "Amount", " Amount ", "amount" all resolve to the same column.
+    function normalizeHeaderText(h) {
+      return String(h).trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    // Normalize a cell value for COMPARISON purposes only (display uses the raw value).
+    function normalizeValueForComparison(val) {
+      if (val === undefined || val === null || val === '') return '[EMPTY]';
+      if (val instanceof Date) {
+        return `__date__${val.getFullYear()}-${val.getMonth()}-${val.getDate()}`;
+      }
+      if (typeof val === 'number') {
+        return `__num__${Math.round(val * 1e6) / 1e6}`;
+      }
+      const str = String(val).trim();
+      if (str === '') return '[EMPTY]';
+      const cleaned = str.replace(/,/g, '');
+      if (!isNaN(cleaned) && cleaned !== '') {
+        return `__num__${Math.round(parseFloat(cleaned) * 1e6) / 1e6}`;
+      }
+      return str;
+    }
+
+    function formatValueForDisplay(val) {
+      if (val === undefined || val === null || val === '') return '[EMPTY]';
+      if (val instanceof Date) return val.toISOString().slice(0, 10);
+      return String(val).trim() === '' ? '[EMPTY]' : String(val);
+    }
+
+    // Reads a workbook's first sheet into a raw array-of-arrays. No assumption yet about
+    // which row holds the column headers — that's decided separately (see detectHeaderRowIndex).
+    function readRawSheet(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const raw = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+            resolve(raw);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Cash books often have a title row ("XYZ Ltd — Cash Book, March 2024") above the real
+    // column headers. Assuming row 1 is always the header row would silently drop every
+    // data column in that case, making the tool report zero differences. Instead, scan the
+    // first several rows and pick the one that looks most like a header row: the row with
+    // the most non-empty cells.
+    function detectHeaderRowIndex(raw) {
+      const scanLimit = Math.min(raw.length, 15);
+      let bestIndex = 0;
+      let bestCount = -1;
+      for (let i = 0; i < scanLimit; i++) {
+        const row = raw[i] || [];
+        const nonEmptyCount = row.filter(c => c !== undefined && c !== null && String(c).trim() !== '').length;
+        if (nonEmptyCount > bestCount) {
+          bestCount = nonEmptyCount;
+          bestIndex = i;
+        }
+      }
+      return bestIndex;
+    }
+
+    // Builds row objects from a raw array-of-arrays given a 0-based header row index.
+    // Each row is tagged with its real Excel row number so differences can be traced back.
+    function buildRowsFromRaw(raw, headerRowIndex) {
+      const headerRow = raw[headerRowIndex] || [];
+      const dataRows = raw.slice(headerRowIndex + 1);
+      const rows = dataRows.map((arr, idx) => {
+        const obj = {};
+        headerRow.forEach((h, colIdx) => {
+          if (h === undefined || h === null || String(h).trim() === '') return;
+          obj[h] = arr[colIdx] !== undefined ? arr[colIdx] : "";
+        });
+        obj.__excelRow = headerRowIndex + idx + 2; // +1 to go from 0-based to 1-based, +1 past the header row itself
+        return obj;
+      });
+      const headers = headerRow.filter(h => h !== undefined && h !== null && String(h).trim() !== '').map(h => String(h).trim());
+      return { rows, headers };
+    }
+
+    function updateHeaderPreview(raw, headerRowIndex1Based, previewElId) {
+      const idx0 = headerRowIndex1Based - 1;
+      const { headers } = buildRowsFromRaw(raw, idx0);
+      const previewEl = document.getElementById(previewElId);
+      if (headers.length <= 1) {
+        previewEl.className = 'header-preview warn';
+        previewEl.innerText = `⚠️ Only ${headers.length} column(s) detected on this row — this is probably not the header row. Try a different row number.`;
+      } else {
+        previewEl.className = 'header-preview';
+        previewEl.innerHTML = `Columns found: <strong>${headers.join(', ')}</strong>`;
+      }
+    }
+
+    // Renders the "detected header row" preview box with an editable override, for one file slot.
+    function renderHeaderDetectBox(containerId, inputIdPrefix, raw, side) {
+      const detectedIndex = detectHeaderRowIndex(raw);
+      const container = document.getElementById(containerId);
+
+      container.innerHTML = `
+        <div class="header-detect-box">
+          <div class="header-detect-row">
+            <label for="${inputIdPrefix}Input">Header row is Excel row</label>
+            <input type="number" id="${inputIdPrefix}Input" min="1" max="${raw.length}" value="${detectedIndex + 1}" onchange="onHeaderRowChanged('${side}')">
+            <span style="color:#8c959f;">(auto-detected — change if this looks wrong)</span>
+          </div>
+          <div class="header-preview" id="${inputIdPrefix}Preview"></div>
+        </div>
+      `;
+      updateHeaderPreview(raw, detectedIndex + 1, inputIdPrefix + 'Preview');
+    }
+
+    function onHeaderRowChanged(side) {
+      const raw = side === 'base' ? baseRawSheet : compareRawSheet;
+      const inputId = side === 'base' ? 'baseHeaderRowInput' : 'compareHeaderRowInput';
+      const value = parseInt(document.getElementById(inputId).value, 10);
+      if (!raw || isNaN(value) || value < 1 || value > raw.length) return;
+      updateHeaderPreview(raw, value, inputId.replace('Input', 'Preview'));
+      resetResults();
+    }
+
+    async function compareFiles() {
+      const statusText = document.getElementById('statusText');
+      if (!baseFile || !compareFile || !baseRawSheet || !compareRawSheet) return;
+
+      statusText.innerText = 'Comparing...';
+
+      try {
+        const baseHeaderRowIndex = parseInt(document.getElementById('baseHeaderRowInput').value, 10) - 1;
+        const compareHeaderRowIndex = parseInt(document.getElementById('compareHeaderRowInput').value, 10) - 1;
+
+        const { rows: baseRows } = buildRowsFromRaw(baseRawSheet, baseHeaderRowIndex);
+        const { rows: compareRows } = buildRowsFromRaw(compareRawSheet, compareHeaderRowIndex);
+
+        // Build a normalized header union (scanning all rows of both files), and a per-file
+        // map from normalized header -> the exact key used in that file's row objects.
+        const displayHeaderByNormalized = new Map();
+        const headerOrder = [];
+        const baseHeaderKeyMap = new Map();
+        const compareHeaderKeyMap = new Map();
+        const conflicting = new Set();
+
+        function scan(rows, keyMap) {
+          rows.forEach(row => {
+            Object.keys(row).forEach(originalKey => {
+              if (originalKey === '__excelRow') return;
+              const norm = normalizeHeaderText(originalKey);
+              if (!displayHeaderByNormalized.has(norm)) {
+                displayHeaderByNormalized.set(norm, originalKey.toString().trim());
+                headerOrder.push(norm);
+              }
+              const existing = keyMap.get(norm);
+              if (existing && existing !== originalKey) conflicting.add(displayHeaderByNormalized.get(norm));
+              keyMap.set(norm, originalKey);
+            });
+          });
+        }
+        scan(baseRows, baseHeaderKeyMap);
+        scan(compareRows, compareHeaderKeyMap);
+
+        const headers = headerOrder.map(norm => displayHeaderByNormalized.get(norm));
+
+        if (headers.length === 0) {
+          alert('Uploaded files appear to be empty or missing headers.');
+          return;
+        }
+
+        const warningEl = document.getElementById('headerWarning');
+        if (conflicting.size > 0) {
+          warningEl.style.display = 'block';
+          warningEl.innerText = `⚠️ Inconsistent header spelling detected for: ${Array.from(conflicting).join(', ')}. Double-check these columns line up correctly.`;
+        } else {
+          warningEl.style.display = 'none';
+        }
+
+        cache = {
+          baseFileName: baseFile.name,
+          compareFileName: compareFile.name,
+          baseRows, compareRows,
+          headers, headerOrder,
+          baseHeaderKeyMap, compareHeaderKeyMap
+        };
+
+        const keySelect = document.getElementById('keyColumnSelect');
+        keySelect.innerHTML = '<option value="">Row position (default)</option>';
+        headers.forEach(h => {
+          const opt = document.createElement('option');
+          opt.value = h;
+          opt.innerText = h;
+          keySelect.appendChild(opt);
+        });
+        document.getElementById('alignGroup').style.display = 'flex';
+
+        runComparison('');
+      } catch (error) {
+        console.error(error);
+        statusText.innerText = 'Error running comparison.';
+        alert('Failed to parse Excel files.');
+      }
+    }
+
+    function onKeyColumnChange() {
+      runComparison(document.getElementById('keyColumnSelect').value);
+    }
+
+    // Core comparison engine. keyColumn === '' => positional matching.
+    // keyColumn === some header => match rows by that column's value (robust to inserted/deleted rows).
+    function runComparison(keyColumn) {
+      const { baseRows, compareRows, headers, headerOrder, baseHeaderKeyMap, compareHeaderKeyMap, baseFileName, compareFileName } = cache;
+      const statusText = document.getElementById('statusText');
+
+      let logicalRows = []; // { baseRow, compareRow }
+
+      if (!keyColumn) {
+        const maxRows = Math.max(baseRows.length, compareRows.length);
+        for (let i = 0; i < maxRows; i++) {
+          logicalRows.push({ baseRow: baseRows[i] || null, compareRow: compareRows[i] || null });
+        }
+      } else {
+        const normKey = normalizeHeaderText(keyColumn);
+        const baseOriginalKey = baseHeaderKeyMap.get(normKey);
+        const compareOriginalKey = compareHeaderKeyMap.get(normKey);
+
+        function buildKeyMap(rows, originalKey) {
+          const map = new Map();
+          rows.forEach(row => {
+            const keyVal = formatValueForDisplay(originalKey ? row[originalKey] : undefined);
+            if (keyVal !== '[EMPTY]' && !map.has(keyVal)) map.set(keyVal, row);
+          });
+          return map;
+        }
+        const baseMap = buildKeyMap(baseRows, baseOriginalKey);
+        const compareMap = buildKeyMap(compareRows, compareOriginalKey);
+
+        const orderedKeys = [];
+        const seen = new Set();
+        [baseMap, compareMap].forEach(map => {
+          map.forEach((_, k) => { if (!seen.has(k)) { seen.add(k); orderedKeys.push(k); } });
+        });
+
+        logicalRows = orderedKeys.map(k => ({ baseRow: baseMap.get(k) || null, compareRow: compareMap.get(k) || null }));
+      }
+
+      let matchCount = 0, changedCount = 0, onlyInBaseCount = 0, onlyInCompareCount = 0;
+      const diffRows = [];
+
+      logicalRows.forEach(({ baseRow, compareRow }) => {
+        if (compareRow === null) onlyInBaseCount++;    // row exists only in the base file
+        if (baseRow === null) onlyInCompareCount++;    // row exists only in the comparison file
+
+        const columns = {};
+        let rowHasDiscrepancy = (baseRow === null || compareRow === null);
+
+        headerOrder.forEach((normHeader, idx) => {
+          const header = headers[idx];
+          const baseKey = baseHeaderKeyMap.get(normHeader);
+          const compareKey = compareHeaderKeyMap.get(normHeader);
+
+          const baseVal = baseRow ? (baseKey !== undefined ? baseRow[baseKey] : undefined) : undefined;
+          const compareVal = compareRow ? (compareKey !== undefined ? compareRow[compareKey] : undefined) : undefined;
+
+          const baseInfo = baseRow ? { display: formatValueForDisplay(baseVal), norm: normalizeValueForComparison(baseVal), missing: false }
+                                    : { display: '', norm: '[MISSING ROW]', missing: true };
+          const compareInfo = compareRow ? { display: formatValueForDisplay(compareVal), norm: normalizeValueForComparison(compareVal), missing: false }
+                                          : { display: '', norm: '[MISSING ROW]', missing: true };
+
+          const isMatch = baseInfo.norm === compareInfo.norm;
+          if (!isMatch) rowHasDiscrepancy = true;
+
+          columns[header] = { isMatch, base: baseInfo, compare: compareInfo };
+        });
+
+        if (rowHasDiscrepancy) {
+          if (baseRow !== null && compareRow !== null) changedCount++;
+          diffRows.push({
+            baseRowNum: baseRow ? baseRow.__excelRow : null,
+            compareRowNum: compareRow ? compareRow.__excelRow : null,
+            columns
+          });
+        } else {
+          matchCount++;
+        }
+      });
+
+      renderResults(headers, baseFileName, compareFileName, diffRows, logicalRows.length, matchCount, changedCount, onlyInBaseCount, onlyInCompareCount);
+      statusText.innerText = `Comparison complete${keyColumn ? ` (matched by "${keyColumn}")` : ''}.`;
+    }
+
+    function renderResults(headers, baseFileName, compareFileName, diffRows, totalRows, matches, changed, onlyInBase, onlyInCompare) {
+      document.getElementById('resultsCard').style.display = 'block';
+      document.getElementById('totalRows').innerText = totalRows;
+      document.getElementById('matchingRows').innerText = matches;
+      document.getElementById('changedRows').innerText = changed;
+      document.getElementById('baseOnlyRows').innerText = onlyInBase;
+      document.getElementById('compareOnlyRows').innerText = onlyInCompare;
+
+      const legend = document.getElementById('fileLegend');
+      legend.innerHTML = `
+        <div class="legend-chip"><span class="legend-swatch" style="background:${BASE_COLOR}"></span><span>${baseFileName}</span><span class="legend-role">(base)</span></div>
+        <div class="legend-chip"><span class="legend-swatch" style="background:${COMPARE_COLOR}"></span><span>${compareFileName}</span><span class="legend-role">(comparison)</span></div>
+      `;
+
+      const thead = document.getElementById('tableHeader');
+      const tbody = document.getElementById('tableBody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (diffRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${headers.length + 2}" style="text-align:center; padding:2rem; color:#1a7f37; font-weight:600;">✔ No differences found! Both files match.</td></tr>`;
+        return;
+      }
+
+      const trHeader = document.createElement('tr');
+      ['Base Row', 'Compare Row'].forEach(label => {
+        const th = document.createElement('th');
+        th.innerText = label;
+        th.style.textAlign = 'center';
+        trHeader.appendChild(th);
+      });
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.innerText = header;
+        trHeader.appendChild(th);
+      });
+      thead.appendChild(trHeader);
+
+      diffRows.forEach(row => {
+        const tr = document.createElement('tr');
+
+        const tdBaseRow = document.createElement('td');
+        tdBaseRow.className = 'row-num' + (row.baseRowNum === null ? ' missing-cell' : '');
+        tdBaseRow.innerText = row.baseRowNum === null ? '—' : row.baseRowNum;
+        tr.appendChild(tdBaseRow);
+
+        const tdCompareRow = document.createElement('td');
+        tdCompareRow.className = 'row-num' + (row.compareRowNum === null ? ' missing-cell' : '');
+        tdCompareRow.innerText = row.compareRowNum === null ? '—' : row.compareRowNum;
+        tr.appendChild(tdCompareRow);
+
+        headers.forEach(header => {
+          const td = document.createElement('td');
+          const colInfo = row.columns[header];
+
+          if (colInfo && !colInfo.isMatch) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'diff-cell-wrapper';
+
+            [['Base', BASE_COLOR, colInfo.base], ['Compare', COMPARE_COLOR, colInfo.compare]].forEach(([label, color, info]) => {
+              const line = document.createElement('div');
+              if (info.missing) {
+                line.className = 'diff-line missing';
+                line.innerHTML = `<span class="diff-dot"></span><span class="file-ref">${label}:</span><span>row not present</span>`;
+              } else {
+                line.className = 'diff-line';
+                line.style.setProperty('--line-accent', color);
+                line.style.setProperty('--line-bg', color + '14');
+                line.innerHTML = `<span class="diff-dot"></span><span class="file-ref">${label}:</span><span>${info.display}</span>`;
+              }
+              wrapper.appendChild(line);
+            });
+
+            td.appendChild(wrapper);
+          } else {
+            td.innerHTML = `<span class="no-diff-placeholder">…</span>`;
+          }
+
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
