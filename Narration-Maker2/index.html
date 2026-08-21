@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tally Petty Cash Narration Builder</title>
+    <style>
+        :root {
+            --primary: #0052cc;
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --text: #172b4d;
+            --chip-bg: #ebecf0;
+            --chip-hover: #dfe1e6;
+            --danger: #de350b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: 30px 15px;
+            margin: 0;
+        }
+        .container {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 750px;
+        }
+        h2 { margin-top: 0; color: var(--primary); }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; }
+        input, select, textarea {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #dfe1e6;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        
+        .row { display: flex; gap: 10px; align-items: flex-end; }
+        .row .form-group { flex: 1; }
+
+        /* Preset Chip Styles & Categories */
+        .preset-section {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .category-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6b778c;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+        .preset-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .chip {
+            background-color: var(--chip-bg);
+            border: 1px solid #c1c7d0;
+            border-radius: 16px;
+            padding: 4px 10px;
+            font-size: 0.80rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .chip:hover {
+            background-color: var(--chip-hover);
+            border-color: #97a0af;
+        }
+
+        .output-box {
+            margin-top: 15px;
+            background: #eae6ff;
+            padding: 12px;
+            border-left: 4px solid #6554c0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 48px;
+        }
+        button.action-btn {
+            width: 100%;
+            background-color: #36b37e;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button.action-btn:hover { background-color: #2a8e63; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Tally Petty Cash Narration Builder</h2>
+    
+    <!-- Payee Name -->
+    <div class="form-group">
+        <label for="payee">Payee / Recipient Name</label>
+        <input type="text" id="payee" placeholder="e.g. Mr. Parveen" oninput="buildNarration()">
+    </div>
+
+    <!-- Reason Input Field -->
+    <div class="form-group">
+        <label for="reason">Nature of Expense (Type or Click Presets Below)</label>
+        <input type="text" id="reason" placeholder="e.g. Stationery, Conveyance" oninput="buildNarration()">
+    </div>
+
+    <!-- Categorized Presets -->
+    <div class="preset-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Quick Presets (Click to Append):</label>
+            <span onclick="clearReason()" style="font-size: 0.8rem; color: var(--danger); cursor: pointer; font-weight: 600;">✕ Clear Nature</span>
+        </div>
+
+        <div class="category-title">Office & Admin Expenses</div>
+        <div class="preset-container">
+            <span class="chip" onclick="addPreset('Stationery')">+ Stationery</span>
+            <span class="chip" onclick="addPreset('Printing')">+ Printing</span>
+            <span class="chip" onclick="addPreset('Refreshments')">+ Refreshments</span>
+            <span class="chip" onclick="addPreset('Hospitality')">+ Hospitality</span>
+            <span class="chip" onclick="addPreset('Pantry expenses')">+ Pantry</span>
+            <span class="chip" onclick="addPreset('Grocery items')">+ Groceries</span>
+            <span class="chip" onclick="addPreset('Photocopying')">+ Photocopy</span>
+            <span class="chip" onclick="addPreset('Mineral water')">+ Mineral Water</span>
+            <span class="chip" onclick="addPreset('Cleaning materials')">+ Cleaning Supplies</span>
+            <span class="chip" onclick="addPreset('Office maintenance')">+ Maintenance</span>
+        </div>
+
+        <div class="category-title">Travel & Logistics</div>
+        <div class="preset-container">
+            <span class="chip" onclick="addPreset('Conveyance')">+ Conveyance</span>
+            <span class="chip" onclick="addPreset('Taxi / Cab fare')">+ Taxi Fare</span>
+            <span class="chip" onclick="addPreset('Auto fare')">+ Auto Fare</span>
+            <span class="chip" onclick="addPreset('Fuel / Petrol')">+ Fuel / Petrol</span>
+            <span class="chip" onclick="addPreset('Parking')">+ Parking</span>
+            <span class="chip" onclick="addPreset('Toll tax')">+ Toll Tax</span>
+            <span class="chip" onclick="addPreset('Courier')">+ Courier</span>
+            <span class="chip" onclick="addPreset('Speed post')">+ Speed Post</span>
+            <span class="chip" onclick="addPreset('Freight & cartage')">+ Freight / Cartage</span>
+            <span class="chip" onclick="addPreset('Loading & unloading')">+ Loading / Unloading</span>
+        </div>
+
+        <div class="category-title">Repairs, Staff & Utilities</div>
+        <div class="preset-container">
+            <span class="chip" onclick="addPreset('Computer repairs')">+ Computer Repair</span>
+            <span class="chip" onclick="addPreset('Electrical maintenance')">+ Electrical Work</span>
+            <span class="chip" onclick="addPreset('AC service & repair')">+ AC Service</span>
+            <span class="chip" onclick="addPreset('Staff welfare')">+ Staff Welfare</span>
+            <span class="chip" onclick="addPreset('Medical expenses')">+ First Aid / Medical</span>
+            <span class="chip" onclick="addPreset('Newspapers & periodicals')">+ Newspapers</span>
+            <span class="chip" onclick="addPreset('Software subscription')">+ Software / SaaS</span>
+            <span class="chip" onclick="addPreset('Mobile recharge')">+ Mobile Recharge</span>
+            <span class="chip" onclick="addPreset('Internet bill')">+ Internet Bill</span>
+            <span class="chip" onclick="addPreset('Miscellaneous expenses')">+ Misc. Expenses</span>
+        </div>
+    </div>
+
+    <!-- Direct Input Receipts/Bills Section -->
+    <div class="row">
+        <div class="form-group">
+            <label for="receiptNos">Receipt / Voucher No(s).</label>
+            <input type="text" id="receiptNos" placeholder="e.g. 001, 002, 003" oninput="buildNarration()">
+        </div>
+        <div class="form-group">
+            <label for="receiptDates">Receipt Date(s)</label>
+            <input type="text" id="receiptDates" placeholder="e.g. 21, 22, 23 Aug'26" oninput="buildNarration()">
+        </div>
+    </div>
+
+    <!-- Narration Preview -->
+    <div class="output-box" id="narrationPreview">Being cash paid...</div>
+    <button class="action-btn" onclick="copyToClipboard()">Copy Narration</button>
+</div>
+
+<script>
+    function addPreset(presetText) {
+        const reasonInput = document.getElementById('reason');
+        let currentVal = reasonInput.value.trim();
+
+        if (currentVal === '') {
+            reasonInput.value = presetText;
+        } else {
+            reasonInput.value = currentVal + ', ' + presetText;
+        }
+        buildNarration();
+    }
+
+    function clearReason() {
+        document.getElementById('reason').value = '';
+        buildNarration();
+    }
+
+    function buildNarration() {
+        const payee = document.getElementById('payee').value.trim() || '****';
+        const reason = document.getElementById('reason').value.trim() || '****';
+        const receiptNos = document.getElementById('receiptNos').value.trim() || '****';
+        const receiptDates = document.getElementById('receiptDates').value.trim() || '****';
+
+        // Check if user entered multiple receipt numbers to toggle 'receipt' vs 'receipts'
+        const isMultiple = receiptNos.includes(',');
+        const label = isMultiple ? 'receipts' : 'receipt';
+
+        // Direct narrative string construction
+        const narration = `Being cash paid to ${payee} for ${reason} vide ${label} no. ${receiptNos} dt. ${receiptDates}.`;
+
+        document.getElementById('narrationPreview').innerText = narration;
+    }
+
+    function copyToClipboard() {
+        const text = document.getElementById('narrationPreview').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Narration copied to clipboard!');
+        });
+    }
+
+    // Set initial preview on load
+    window.onload = function() {
+        buildNarration();
+    };
+</script>
+
+</body>
+</html>
