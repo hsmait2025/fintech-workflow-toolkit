@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tally Petty Cash Narration Builder</title>
+    <title>Narration-Maker2</title>
     <style>
         :root {
             --primary: #0052cc;
@@ -111,12 +111,12 @@
 <body>
 
 <div class="container">
-    <h2>Tally Petty Cash Narration Builder</h2>
+    <h2>Narration-Maker2</h2>
     
     <!-- Payee Name -->
     <div class="form-group">
         <label for="payee">Payee / Recipient Name</label>
-        <input type="text" id="payee" placeholder="e.g. Mr. Parveen" oninput="buildNarration()">
+        <input type="text" id="payee" placeholder="e.g. Mr./Ms. ****" oninput="buildNarration()">
     </div>
 
     <!-- Reason Input Field -->
@@ -134,33 +134,27 @@
 
         <div class="category-title">Office & Admin Expenses</div>
         <div class="preset-container">
+	        <span class="chip" onclick="addPreset('Conveyance')">+ Conveyance</span>
+            <span class="chip" onclick="addPreset('Refueling CNG')">+ Refueling CNG</span>
+            <span class="chip" onclick="addPreset('Refueling Petrol')">+ Refueling Petrol</span>
             <span class="chip" onclick="addPreset('Stationery')">+ Stationery</span>
             <span class="chip" onclick="addPreset('Printing')">+ Printing</span>
-            <span class="chip" onclick="addPreset('Refreshments')">+ Refreshments</span>
-            <span class="chip" onclick="addPreset('Hospitality')">+ Hospitality</span>
-            <span class="chip" onclick="addPreset('Pantry expenses')">+ Pantry</span>
+            <span class="chip" onclick="addPreset('Speed Post')">+ Speed Post</span>
+            <span class="chip" onclick="addPreset('Courier')">+ Courier</span>
+            <span class="chip" onclick="addPreset('Refreshments items')">+ Refreshments</span>
+            <span class="chip" onclick="addPreset('Hospitality items')">+ Hospitality</span>
+            <span class="chip" onclick="addPreset('Milk & Paneer')">+ Milk & Paneer</span>
+            <span class="chip" onclick="addPreset('Vegetables for hostel mess')">+ Vegetables</span>
             <span class="chip" onclick="addPreset('Grocery items')">+ Groceries</span>
             <span class="chip" onclick="addPreset('Photocopying')">+ Photocopy</span>
-            <span class="chip" onclick="addPreset('Mineral water')">+ Mineral Water</span>
+            <span class="chip" onclick="addPreset('Tea, Coffee etc.')">+ Tea Coffee</span>
             <span class="chip" onclick="addPreset('Cleaning materials')">+ Cleaning Supplies</span>
-            <span class="chip" onclick="addPreset('Office maintenance')">+ Maintenance</span>
+            <span class="chip" onclick="addPreset('Repair & Maintenance')">+ Repair & Maintenance</span>
+            <span class="chip" onclick="addPreset('Mobile recharge')">+ Mobile Recharge</span>
+            <span class="chip" onclick="addPreset('Placement Exp.')">+ Placement Exp.</span>
         </div>
 
-        <div class="category-title">Travel & Logistics</div>
-        <div class="preset-container">
-            <span class="chip" onclick="addPreset('Conveyance')">+ Conveyance</span>
-            <span class="chip" onclick="addPreset('Taxi / Cab fare')">+ Taxi Fare</span>
-            <span class="chip" onclick="addPreset('Auto fare')">+ Auto Fare</span>
-            <span class="chip" onclick="addPreset('Fuel / Petrol')">+ Fuel / Petrol</span>
-            <span class="chip" onclick="addPreset('Parking')">+ Parking</span>
-            <span class="chip" onclick="addPreset('Toll tax')">+ Toll Tax</span>
-            <span class="chip" onclick="addPreset('Courier')">+ Courier</span>
-            <span class="chip" onclick="addPreset('Speed post')">+ Speed Post</span>
-            <span class="chip" onclick="addPreset('Freight & cartage')">+ Freight / Cartage</span>
-            <span class="chip" onclick="addPreset('Loading & unloading')">+ Loading / Unloading</span>
-        </div>
-
-        <div class="category-title">Repairs, Staff & Utilities</div>
+                <div class="category-title">Repairs, Staff & Utilities</div>
         <div class="preset-container">
             <span class="chip" onclick="addPreset('Computer repairs')">+ Computer Repair</span>
             <span class="chip" onclick="addPreset('Electrical maintenance')">+ Electrical Work</span>
@@ -169,7 +163,6 @@
             <span class="chip" onclick="addPreset('Medical expenses')">+ First Aid / Medical</span>
             <span class="chip" onclick="addPreset('Newspapers & periodicals')">+ Newspapers</span>
             <span class="chip" onclick="addPreset('Software subscription')">+ Software / SaaS</span>
-            <span class="chip" onclick="addPreset('Mobile recharge')">+ Mobile Recharge</span>
             <span class="chip" onclick="addPreset('Internet bill')">+ Internet Bill</span>
             <span class="chip" onclick="addPreset('Miscellaneous expenses')">+ Misc. Expenses</span>
         </div>
