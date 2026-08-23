@@ -13,6 +13,7 @@
             --chip-bg: #ebecf0;
             --chip-hover: #dfe1e6;
             --danger: #de350b;
+            --success: #36b37e;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -22,6 +23,7 @@
             justify-content: center;
             padding: 30px 15px;
             margin: 0;
+            position: relative;
         }
         .container {
             background: var(--card);
@@ -42,6 +44,24 @@
             box-sizing: border-box;
             font-size: 0.95rem;
         }
+
+        .input-with-btn {
+            display: flex;
+            gap: 6px;
+        }
+        .calendar-trigger-btn {
+            background: #ebecf0;
+            border: 1px solid #c1c7d0;
+            border-radius: 4px;
+            padding: 0 12px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .calendar-trigger-btn:hover { background: #dfe1e6; }
         
         .row { display: flex; gap: 10px; align-items: flex-end; }
         .row .form-group { flex: 1; }
@@ -81,21 +101,31 @@
             border-color: #97a0af;
         }
 
-        .output-box {
+        /* Editable Textarea Preview Box */
+        textarea.output-box {
             margin-top: 15px;
             background: #eae6ff;
             padding: 12px;
+            border: 1px solid #6554c0;
             border-left: 4px solid #6554c0;
             border-radius: 4px;
             font-family: monospace;
             font-size: 0.95rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-            min-height: 48px;
+            min-height: 70px;
+            resize: vertical;
+            color: #172b4d;
+            outline: none;
+        }
+        
+        /* Action Button Controls */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
         }
         button.action-btn {
-            width: 100%;
-            background-color: #36b37e;
+            flex: 2;
+            background-color: var(--success);
             color: white;
             border: none;
             padding: 12px;
@@ -103,9 +133,109 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 10px;
+            transition: background 0.2s;
         }
         button.action-btn:hover { background-color: #2a8e63; }
+
+        button.reset-btn {
+            flex: 1;
+            background-color: #ebecf0;
+            color: var(--text);
+            border: 1px solid #c1c7d0;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button.reset-btn:hover { background-color: #dfe1e6; }
+
+        /* Toast Notification */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #091e42;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 12px 16px;
+            position: fixed;
+            z-index: 1000;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Calendar Popover Modal */
+        .calendar-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(9, 30, 66, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .calendar-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 320px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .calendar-header h4 { margin: 0; font-size: 1rem; color: var(--primary); }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+        .cal-day-head { font-weight: 600; font-size: 0.75rem; color: #6b778c; padding: 4px 0; }
+        .cal-date {
+            padding: 8px 0;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid transparent;
+        }
+        .cal-date:hover { background-color: var(--chip-bg); }
+        .cal-date.selected {
+            background-color: var(--primary);
+            color: #fff;
+            font-weight: bold;
+        }
+        .cal-date.empty { cursor: default; }
+        .cal-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        .cal-actions button {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #c1c7d0;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cal-actions .apply-btn { background: var(--primary); color: #fff; border: none; }
     </style>
 </head>
 <body>
@@ -134,7 +264,7 @@
 
         <div class="category-title">Office & Admin Expenses</div>
         <div class="preset-container">
-	        <span class="chip" onclick="addPreset('Conveyance')">+ Conveyance</span>
+            <span class="chip" onclick="addPreset('Conveyance')">+ Conveyance</span>
             <span class="chip" onclick="addPreset('Refueling CNG')">+ Refueling CNG</span>
             <span class="chip" onclick="addPreset('Refueling Petrol')">+ Refueling Petrol</span>
             <span class="chip" onclick="addPreset('Stationery')">+ Stationery</span>
@@ -154,12 +284,7 @@
             <span class="chip" onclick="addPreset('Placement Exp.')">+ Placement Exp.</span>
         </div>
 
-		<div class="category-title">Charges</div>
-        <div class="preset-container">
-            <span class="chip" onclick="addPreset('Charges')">+ Charges</span>
-        </div>
-
-                <div class="category-title">Repairs, Staff & Utilities</div>
+        <div class="category-title">Repairs, Staff & Utilities</div>
         <div class="preset-container">
             <span class="chip" onclick="addPreset('Computer repairs')">+ Computer Repair</span>
             <span class="chip" onclick="addPreset('Electrical maintenance')">+ Electrical Work</span>
@@ -181,16 +306,156 @@
         </div>
         <div class="form-group">
             <label for="receiptDates">Receipt Date(s)</label>
-            <input type="text" id="receiptDates" placeholder="e.g. 21, 22, 23 Aug'26" oninput="buildNarration()">
+            <div class="input-with-btn">
+                <input type="text" id="receiptDates" placeholder="e.g. 02, 03 July'26" oninput="buildNarration()">
+                <button class="calendar-trigger-btn" onclick="openCalendarModal()" title="Select Multiple Dates">📅</button>
+            </div>
         </div>
     </div>
 
-    <!-- Narration Preview -->
-    <div class="output-box" id="narrationPreview">Being cash paid...</div>
-    <button class="action-btn" onclick="copyToClipboard()">Copy Narration</button>
+    <!-- Editable Narration Preview -->
+    <div class="form-group">
+        <label for="narrationPreview">Generated Narration (Editable):</label>
+        <textarea class="output-box" id="narrationPreview"></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button class="action-btn" onclick="copyToClipboard()">Copy Narration</button>
+        <button class="reset-btn" onclick="resetForm()">Clear / Reset</button>
+    </div>
+</div>
+
+<!-- Non-blocking Toast Element -->
+<div id="toast" class="toast">Narration copied to clipboard!</div>
+
+<!-- Multi-Date Picker Modal -->
+<div id="calendarModal" class="calendar-modal">
+    <div class="calendar-card">
+        <div class="calendar-header">
+            <button onclick="changeMonth(-1)">‹</button>
+            <h4 id="calMonthYear">July 2026</h4>
+            <button onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">
+            <!-- Dynamically Rendered Days -->
+        </div>
+        <div class="cal-actions">
+            <button onclick="clearSelectedDates()">Clear Dates</button>
+            <button class="apply-btn" onclick="applyDates()">Apply Dates</button>
+        </div>
+    </div>
 </div>
 
 <script>
+    // Multi-Date Picker State Management
+    let selectedDates = []; // Stores Array of Date Objects
+    let currentCalDate = new Date();
+
+    const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthNamesFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    function openCalendarModal() {
+        document.getElementById('calendarModal').style.display = 'flex';
+        renderCalendar();
+    }
+
+    function changeMonth(offset) {
+        currentCalDate.setMonth(currentCalDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        const year = currentCalDate.getFullYear();
+        const month = currentCalDate.getMonth();
+
+        document.getElementById('calMonthYear').innerText = `${monthNamesFull[month]} ${year}`;
+
+        const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+        dayHeaders.forEach(day => {
+            const h = document.createElement('div');
+            h.className = 'cal-day-head';
+            h.innerText = day;
+            grid.appendChild(h);
+        });
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'cal-date empty';
+            grid.appendChild(empty);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+            const cell = document.createElement('div');
+            cell.className = 'cal-date';
+            cell.innerText = day;
+
+            const targetTime = new Date(year, month, day).getTime();
+            if (selectedDates.some(d => d.getTime() === targetTime)) {
+                cell.classList.add('selected');
+            }
+
+            cell.onclick = () => toggleDateSelection(new Date(year, month, day));
+            grid.appendChild(cell);
+        }
+    }
+
+    function toggleDateSelection(dateObj) {
+        const timeVal = dateObj.getTime();
+        const index = selectedDates.findIndex(d => d.getTime() === timeVal);
+        if (index > -1) {
+            selectedDates.splice(index, 1);
+        } else {
+            selectedDates.push(dateObj);
+        }
+        renderCalendar();
+    }
+
+    function clearSelectedDates() {
+        selectedDates = [];
+        renderCalendar();
+    }
+
+    function applyDates() {
+        if (selectedDates.length === 0) {
+            document.getElementById('calendarModal').style.display = 'none';
+            return;
+        }
+
+        // Sort dates chronologically
+        selectedDates.sort((a, b) => a - b);
+
+        // Group by Month & Year
+        const grouped = {};
+        selectedDates.forEach(d => {
+            const key = `${d.getMonth()}-${d.getFullYear()}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    month: monthNamesShort[d.getMonth()],
+                    year: String(d.getFullYear()).slice(-2),
+                    days: []
+                };
+            }
+            const dayStr = String(d.getDate()).padStart(2, '0');
+            grouped[key].days.push(dayStr);
+        });
+
+        // Construct string format: "02, 03, 09 July'26, 09, 10, 12 Aug'26"
+        const formattedGroups = Object.values(grouped).map(group => {
+            return `${group.days.join(', ')} ${group.month}'${group.year}`;
+        });
+
+        document.getElementById('receiptDates').value = formattedGroups.join(', ');
+        document.getElementById('calendarModal').style.display = 'none';
+        buildNarration();
+    }
+
+    // Application Functions
     function addPreset(presetText) {
         const reasonInput = document.getElementById('reason');
         let currentVal = reasonInput.value.trim();
@@ -214,24 +479,40 @@
         const receiptNos = document.getElementById('receiptNos').value.trim() || '****';
         const receiptDates = document.getElementById('receiptDates').value.trim() || '****';
 
-        // Check if user entered multiple receipt numbers to toggle 'receipt' vs 'receipts'
         const isMultiple = receiptNos.includes(',');
         const label = isMultiple ? 'receipts' : 'receipt';
 
-        // Direct narrative string construction
-        const narration = `Being cash paid to ${payee} for ${reason} vide ${label} no. ${receiptNos} dt. ${receiptDates}.`;
+        const narration = `Being cash paid to ${payee} for ${reason} charges vide ${label} no. ${receiptNos} dt. ${receiptDates}.`;
 
-        document.getElementById('narrationPreview').innerText = narration;
+        document.getElementById('narrationPreview').value = narration;
     }
 
     function copyToClipboard() {
-        const text = document.getElementById('narrationPreview').innerText;
+        const text = document.getElementById('narrationPreview').value;
         navigator.clipboard.writeText(text).then(() => {
-            alert('Narration copied to clipboard!');
+            showToast('Narration copied to clipboard!');
         });
     }
 
-    // Set initial preview on load
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+    }
+
+    function resetForm() {
+        document.getElementById('payee').value = '';
+        document.getElementById('reason').value = '';
+        document.getElementById('receiptNos').value = '';
+        document.getElementById('receiptDates').value = '';
+        selectedDates = [];
+        buildNarration();
+        document.getElementById('payee').focus();
+    }
+
     window.onload = function() {
         buildNarration();
     };
