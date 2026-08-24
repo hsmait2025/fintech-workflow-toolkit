@@ -10,7 +10,7 @@
     .container { max-width:760px; margin:0 auto; background:#fff; padding:2rem; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.04); }
     h2 { margin:0 0 1.5rem; text-align:center; font-size:1.4rem; font-weight: 600; }
     .controls { display:flex; flex-direction:column; gap:1rem; }
-    .btn-group { display: flex; gap: 0.75rem; }
+    .btn-group { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
     .btn-group button { flex: 1; }
     label { display:flex; gap:0.5rem; align-items:center; font-size:0.95rem; cursor: pointer; }
     input[type=file] { padding:0.5rem 0; font-size: 0.9rem; }
@@ -20,6 +20,8 @@
     button.secondary { background: #e2e8f0; color: #4a5568; }
     button.secondary:hover { background: #cbd5e1; }
     #fileList { margin-top:1.5rem; padding-left:1.2rem; font-size:0.9rem; max-height:150px; overflow-y:auto; color: #444; }
+    #fileList li { margin-bottom: 0.3rem; }
+    .file-size { color: #666; font-size: 0.82rem; margin-left: 0.4rem; font-weight: 500; }
     .preview { display:flex; flex-wrap:wrap; gap:12px; margin-top:1.5rem; justify-content:center; }
     .preview-item { position: relative; width: 120px; height: 160px; overflow: hidden; border-radius: 8px; border: 1px solid #e2e8f0; background: #fafafa; cursor: grab; user-select: none; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
     .preview-item:active { cursor: grabbing; }
@@ -40,16 +42,17 @@
     <label><input id="combineAll" type="checkbox" checked /> Combine ALL uploads into a single PDF</label>
     <label><input id="showSize" type="checkbox" checked /> Show runtime size metrics</label>
     <input id="files" type="file" accept="image/jpeg,image/png,application/pdf" multiple />
-    <div class="btn-group">
-      <button id="startBtn">Process & Download</button>
-      <button id="clearBtn" class="secondary">Clear All</button>
-    </div>
   </div>
 
   <div class="note">Supports high-throughput processing for JPEG, PNG, and PDF payloads. Custom-sorted layout applies directly to pipeline compilers.</div>
 
   <ul id="fileList"></ul>
   <div class="preview" id="preview"></div>
+
+  <div class="btn-group">
+    <button id="startBtn">Process & Download</button>
+    <button id="clearBtn" class="secondary">Clear All</button>
+  </div>
 
   <div class="split-section">
     <h2>PDF Splitter 2 </h2>
@@ -87,6 +90,14 @@
 
   let pipelineFiles = [];
 
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
   fileInput.addEventListener('change', async () => {
     const incoming = Array.from(fileInput.files);
     for (const file of incoming) {
@@ -100,7 +111,6 @@
     await renderPreview();
   });
 
-  // Explicit Garbage Collection handling on complete clear actions
   clearBtn.addEventListener('click', () => {
     pipelineFiles.forEach(item => {
       if (item.cachedPreviewUrl && item.cachedPreviewUrl.startsWith('blob:')) {
@@ -119,7 +129,7 @@
       const item = pipelineFiles[i];
       
       const li = document.createElement('li');
-      li.textContent = `${i + 1}. ${item.file.name}`;
+      li.innerHTML = `${i + 1}. ${item.file.name} <span class="file-size">(${formatBytes(item.file.size)})</span>`;
       fileListEl.appendChild(li);
 
       const wrapper = document.createElement('div');
@@ -275,8 +285,26 @@
       } else if (item.file.type === 'application/pdf') {
         const arr = await item.file.arrayBuffer();
         const src = await PDFLib.PDFDocument.load(arr);
-        const copied = await pdfDoc.copyPages(src, src.getPageIndices());
-        copied.forEach(p => pdfDoc.addPage(p));
+        
+        const embeddedPages = await pdfDoc.embedPages(src.getPageIndices().map(i => src.getPage(i)));
+        
+        const maxW = A4_W - mmToPt(20);
+        const maxH = A4_H - mmToPt(20);
+
+        embeddedPages.forEach(embeddedPage => {
+          const { width: w, height: h } = embeddedPage;
+          const scale = Math.min(1, maxW / w, maxH / h);
+          const drawW = w * scale;
+          const drawH = h * scale;
+
+          const page = pdfDoc.addPage([A4_W, A4_H]);
+          page.drawPage(embeddedPage, {
+            x: (A4_W - drawW) / 2,
+            y: (A4_H - drawH) / 2,
+            width: drawW,
+            height: drawH
+          });
+        });
       }
     }
 
@@ -284,9 +312,26 @@
     const resultBlob = new Blob([bytes], { type: 'application/pdf' });
     
     if (showSizeCheckbox.checked) {
-      printSystemLog(`Payload Output Size: ${(resultBlob.size / 1024).toFixed(1)} KB (Original Total: ${(originalSizeTotal / 1024).toFixed(1)} KB)`);
+      printSystemLog(`Payload Output Size: ${formatBytes(resultBlob.size)} (Original Total: ${formatBytes(originalSizeTotal)})`);
     }
-    triggerDownload(resultBlob, 'processed_portfolio.pdf');
+
+    // Dynamic Default Naming Logic
+    let defaultFileName = 'Merged.pdf';
+    if (files.length === 1) {
+      const originalName = files[0].file.name.replace(/\.[^/.]+$/, '');
+      defaultFileName = `${originalName}_compressed.pdf`;
+    }
+
+    // Interactive Prompt for "Save As" behavior
+    const userSelectedName = prompt('Save PDF As:', defaultFileName);
+    if (userSelectedName === null) return; // User cancelled prompt
+
+    let finalFileName = userSelectedName.trim() || defaultFileName;
+    if (!finalFileName.toLowerCase().endsWith('.pdf')) {
+      finalFileName += '.pdf';
+    }
+
+    triggerDownload(resultBlob, finalFileName);
   }
 
   function printSystemLog(text) {
