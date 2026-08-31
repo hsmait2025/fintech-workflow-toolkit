@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TDS Calculator (India)</title>
+    <title>TDS & Settlement Calculator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
@@ -16,7 +16,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* Replaced fixed 100vh to prevent keyboard-popup clipping on mobile */
             min-height: 100vh;
             margin: 0;
             padding: clamp(16px, 4vw, 32px);
@@ -25,9 +24,8 @@
         .calculator {
             background: #f5faeb;
             padding: clamp(16px, 5vw, 28px);
-            /* Fluid design: Scales beautifully down to 320px widths while maxing out at 440px */
             width: 100%;
-            max-width: 440px;
+            max-width: 500px;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(135, 160, 98, 0.25);
         }
@@ -35,9 +33,46 @@
         .calculator h2 {
             text-align: center;
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             font-size: clamp(18px, 5vw, 22px);
             color: #2c3e1b;
+        }
+
+        /* Tab Switcher */
+        .tab-buttons {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+            background: #e4ebd2;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .tab-buttons button {
+            flex: 1;
+            padding: 8px 4px;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            color: #4a5441;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .tab-buttons button.active {
+            background: #fff;
+            color: #1e2912;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         label {
@@ -50,17 +85,16 @@
 
         input {
             width: 100%;
-            padding: 12px;
-            font-size: 18px;
+            padding: 10px 12px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 14px;
             border-radius: 6px;
             border: 1px solid #b5c4a3;
             text-align: right;
             background: #fff;
             transition: border-color 0.2s, box-shadow 0.2s;
-            /* Ensures comfortable finger tapping target on phones */
-            min-height: 48px;
+            min-height: 44px;
         }
 
         input:focus {
@@ -71,14 +105,13 @@
 
         .tds-buttons {
             display: grid;
-            /* Dynamic columns that step down cleanly if viewports get ultra-thin */
             grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
             gap: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 14px;
         }
 
         .tds-buttons button {
-            min-height: 44px; /* Accessible mobile touch target */
+            min-height: 44px;
             padding: 10px 4px;
             font-size: 14px;
             font-weight: bold;
@@ -105,15 +138,16 @@
             padding: 16px;
             border-radius: 8px;
             border: 1px solid #e2ebd5;
+            margin-top: 8px;
         }
 
         .result p {
-            margin: 10px 0;
-            font-size: 14px;
+            margin: 8px 0;
+            font-size: 13px;
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            flex-wrap: wrap; /* Prevents long numbers from punching out of rows */
+            flex-wrap: wrap;
             gap: 8px;
         }
 
@@ -121,8 +155,27 @@
             margin-top: 0;
         }
 
+        .result p.section-header {
+            font-weight: bold;
+            color: #2c3e1b;
+            border-bottom: 1px solid #dbe6ca;
+            padding-bottom: 4px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .result p.highlight {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1e2912;
+            background: #f0f7e6;
+            padding: 6px 8px;
+            border-radius: 4px;
+        }
+
         .amount {
-            font-size: clamp(16px, 4.5vw, 19px);
+            font-size: 14px;
             font-weight: bold;
             color: #1e2912;
             word-break: break-all;
@@ -144,47 +197,88 @@
 <body>
 
 <div class="calculator">
-    <h2>TDS Calculator (India)</h2>
+    <h2>TDS & Settlement Calculator</h2>
 
-    <label for="amount">Gross Amount (₹)</label>
-    <input type="text" id="amount" placeholder="Enter amount" inputmode="decimal">
-
-    <label>Select TDS Rate</label>
-    <div class="tds-buttons">
-        <button onclick="selectTDS(0.1, this)">0.1%</button>
-        <button onclick="selectTDS(1, this)">1%</button>
-        <button onclick="selectTDS(2, this)">2%</button>
-        <button onclick="selectTDS(10, this)">10%</button>
+    <!-- Navigation Tabs -->
+    <div class="tab-buttons">
+        <button class="active" onclick="switchTab('basic')">Basic TDS</button>
+        <button onclick="switchTab('tally')">Advance Settlement</button>
     </div>
 
-    <div class="result" id="result">
-        <p><span>TDS Amount:</span> <span class="amount">₹0.00</span></p>
-        <p><span>Net Amount Payable:</span> <span class="amount">₹0.00</span></p>
-        <p><span>Net Amount Payable (Rounded):</span> <span class="amount">₹0</span></p>
-        <p class="words">Rupees Zero Only</p>
+    <!-- TAB 1: Standard Basic TDS -->
+    <div id="tab-basic" class="tab-content active">
+        <label for="amount">Gross Amount (₹)</label>
+        <input type="text" id="amount" placeholder="Enter amount" inputmode="decimal">
+
+        <label>Select TDS Rate</label>
+        <div class="tds-buttons" id="basic-tds-buttons">
+            <button onclick="selectBasicTDS(0.1, this)">0.1%</button>
+            <button onclick="selectBasicTDS(1, this)">1%</button>
+            <button onclick="selectBasicTDS(2, this)">2%</button>
+            <button onclick="selectBasicTDS(10, this)">10%</button>
+        </div>
+
+        <div class="result" id="result-basic">
+            <p><span>TDS Amount:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Net Amount Payable:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Net Amount Payable (Rounded):</span> <span class="amount">₹0</span></p>
+            <p class="words">Rupees Zero Only</p>
+        </div>
+    </div>
+
+    <!-- TAB 2: Tally Advance Settlement -->
+    <div id="tab-tally" class="tab-content">
+        <label for="adv-party">Advance Amount (Gross Advance - ₹)</label>
+        <input type="text" id="adv-party" placeholder="e.g., 40,000" inputmode="decimal">
+
+        <label for="inv-before-gst">Actual Gross Invoice Amount (Before GST - ₹)</label>
+        <input type="text" id="inv-before-gst" placeholder="e.g., 60,625" inputmode="decimal">
+
+        <label for="inv-after-gst">Actual Gross Invoice Amount (After GST - ₹)</label>
+        <input type="text" id="inv-after-gst" placeholder="e.g., 71,537.50" inputmode="decimal">
+
+        <label for="tds-rate-input">TDS %</label>
+        <input type="text" id="tds-rate-input" placeholder="e.g., 1" inputmode="decimal">
+
+        <div class="result" id="result-tally">
+            <p class="section-header">1. Advance Stage Breakdown</p>
+            <p><span>Advance Amount:</span> <span class="amount">₹0.00</span></p>
+            <p><span>TDS Amount Deducted:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Amount Paid After TDS:</span> <span class="amount">₹0.00</span></p>
+
+            <p class="section-header">2. Invoice & Journal Entry Stage</p>
+            <p><span>Gross Invoice (Before GST):</span> <span class="amount">₹0.00</span></p>
+            <p><span>Total TDS Deductible (on Taxable Amt):</span> <span class="amount">₹0.00</span></p>
+            <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹0.00</span></p>
+            <p><span>Additional TDS to Deduct in Journal:</span> <span class="amount">₹0.00</span></p>
+
+            <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹0.00</span></p>
+            <p class="words">Rupees Zero Only</p>
+        </div>
     </div>
 </div>
 
 <script>
-    const amountInput = document.getElementById('amount');
-    let currentRate = null;
+    /* -------- Tab Switcher -------- */
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-buttons button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
 
-    // Auto-calculates instantly on typing or paste events for smoother mobile UX
-    amountInput.addEventListener('input', () => {
-        if (currentRate !== null) {
-            runCalculationSequence();
+        if (tabName === 'basic') {
+            document.querySelectorAll('.tab-buttons button')[0].classList.add('active');
+            document.getElementById('tab-basic').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-buttons button')[1].classList.add('active');
+            document.getElementById('tab-tally').classList.add('active');
         }
-    });
+    }
 
-    amountInput.addEventListener('blur', () => {
-        const value = parseIndianNumber(amountInput.value);
-        if (!isNaN(value) && value > 0) {
-            amountInput.value = formatIndian(value);
-        }
-    });
-
+    /* -------- Utility Helpers -------- */
     function parseIndianNumber(value) {
-        return parseFloat(value.replace(/,/g, ''));
+        if (!value) return 0;
+        const cleaned = value.toString().replace(/,/g, '');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
     }
 
     function formatIndian(value, decimals = 2) {
@@ -194,32 +288,36 @@
         });
     }
 
-    function selectTDS(rate, element) {
-        document.querySelectorAll('.tds-buttons button').forEach(btn => {
-            btn.classList.remove('active');
-        });
+    /* -------- Tab 1: Basic Standard TDS -------- */
+    const amountInput = document.getElementById('amount');
+    let basicCurrentRate = null;
+
+    amountInput.addEventListener('input', () => {
+        if (basicCurrentRate !== null) runBasicCalculation();
+    });
+
+    amountInput.addEventListener('blur', () => {
+        const value = parseIndianNumber(amountInput.value);
+        if (value > 0) amountInput.value = formatIndian(value);
+    });
+
+    function selectBasicTDS(rate, element) {
+        document.querySelectorAll('#basic-tds-buttons button').forEach(btn => btn.classList.remove('active'));
         element.classList.add('active');
-        currentRate = rate;
-
-        runCalculationSequence();
+        basicCurrentRate = rate;
+        runBasicCalculation();
     }
 
-    function runCalculationSequence() {
+    function runBasicCalculation() {
         const amount = parseIndianNumber(amountInput.value);
+        if (amount <= 0) return;
 
-        if (isNaN(amount) || amount <= 0) {
-            return;
-        }
-        calculateTDS(amount, currentRate);
-    }
-
-    function calculateTDS(amount, rate) {
-        const tdsAmount = (amount * rate) / 100;
+        const tdsAmount = (amount * basicCurrentRate) / 100;
         const netAmount = amount - tdsAmount;
         const roundedNetAmount = Math.round(netAmount);
         const words = numberToWords(roundedNetAmount);
 
-        document.getElementById('result').innerHTML = `
+        document.getElementById('result-basic').innerHTML = `
             <p><span>TDS Amount:</span> <span class="amount">₹${formatIndian(tdsAmount)}</span></p>
             <p><span>Net Amount Payable:</span> <span class="amount">₹${formatIndian(netAmount)}</span></p>
             <p><span>Net Amount Payable (Rounded):</span> <span class="amount">₹${roundedNetAmount.toLocaleString('en-IN')}</span></p>
@@ -227,7 +325,66 @@
         `;
     }
 
-    /* -------- Number to Words (Indian System) -------- */
+    /* -------- Tab 2: Tally Advance Settlement Mode -------- */
+    const advPartyInput = document.getElementById('adv-party');
+    const invBeforeGstInput = document.getElementById('inv-before-gst');
+    const invAfterGstInput = document.getElementById('inv-after-gst');
+    const tdsRateInput = document.getElementById('tds-rate-input');
+
+    const tallyInputs = [advPartyInput, invBeforeGstInput, invAfterGstInput, tdsRateInput];
+
+    tallyInputs.forEach(input => {
+        input.addEventListener('input', calculateTallySettlement);
+        input.addEventListener('blur', () => {
+            if (input.id !== 'tds-rate-input') {
+                const val = parseIndianNumber(input.value);
+                if (val > 0) input.value = formatIndian(val);
+            }
+        });
+    });
+
+    function calculateTallySettlement() {
+        const advanceAmount = parseIndianNumber(advPartyInput.value);
+        const grossBeforeGst = parseIndianNumber(invBeforeGstInput.value);
+        const grossAfterGst = parseIndianNumber(invAfterGstInput.value);
+        const tdsRate = parseIndianNumber(tdsRateInput.value);
+
+        // Fallback: If "After GST" is empty, default to "Before GST" for calculation
+        const effectiveTotalInvoice = grossAfterGst > 0 ? grossAfterGst : grossBeforeGst;
+
+        // Advance Stage Calculation
+        const advanceTdsAmount = (advanceAmount * tdsRate) / 100;
+        const amountPaidAfterTds = advanceAmount - advanceTdsAmount;
+
+        // Invoice Stage Calculation (TDS applies strictly to amount before GST)
+        const totalInvoiceTds = (grossBeforeGst * tdsRate) / 100;
+        const invoiceAfterTds = effectiveTotalInvoice - totalInvoiceTds;
+
+        // Journal Entry Adjustment & Final Balance
+        const additionalJournalTds = Math.max(0, totalInvoiceTds - advanceTdsAmount);
+        const balanceAmount = invoiceAfterTds - amountPaidAfterTds;
+        const roundedBalance = Math.round(balanceAmount);
+
+        const words = roundedBalance >= 0 ? numberToWords(roundedBalance) : "Negative Balance / Overpaid";
+
+        document.getElementById('result-tally').innerHTML = `
+            <p class="section-header">1. Advance Stage Breakdown</p>
+            <p><span>Advance Amount:</span> <span class="amount">₹${formatIndian(advanceAmount)}</span></p>
+            <p><span>TDS Amount (${tdsRate}%):</span> <span class="amount">₹${formatIndian(advanceTdsAmount)}</span></p>
+            <p><span>Amount Paid After TDS:</span> <span class="amount">₹${formatIndian(amountPaidAfterTds)}</span></p>
+
+            <p class="section-header">2. Invoice & Journal Entry Stage</p>
+            <p><span>Gross Invoice (Before GST):</span> <span class="amount">₹${formatIndian(grossBeforeGst)}</span></p>
+            <p><span>Total TDS Deductible (${tdsRate}%):</span> <span class="amount">₹${formatIndian(totalInvoiceTds)}</span></p>
+            <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹${formatIndian(invoiceAfterTds)}</span></p>
+            <p><span>Additional TDS to Deduct in Journal:</span> <span class="amount">₹${formatIndian(additionalJournalTds)}</span></p>
+
+            <p class="highlight"><span>Balance Amount:</span> <span class="amount">₹${formatIndian(balanceAmount)}</span></p>
+            <p class="words">Rupees ${words} ${roundedBalance >= 0 ? 'Only' : ''}</p>
+        `;
+    }
+
+    /* -------- Indian Currency Number to Words -------- */
     function numberToWords(num) {
         if (num === 0) return "Zero";
 
