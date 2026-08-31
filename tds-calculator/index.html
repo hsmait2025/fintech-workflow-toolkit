@@ -38,7 +38,6 @@
             color: #2c3e1b;
         }
 
-        /* Tab Switcher */
         .tab-buttons {
             display: flex;
             gap: 6px;
@@ -83,7 +82,7 @@
             color: #4a5441;
         }
 
-        input {
+        input[type="text"] {
             width: 100%;
             padding: 10px 12px;
             font-size: 16px;
@@ -97,10 +96,40 @@
             min-height: 44px;
         }
 
-        input:focus {
+        input[type="text"]:focus {
             outline: none;
             border-color: #7c9a51;
             box-shadow: 0 0 0 3px rgba(197, 225, 148, 0.4);
+        }
+
+        /* Radio Group Styling */
+        .radio-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            background: #eef2e3;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #b5c4a3;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e1b;
+            margin-bottom: 0;
+        }
+
+        .radio-option input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+            accent-color: #7c9a51;
+            width: 16px;
+            height: 16px;
         }
 
         .tds-buttons {
@@ -192,6 +221,24 @@
             padding-top: 12px;
             text-align: left;
         }
+
+        .btn-clear {
+            width: 100%;
+            min-height: 44px;
+            background: #e57373;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 14px;
+            transition: background 0.2s ease;
+        }
+
+        .btn-clear:hover {
+            background: #d32f2f;
+        }
     </style>
 </head>
 <body>
@@ -228,18 +275,40 @@
 
     <!-- TAB 2: Tally Advance Settlement -->
     <div id="tab-tally" class="tab-content">
-        <label for="adv-party">Advance Amount (Gross Advance - ₹)</label>
+        <!-- Step 1: Advance Amount -->
+        <label for="adv-party">1. Advance Amount (Gross Advance - ₹)</label>
         <input type="text" id="adv-party" placeholder="e.g., 40,000" inputmode="decimal">
 
-        <label for="inv-before-gst">Actual Gross Invoice Amount (Before GST - ₹)</label>
-        <input type="text" id="inv-before-gst" placeholder="e.g., 60,625" inputmode="decimal">
-
-        <label for="inv-after-gst">Actual Gross Invoice Amount (After GST - ₹)</label>
-        <input type="text" id="inv-after-gst" placeholder="e.g., 71,537.50" inputmode="decimal">
-
-        <label for="tds-rate-input">TDS %</label>
+        <!-- Step 2: TDS Rate -->
+        <label for="tds-rate-input">2. TDS % Rate</label>
         <input type="text" id="tds-rate-input" placeholder="e.g., 1" inputmode="decimal">
 
+        <!-- Step 3: Radio Options -->
+        <label>3. Invoice Type</label>
+        <div class="radio-group">
+            <label class="radio-option">
+                <input type="radio" name="gst-mode" value="without" checked onclick="toggleGstMode()"> Without Before GST
+            </label>
+            <label class="radio-option">
+                <input type="radio" name="gst-mode" value="with" onclick="toggleGstMode()"> With Before GST
+            </label>
+        </div>
+
+        <!-- Dynamic Inputs Based on Radio Selection -->
+        <div id="mode-without-gst">
+            <label for="inv-after-gst-only">Actual Gross Invoice Amount (₹)</label>
+            <input type="text" id="inv-after-gst-only" placeholder="e.g., 60,625" inputmode="decimal">
+        </div>
+
+        <div id="mode-with-gst" style="display: none;">
+            <label for="inv-after-gst-manual">Actual Gross Invoice Amount (After GST - ₹)</label>
+            <input type="text" id="inv-after-gst-manual" placeholder="e.g., 71,537.50" inputmode="decimal">
+
+            <label for="inv-before-gst-manual">Actual Gross Invoice Amount (Before GST - ₹)</label>
+            <input type="text" id="inv-before-gst-manual" placeholder="Auto-calculated @ 18% (editable)" inputmode="decimal">
+        </div>
+
+        <!-- Output Result Section -->
         <div class="result" id="result-tally">
             <p class="section-header">1. Advance Stage Breakdown</p>
             <p><span>Advance Amount:</span> <span class="amount">₹0.00</span></p>
@@ -255,6 +324,9 @@
             <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹0.00</span></p>
             <p class="words">Rupees Zero Only</p>
         </div>
+
+        <!-- Restart / Reset Button -->
+        <button class="btn-clear" onclick="resetCalculator()">Restart / Clear Inputs</button>
     </div>
 </div>
 
@@ -325,16 +397,37 @@
         `;
     }
 
-    /* -------- Tab 2: Tally Advance Settlement Mode -------- */
+    /* -------- Tab 2: Tally Settlement Logic -------- */
     const advPartyInput = document.getElementById('adv-party');
-    const invBeforeGstInput = document.getElementById('inv-before-gst');
-    const invAfterGstInput = document.getElementById('inv-after-gst');
     const tdsRateInput = document.getElementById('tds-rate-input');
 
-    const tallyInputs = [advPartyInput, invBeforeGstInput, invAfterGstInput, tdsRateInput];
+    const invAfterGstOnly = document.getElementById('inv-after-gst-only');
+
+    const invBeforeGstManual = document.getElementById('inv-before-gst-manual');
+    const invAfterGstManual = document.getElementById('inv-after-gst-manual');
+
+    const tallyInputs = [
+        advPartyInput, tdsRateInput, invAfterGstOnly,
+        invBeforeGstManual, invAfterGstManual
+    ];
 
     tallyInputs.forEach(input => {
-        input.addEventListener('input', calculateTallySettlement);
+        input.addEventListener('input', (e) => {
+            const selectedMode = document.querySelector('input[name="gst-mode"]:checked').value;
+            
+            // Auto-calculate Before GST only when typing After GST in 'With Before GST' mode
+            if (e.target.id === 'inv-after-gst-manual' && selectedMode === 'with') {
+                const afterGstVal = parseIndianNumber(invAfterGstManual.value);
+                if (afterGstVal > 0) {
+                    const beforeGstVal = afterGstVal / 1.18; // Default 18% GST math
+                    invBeforeGstManual.value = formatIndian(beforeGstVal);
+                } else {
+                    invBeforeGstManual.value = '';
+                }
+            }
+            calculateTallySettlement();
+        });
+
         input.addEventListener('blur', () => {
             if (input.id !== 'tds-rate-input') {
                 const val = parseIndianNumber(input.value);
@@ -343,24 +436,47 @@
         });
     });
 
+    function toggleGstMode() {
+        const mode = document.querySelector('input[name="gst-mode"]:checked').value;
+        if (mode === 'without') {
+            document.getElementById('mode-without-gst').style.display = 'block';
+            document.getElementById('mode-with-gst').style.display = 'none';
+        } else {
+            document.getElementById('mode-without-gst').style.display = 'none';
+            document.getElementById('mode-with-gst').style.display = 'block';
+        }
+        calculateTallySettlement();
+    }
+
     function calculateTallySettlement() {
         const advanceAmount = parseIndianNumber(advPartyInput.value);
-        const grossBeforeGst = parseIndianNumber(invBeforeGstInput.value);
-        const grossAfterGst = parseIndianNumber(invAfterGstInput.value);
         const tdsRate = parseIndianNumber(tdsRateInput.value);
+        const mode = document.querySelector('input[name="gst-mode"]:checked').value;
 
-        // Fallback: If "After GST" is empty, default to "Before GST" for calculation
+        let grossBeforeGst = 0;
+        let grossAfterGst = 0;
+
+        if (mode === 'without') {
+            // Treat the input directly as both Before and After GST amount
+            const enteredInvoice = parseIndianNumber(invAfterGstOnly.value);
+            grossBeforeGst = enteredInvoice;
+            grossAfterGst = enteredInvoice;
+        } else {
+            grossAfterGst = parseIndianNumber(invAfterGstManual.value);
+            grossBeforeGst = parseIndianNumber(invBeforeGstManual.value);
+        }
+
         const effectiveTotalInvoice = grossAfterGst > 0 ? grossAfterGst : grossBeforeGst;
 
-        // Advance Stage Calculation
+        // 1. Advance Stage Calculations
         const advanceTdsAmount = (advanceAmount * tdsRate) / 100;
         const amountPaidAfterTds = advanceAmount - advanceTdsAmount;
 
-        // Invoice Stage Calculation (TDS applies strictly to amount before GST)
+        // 2. Invoice Stage Calculations (TDS applied on Before-GST Amount)
         const totalInvoiceTds = (grossBeforeGst * tdsRate) / 100;
         const invoiceAfterTds = effectiveTotalInvoice - totalInvoiceTds;
 
-        // Journal Entry Adjustment & Final Balance
+        // 3. Journal & Balance Adjustments
         const additionalJournalTds = Math.max(0, totalInvoiceTds - advanceTdsAmount);
         const balanceAmount = invoiceAfterTds - amountPaidAfterTds;
         const roundedBalance = Math.round(balanceAmount);
@@ -379,9 +495,21 @@
             <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹${formatIndian(invoiceAfterTds)}</span></p>
             <p><span>Additional TDS to Deduct in Journal:</span> <span class="amount">₹${formatIndian(additionalJournalTds)}</span></p>
 
-            <p class="highlight"><span>Balance Amount:</span> <span class="amount">₹${formatIndian(balanceAmount)}</span></p>
+            <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹${formatIndian(balanceAmount)}</span></p>
             <p class="words">Rupees ${words} ${roundedBalance >= 0 ? 'Only' : ''}</p>
         `;
+    }
+
+    /* -------- Reset Functionality -------- */
+    function resetCalculator() {
+        advPartyInput.value = '';
+        tdsRateInput.value = '';
+        document.querySelectorAll('input[name="gst-mode"]')[0].checked = true;
+        invAfterGstOnly.value = '';
+        invBeforeGstManual.value = '';
+        invAfterGstManual.value = '';
+
+        toggleGstMode();
     }
 
     /* -------- Indian Currency Number to Words -------- */
