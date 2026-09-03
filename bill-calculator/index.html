@@ -9,11 +9,11 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-/* ─── Reset & Base ─────────────────────────────────────────────── */
+/* ─── Reset & Base (+10% Enlarged UI) ─────────────────────────── */
 :root {
-  --col-left: 520px;
-  --grid-max-h: 320px;
-  --textarea-h: 260px;
+  --col-left: 462px;         /* 420px * 1.1 */
+  --grid-max-h: 242px;       /* 220px * 1.1 */
+  --textarea-h: 198px;       /* 180px * 1.1 */
   --accent: #007bff;
   --accent-dark: #0056b3;
   --danger: #dc3545;
@@ -25,33 +25,33 @@
   --border: #cfd6dd;
   --text: #222;
   --muted: #666;
-  --radius: 6px;
+  --radius: 6px;             /* 5px * 1.1 */
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: #dbdbdb;
+  background: #e9ecef;
   margin: 0;
-  padding: 12px;
-  font-size: 14px;
+  padding: 9px;              /* 8px * 1.1 */
+  font-size: 13.2px;         /* 12px * 1.1 */
   font-family: Arial, sans-serif;
   color: var(--text);
 }
 
 .container {
-  max-width: 1800px;
+  max-width: 100%;
   margin: auto;
-  background: rgb(245, 245, 245);
-  padding: 14px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: #ffffff;
+  padding: 11px 15px;        /* ~10px 14px * 1.1 */
+  border-radius: 7px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
 h1 {
   text-align: center;
-  margin: 0 0 12px;
-  font-size: 24px;
+  margin: 0 0 7px;           /* 6px * 1.1 */
+  font-size: 20px;           /* 18px * 1.1 */
   color: var(--text);
 }
 
@@ -59,21 +59,21 @@ h1 {
 .instructions {
   background: #fff8db;
   border: 1px solid #f0df9b;
-  padding: 10px 12px;
+  padding: 4.5px 9px;        /* ~4px 8px * 1.1 */
   border-radius: var(--radius);
-  margin-bottom: 12px;
-  line-height: 1.5;
-  font-size: 13px;
+  margin-bottom: 9px;        /* 8px * 1.1 */
+  line-height: 1.3;
+  font-size: 12.1px;         /* 11px * 1.1 */
 }
 
 /* ─── Notification Toast ───────────────────────────────────────── */
 #toast {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 10px 16px;
+  bottom: 18px;              /* 16px * 1.1 */
+  right: 18px;               /* 16px * 1.1 */
+  padding: 7px 13px;         /* ~6px 12px * 1.1 */
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   font-weight: bold;
   color: white;
   background: #333;
@@ -92,15 +92,15 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 9px;                  /* 8px * 1.1 */
+  margin-bottom: 9px;        /* 8px * 1.1 */
 }
 .mode-switch {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 .mode-btn {
-  padding: 10px 16px;
+  padding: 6px 11px;         /* ~5px 10px * 1.1 */
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
@@ -108,7 +108,7 @@ h1 {
   background: #dfe3e8;
   color: #333;
   transition: background 0.2s, color 0.2s;
-  font-size: 14px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   white-space: nowrap;
 }
 .mode-btn.active { background: var(--accent); color: white; }
@@ -117,30 +117,30 @@ h1 {
 .toggle-option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;                  /* 6px * 1.1 */
   background: #dfe3e8;
-  padding: 10px 14px;
+  padding: 6px 11px;         /* ~5px 10px * 1.1 */
   border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
   user-select: none;
-  font-size: 14px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   white-space: nowrap;
 }
 .toggle-option input {
-  width: 16px;
-  height: 16px;
+  width: 15px;               /* 14px * 1.1 */
+  height: 15px;              /* 14px * 1.1 */
   cursor: pointer;
   margin: 0;
 }
 
 /* ─── Header Input ─────────────────────────────────────────────── */
-.header-input { margin-bottom: 12px; }
-.header-input label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
+.header-input { margin-bottom: 9px; }
+.header-input label { display: block; margin-bottom: 3px; font-weight: bold; font-size: 12.1px; }
 .header-input input {
   width: 100%;
-  padding: 12px;
-  font-size: 16px;
+  padding: 7px 9px;          /* ~6px 8px * 1.1 */
+  font-size: 14.3px;         /* 13px * 1.1 */
   border: 1px solid var(--border);
   border-radius: var(--radius);
   outline: none;
@@ -148,27 +148,27 @@ h1 {
 }
 .header-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
 
-/* ─── Responsive Layout (Mobile-First) ─────────────────────────── */
+/* ─── Responsive Layout ────────────────────────────────────────── */
 .triple-entry {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 9px;                  /* 8px * 1.1 */
+  margin-bottom: 9px;        /* 8px * 1.1 */
   align-items: start;
 }
-.entry-box label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 13px; }
+.entry-box label { display: block; margin-bottom: 4.5px; font-weight: bold; font-size: 12.1px; }
 
 /* ─── Textarea ─────────────────────────────────────────────────── */
 textarea {
   width: 100%;
   height: var(--textarea-h);
-  padding: 12px;
-  font-size: 16px;
+  padding: 7px;              /* ~6px * 1.1 */
+  font-size: 14.3px;         /* 13px * 1.1 */
   border: 1px solid var(--border);
   border-radius: var(--radius);
   resize: vertical;
   outline: none;
-  line-height: 1.6;
+  line-height: 1.4;
   font-family: Arial, sans-serif;
 }
 textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
@@ -176,35 +176,35 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 /* ─── Ref Toolbar ──────────────────────────────────────────────── */
 .ref-toolbar {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 7px;        /* 6px * 1.1 */
   flex-wrap: wrap;
 }
 .auto-btn {
   background: #6c757d;
   color: white;
   border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  font-size: 12px;
+  padding: 4.5px 9px;        /* ~4px 8px * 1.1 */
+  border-radius: 4px;
+  font-size: 12.1px;         /* 11px * 1.1 */
   font-weight: bold;
   cursor: pointer;
   transition: background 0.15s;
 }
 .auto-btn:hover { background: #5a6268; }
 .date-picker {
-  padding: 7px 8px;
+  padding: 3.5px 7px;        /* ~3px 6px * 1.1 */
   border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 12px;
+  border-radius: 4px;
+  font-size: 12.1px;         /* 11px * 1.1 */
 }
 .counter-box {
   background: #f1f3f5;
   border: 1px solid #d6dbe1;
-  padding: 7px 10px;
-  border-radius: 5px;
-  font-size: 12px;
+  padding: 4.5px 7px;        /* ~4px 6px * 1.1 */
+  border-radius: 4px;
+  font-size: 12.1px;         /* 11px * 1.1 */
   font-weight: bold;
 }
 
@@ -220,25 +220,25 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 
 .bill-entry-header {
   display: grid;
-  grid-template-columns: 40px 1.1fr 1fr 0.9fr 1fr 40px;
+  grid-template-columns: 39px 1fr 1fr 0.9fr 0.9fr 33px; /* Scaled slightly */
   background: var(--accent);
   color: white;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 12.1px;         /* 11px * 1.1 */
   position: sticky;
   top: 0;
   z-index: 1;
 }
-.bill-entry-header div { padding: 8px 4px; text-align: center; }
+.bill-entry-header div { padding: 6px 2px; text-align: center; }
 
-.bill-row { display: grid; grid-template-columns: 40px 1.1fr 1fr 0.9fr 1fr 40px; }
+.bill-row { display: grid; grid-template-columns: 39px 1fr 1fr 0.9fr 0.9fr 33px; }
 .bill-row:nth-child(even) { background: #f9fbff; }
 .bill-row input {
   border: none;
   border-bottom: 1px solid #e1e5ea;
   border-right: 1px solid #e1e5ea;
-  padding: 10px 6px;
-  font-size: 13px;
+  padding: 4.5px 4.5px;      /* ~4px * 1.1 */
+  font-size: 13.2px;         /* 12px * 1.1 */
   outline: none;
   width: 100%;
   min-width: 0;
@@ -263,60 +263,60 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   color: white;
   cursor: pointer;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
-  min-height: 38px;
 }
 .delete-btn:hover { background: #b02a37; }
 
 /* ─── Cross-check Status ───────────────────────────────────────── */
 .crosscheck-status {
-  margin-top: 8px;
-  padding: 12px;
+  margin-top: 4.5px;
+  padding: 7px;              /* ~6px * 1.1 */
   border-radius: var(--radius);
   font-weight: bold;
   text-align: center;
   border: 1px solid #ccc;
   background: var(--surface);
   transition: background 0.2s, color 0.2s;
-  font-size: 13px;
+  font-size: 12.1px;         /* 11px * 1.1 */
 }
 .match    { color: var(--success); border-color: var(--success); background: #f0fff4; }
 .mismatch { color: var(--danger);  border-color: var(--danger);  background: #fff5f5; }
 
 /* ─── Table Controls ───────────────────────────────────────────── */
 .table-controls {
-  margin-top: 12px;
+  margin-top: 9px;           /* 8px * 1.1 */
   background: var(--surface);
   border: 1px solid #dfe3e8;
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 7px 11px;         /* ~6px 10px * 1.1 */
   display: flex;
-  gap: 15px;
+  gap: 11px;                 /* 10px * 1.1 */
   flex-wrap: wrap;
   align-items: center;
 }
 .control-group { 
   display: flex; 
   align-items: center; 
-  gap: 8px;
-  flex: 1 1 140px;
+  gap: 7px;
+  flex: 1 1 121px;
 }
 .control-group.width-control-group {
-  flex: 2 1 280px;
+  flex: 2 1 220px;
 }
-.control-group label { font-size: 13px; font-weight: bold; white-space: nowrap; }
+.control-group label { font-size: 12.1px; font-weight: bold; white-space: nowrap; }
 .control-group input[type="number"] {
   width: 100%;
-  max-width: 80px;
-  padding: 8px;
+  max-width: 66px;          /* 60px * 1.1 */
+  padding: 4.5px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 4px;
   font-family: Arial, sans-serif;
+  font-size: 12.1px;
 }
 .control-group input[type="range"] {
   flex-grow: 1;
@@ -326,18 +326,18 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 
 /* ─── Responsive Action Buttons ────────────────────────────────── */
 .buttons {
-  margin-top: 12px;
+  margin-top: 9px;           /* 8px * 1.1 */
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;                  /* ~6px * 1.1 */
 }
 button {
-  padding: 10px 16px;
+  padding: 7px 13px;         /* ~6px 12px * 1.1 */
   border: none;
   border-radius: var(--radius);
   font-weight: bold;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   transition: opacity 0.15s, transform 0.1s;
   display: inline-flex;
   align-items: center;
@@ -357,9 +357,9 @@ button:active  { transform: scale(0.97); }
 
 /* ─── Summary Cards ────────────────────────────────────────────── */
 .summary {
-  margin-top: 14px;
+  margin-top: 9px;           /* 8px * 1.1 */
   display: flex;
-  gap: 10px;
+  gap: 9px;                  /* 8px * 1.1 */
   flex-wrap: wrap;
 }
 .card {
@@ -367,39 +367,39 @@ button:active  { transform: scale(0.97); }
   background: var(--surface);
   border: 1px solid #dee2e6;
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 7px 11px;         /* ~6px 10px * 1.1 */
   text-align: center;
-  min-width: 140px;
+  min-width: 110px;          /* 100px * 1.1 */
 }
-.card h2 { margin: 0; font-size: 13px; color: var(--muted); }
-.card p  { font-size: 20px; font-weight: bold; margin: 6px 0 0; color: var(--text); }
+.card h2 { margin: 0; font-size: 12.1px; color: var(--muted); }
+.card p  { font-size: 18px; font-weight: bold; margin: 2px 0 0; color: var(--text); } /* 16px * 1.1 */
 
 /* ─── Expense Head Subtotals Section ───────────────────────────── */
 .expense-subtotals-box {
-  margin-top: 14px;
+  margin-top: 9px;           /* 8px * 1.1 */
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 9px;              /* 8px * 1.1 */
 }
 .expense-subtotals-box h3 {
-  margin: 0 0 10px;
-  font-size: 14px;
+  margin: 0 0 7px;
+  font-size: 13.2px;         /* 12px * 1.1 */
   color: #334155;
   border-bottom: 1px solid #cbd5e1;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 .expense-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
 }
 .expense-chip {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
+  padding: 3.5px 9px;        /* ~3px 8px * 1.1 */
+  border-radius: 13px;
+  font-size: 12.1px;         /* 11px * 1.1 */
   font-weight: bold;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
@@ -408,61 +408,46 @@ button:active  { transform: scale(0.97); }
   margin-left: 4px;
 }
 
-/* ─── Preview Table ────────────────────────────────────────────── */
+/* ─── Preview Table Box ────────────────────────────────────────── */
 .table-wrapper { 
-  overflow-x: auto;
-  margin-top: 14px; 
+  overflow: auto;
+  margin-top: 9px;           /* 8px * 1.1 */
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  max-height: 308px;         /* 280px * 1.1 (keeps frame constrained) */
 }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.2px; } /* 12px * 1.1 */
 th, td {
   border: 2px solid black;
-  padding: 7px 8px;
+  padding: 4.5px 7px;        /* ~4px 6px * 1.1 */
   text-align: center;
   white-space: nowrap;
   color: black;
-  min-width: 120px;
-  height: 40px;
+  min-width: 99px;           /* 90px * 1.1 */
+  height: 31px;              /* 28px * 1.1 */
 }
 th { background: #ffffff; color: black; }
-.main-header { background: #ffffff; color: black; font-size: 18px; }
+.main-header { background: #ffffff; color: black; font-size: 16.5px; } /* 15px * 1.1 */
 .bill-header-row { background: #ffffff; font-weight: bold; }
 .bill-date   { background: #ffffff; font-weight: bold; }
 .bill-total  { background: #f3f5f7; font-weight: bold; }
-.grand-total { background: #dff3e4; font-weight: bold; font-size: 15px; }
+.grand-total { background: #dff3e4; font-weight: bold; font-size: 14.3px; } /* 13px * 1.1 */
 .vertical-label { background: #f5f6f8; font-weight: bold; }
 .autofit { table-layout: auto !important; width: auto !important; }
 
 /* ─── Responsive Media Breakpoints ─────────────────────────────── */
-@media (max-width: 576px) {
-  .buttons button {
-    flex: 1 1 calc(50% - 4px);
-  }
-}
-
-@media (min-width: 768px) {
-  body { padding: 20px; }
-  .container { padding: 24px; }
-  .card {
-    flex: 1;
-    padding: 16px;
-  }
-  .card p { font-size: 24px; }
-}
-
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .triple-entry {
     grid-template-columns: var(--col-left) 1fr 1fr;
   }
 }
 
-/* ─── Print ────────────────────────────────────────────────────── */
+/* ─── Print Settings (Preserved Exactly) ───────────────────────── */
 @media print {
   body { background: white !important; padding: 0; margin: 0; }
   .container { box-shadow: none !important; background: transparent !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
   .no-print, .container > *:not(.table-wrapper) { display: none !important; }
-  .table-wrapper { display: block !important; margin: 0; padding: 0; border: none; }
+  .table-wrapper { display: block !important; margin: 0; padding: 0; border: none; max-height: none !important; overflow: visible !important; }
   table { width: 100%; }
 }
 </style>
@@ -477,10 +462,8 @@ th { background: #ffffff; color: black; }
   <h1>Bill Entry Tool</h1>
 
   <div class="instructions">
-    <strong>Bill Amount Format:</strong><br>
-    Amounts line by line &nbsp;|&nbsp; Blank line = next bill &nbsp;|&nbsp;
-    Supports calculations like <strong>120+45+10</strong><br>
-    <strong>Tip:</strong> Press <kbd>Ctrl+Enter</kbd> anywhere to Process. Data auto-saves in browser.
+    <strong>Bill Amount Format:</strong> Amounts line by line &nbsp;|&nbsp; Blank line = next bill &nbsp;|&nbsp;
+    Supports calculations like <strong>120+45+10</strong> &nbsp;|&nbsp; <strong>Tip:</strong> Press <kbd>Ctrl+Enter</kbd> to Process.
   </div>
 
   <div class="toolbar-row">
@@ -527,9 +510,9 @@ th { background: #ffffff; color: black; }
     </div>
 
     <div class="entry-box">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
         <label style="margin: 0;">Bill Amount Entry</label>
-        <div class="counter-box" style="padding: 4px 8px; font-size: 11px;">Total Bills : <span id="textBillCounter">0</span></div>
+        <div class="counter-box" style="padding: 2px 6px; font-size: 11px;">Total Bills : <span id="textBillCounter">0</span></div>
       </div>
       <textarea id="billAmounts" placeholder="Enter bill amounts here..."></textarea>
     </div>
@@ -575,7 +558,7 @@ th { background: #ffffff; color: black; }
   <div class="expense-subtotals-box">
     <h3>Expense Head Subtotals</h3>
     <div class="expense-chips" id="expenseChipsContainer">
-      <div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>
+      <div style="color: var(--muted); font-size: 12px; font-style: italic;">No data processed yet.</div>
     </div>
   </div>
 
@@ -1268,7 +1251,7 @@ function clearAll() {
   document.getElementById("billCount").textContent  = "0";
   document.getElementById("grandTotal").textContent = "0";
   document.getElementById("textBillCounter").textContent = "0";
-  document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>';
+  document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 12px; font-style: italic;">No data processed yet.</div>';
 
   const cs = document.getElementById("crosscheckStatus");
   cs.textContent = "Waiting for Crosscheck…";
