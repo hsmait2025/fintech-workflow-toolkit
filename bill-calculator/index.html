@@ -11,7 +11,7 @@
 <style>
 /* ─── Reset & Base ─────────────────────────────────────────────── */
 :root {
-  --col-left: 440px;
+  --col-left: 520px;
   --grid-max-h: 320px;
   --textarea-h: 260px;
   --accent: #007bff;
@@ -217,9 +217,10 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
   background: white;
   max-height: var(--grid-max-h);
 }
+
 .bill-entry-header {
   display: grid;
-  grid-template-columns: 44px 1fr 1fr 1fr 44px;
+  grid-template-columns: 40px 1.1fr 1fr 0.9fr 1fr 40px;
   background: var(--accent);
   color: white;
   font-weight: bold;
@@ -230,24 +231,29 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,123,2
 }
 .bill-entry-header div { padding: 8px 4px; text-align: center; }
 
-.bill-row { display: grid; grid-template-columns: 44px 1fr 1fr 1fr 44px; }
+.bill-row { display: grid; grid-template-columns: 40px 1.1fr 1fr 0.9fr 1fr 40px; }
 .bill-row:nth-child(even) { background: #f9fbff; }
 .bill-row input {
   border: none;
   border-bottom: 1px solid #e1e5ea;
   border-right: 1px solid #e1e5ea;
   padding: 10px 6px;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   width: 100%;
   min-width: 0;
   font-family: Arial, sans-serif;
-  autocomplete: off;
 }
 .bill-row input.sno-input {
   text-align: center;
   background: #f1f3f5;
   color: #555;
+  font-weight: bold;
+}
+.bill-row input.amount-sum-input {
+  text-align: right;
+  background: #f8f9fa;
+  color: #0056b3;
   font-weight: bold;
 }
 .bill-row input:focus { background: #edf4ff; }
@@ -514,6 +520,7 @@ th { background: #ffffff; color: black; }
           <div>Invoice Number</div>
           <div>Expense Head</div>
           <div>Date</div>
+          <div>Bill Amount</div>
           <div>Del</div>
         </div>
       </div>
@@ -682,8 +689,8 @@ function restoreFromStorage() {
     if (amounts || crosscheck) {
       checkCrossTotal();
     }
-    // MODIFICATION: Sync text area counter on app init load
     updateTextBillCounter();
+    updateBillAmountSums();
   } catch (e) {}
 }
 
@@ -700,6 +707,7 @@ function createBillRow(invoice = "", expense = "", date = "") {
     <input type="text" class="invoice-input" autocomplete="off">
     <input type="text" class="expense-input" autocomplete="off">
     <input type="text" class="date-input"    autocomplete="off">
+    <input type="text" class="amount-sum-input" readonly tabindex="-1" value="0">
     <button class="delete-btn" onclick="deleteRow(this)">✕</button>
   `;
 
@@ -710,11 +718,12 @@ function createBillRow(invoice = "", expense = "", date = "") {
   grid.appendChild(row);
   updateSNos();
 
-  row.querySelectorAll("input:not(.sno-input)").forEach(inp => {
+  row.querySelectorAll("input:not(.sno-input):not(.amount-sum-input)").forEach(inp => {
     inp.addEventListener("keydown", handleNavigation);
     inp.addEventListener("change",  saveToStorage);
   });
 
+  updateBillAmountSums();
   row.scrollIntoView({ block: "end", behavior: "smooth" });
 }
 
@@ -725,6 +734,7 @@ function deleteRow(btn) {
   const idx  = Array.from(rows).indexOf(row);
   row.remove();
   updateSNos();
+  updateBillAmountSums();
   saveToStorage();
 
   const remaining = document.querySelectorAll(".bill-row");
@@ -737,7 +747,6 @@ function updateSNos() {
     const sno = row.querySelector(".sno-input");
     if (sno) sno.value = i + 1;
   });
-  // MODIFICATION: Target updated Total Invoices container element
   document.getElementById("headerCounter").innerText =
     document.querySelectorAll(".bill-row").length;
 }
@@ -784,7 +793,7 @@ function fmtDate(d) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MODIFICATION: TEXTAREA BILL COUNT ENGINE
+   TEXTAREA BILL COUNT & AMOUNT SUM SYNCHRONIZER
 ═══════════════════════════════════════════════════════════════ */
 function updateTextBillCounter() {
   const raw = document.getElementById("billAmounts").value.trim();
@@ -794,6 +803,29 @@ function updateTextBillCounter() {
   }
   const blocks = parseAmountBlocks(raw);
   document.getElementById("textBillCounter").textContent = blocks.length;
+}
+
+function updateBillAmountSums() {
+  const raw = document.getElementById("billAmounts").value.trim();
+  const blocks = raw ? parseAmountBlocks(raw) : [];
+  
+  let rows = document.querySelectorAll(".bill-row");
+
+  // Dynamically populate row instances whenever amounts exceed active rows
+  while (rows.length < blocks.length) {
+    createBillRow();
+    rows = document.querySelectorAll(".bill-row");
+  }
+
+  rows.forEach((row, i) => {
+    const sumInput = row.querySelector(".amount-sum-input");
+    if (!sumInput) return;
+    if (i < blocks.length) {
+      sumInput.value = fmtValue(blocks[i].total);
+    } else {
+      sumInput.value = "0";
+    }
+  });
 }
 
 function parseDMY(str) {
@@ -908,8 +940,8 @@ function enableCalculation(id) {
     ta.value = val.substring(0, lineStart) + replacement + "\n" + val.substring(end);
     ta.selectionStart = ta.selectionEnd = lineStart + replacement.length + 1;
     checkCrossTotal();
-    // MODIFICATION: Keep amount block track on custom inline execution
     updateTextBillCounter();
+    updateBillAmountSums();
     saveToStorage();
   });
 }
@@ -951,8 +983,10 @@ function checkCrossTotal() {
   const el = document.getElementById(id);
   el.addEventListener("input", () => { 
     checkCrossTotal(); 
-    // MODIFICATION: Keep live count metrics synchronized as they write
-    if (id === "billAmounts") updateTextBillCounter();
+    if (id === "billAmounts") {
+      updateTextBillCounter();
+      updateBillAmountSums();
+    }
     saveToStorage(); 
   });
 });
@@ -1200,8 +1234,8 @@ function processData() {
   });
 
   checkCrossTotal();
-  // MODIFICATION: Sync textbox counter display upon execution
   updateTextBillCounter();
+  updateBillAmountSums();
   showToast("Table generated successfully!", "success");
 }
 
@@ -1223,7 +1257,6 @@ function clearAll() {
   document.getElementById("tableBody").innerHTML = "";
   document.getElementById("billCount").textContent  = "0";
   document.getElementById("grandTotal").textContent = "0";
-  // MODIFICATION: Clear reactive textbox counter
   document.getElementById("textBillCounter").textContent = "0";
   document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 13px; font-style: italic;">No data processed yet.</div>';
 
