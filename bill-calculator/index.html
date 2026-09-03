@@ -670,28 +670,37 @@ function restoreFromStorage() {
     const billsRaw   = localStorage.getItem(LS_KEYS.bills);
     const expToggle  = localStorage.getItem(LS_KEYS.expToggle);
 
-    if (amounts)    document.getElementById("billAmounts").value    = amounts;
-    if (crosscheck) document.getElementById("crossCheckBox").value  = crosscheck;
-    if (title)      document.getElementById("tableTitle").value     = title;
+    if (amounts    !== null) document.getElementById("billAmounts").value    = amounts;
+    if (crosscheck !== null) document.getElementById("crossCheckBox").value  = crosscheck;
+    if (title      !== null) document.getElementById("tableTitle").value     = title;
     
     if (expToggle !== null) {
       document.getElementById("toggleExpenseHead").checked = (expToggle === "1");
       state.showExpenseHead = (expToggle === "1");
     }
 
+    const grid = document.getElementById("billEntryGrid");
+    grid.querySelectorAll(".bill-row").forEach(r => r.remove());
+
     if (billsRaw) {
       const bills = JSON.parse(billsRaw);
-      const grid = document.getElementById("billEntryGrid");
-      grid.querySelectorAll(".bill-row").forEach(r => r.remove());
-      bills.forEach(b => createBillRow(b.invoice, b.expense, b.date));
+      if (Array.isArray(bills) && bills.length > 0) {
+        bills.forEach(b => createBillRow(b.invoice, b.expense, b.date));
+      } else {
+        createBillRow();
+      }
+    } else {
+      createBillRow();
     }
 
     if (amounts || crosscheck) {
       checkCrossTotal();
     }
     updateTextBillCounter();
-    updateBillAmountSums();
-  } catch (e) {}
+    updateBillAmountSums(false);
+  } catch (e) {
+    console.error("Error restoring storage:", e);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -723,7 +732,7 @@ function createBillRow(invoice = "", expense = "", date = "") {
     inp.addEventListener("change",  saveToStorage);
   });
 
-  updateBillAmountSums();
+  updateBillAmountSums(false);
   row.scrollIntoView({ block: "end", behavior: "smooth" });
 }
 
@@ -734,7 +743,7 @@ function deleteRow(btn) {
   const idx  = Array.from(rows).indexOf(row);
   row.remove();
   updateSNos();
-  updateBillAmountSums();
+  updateBillAmountSums(false);
   saveToStorage();
 
   const remaining = document.querySelectorAll(".bill-row");
@@ -805,16 +814,17 @@ function updateTextBillCounter() {
   document.getElementById("textBillCounter").textContent = blocks.length;
 }
 
-function updateBillAmountSums() {
+function updateBillAmountSums(autoCreate = true) {
   const raw = document.getElementById("billAmounts").value.trim();
   const blocks = raw ? parseAmountBlocks(raw) : [];
   
   let rows = document.querySelectorAll(".bill-row");
 
-  // Dynamically populate row instances whenever amounts exceed active rows
-  while (rows.length < blocks.length) {
-    createBillRow();
-    rows = document.querySelectorAll(".bill-row");
+  if (autoCreate) {
+    while (rows.length < blocks.length) {
+      createBillRow();
+      rows = document.querySelectorAll(".bill-row");
+    }
   }
 
   rows.forEach((row, i) => {
@@ -941,7 +951,7 @@ function enableCalculation(id) {
     ta.selectionStart = ta.selectionEnd = lineStart + replacement.length + 1;
     checkCrossTotal();
     updateTextBillCounter();
-    updateBillAmountSums();
+    updateBillAmountSums(true);
     saveToStorage();
   });
 }
@@ -985,7 +995,7 @@ function checkCrossTotal() {
     checkCrossTotal(); 
     if (id === "billAmounts") {
       updateTextBillCounter();
-      updateBillAmountSums();
+      updateBillAmountSums(true);
     }
     saveToStorage(); 
   });
@@ -1235,7 +1245,7 @@ function processData() {
 
   checkCrossTotal();
   updateTextBillCounter();
-  updateBillAmountSums();
+  updateBillAmountSums(false);
   showToast("Table generated successfully!", "success");
 }
 
@@ -1298,7 +1308,6 @@ function exportExcel() {
    DOM INITIALIZATION SETUP
 ═══════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
-  createBillRow();
   restoreFromStorage();
   
   window.addEventListener("keydown", (e) => {
