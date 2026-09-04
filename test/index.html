@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>Grocery Calc POS</title>
+
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --surface-2: #2c2c2e;
+      --surface-3: #3a3a3c;
+      --key-bg: #2c2c2e;
+      --key-active: #48484a;
+
+      --text: #ffffff;
+      --muted: #8e8e93;
+
+      --blue: #0a84ff;
+      --blue-soft: #64d2ff;
+      --green: #30d158;
+      --orange: #ff9f0a;
+      --red: #ff453a;
+      --yellow: #ffd60a;
+      --purple: #bf5af2;
+
+      --border: #1c1c1e;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+
+      --page-pad: clamp(10px, 3vw, 16px);
+      --key-gap: clamp(7px, 2.2vw, 10px);
+      --key-min-height: 58px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "SF Pro Text",
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .view-container {
+      width: 100%;
+      height: 100dvh;
+      height: 100svh;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      padding-top: var(--safe-top);
+      padding-right: var(--safe-right);
+      padding-left: var(--safe-left);
+      background: var(--bg);
+    }
+
+    /* =========================================================
+       TOP BAR
+       ========================================================= */
+
+    .top-cart-bar {
+      min-height: 48px;
+      padding: 7px var(--page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid #29292b;
+    }
+
+    .vendor-mini {
+      min-width: 0;
+    }
+
+    .vendor-quote-label {
+      margin-bottom: 1px;
+      color: var(--muted);
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.75px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .vendor-quote-price {
+      color: var(--blue-soft);
+      font-size: 0.98rem;
+      font-weight: 700;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .view-cart-btn {
+      min-height: 36px;
+      max-width: 58%;
+      padding: 5px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      border-radius: 18px;
+      background: var(--blue);
+      color: #fff;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .view-cart-btn:active {
+      transform: scale(0.97);
+      opacity: 0.88;
+    }
+
+    .cart-btn-title {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.7rem;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .cart-btn-sub {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.55rem;
+      font-weight: 500;
+      line-height: 1.15;
+      opacity: 0.86;
+    }
+
+    /* =========================================================
+       HOME INFORMATION PANEL
+       This area is flexible. The keypad is protected below it.
+       ========================================================= */
+
+    .top-window-60 {
+      min-height: 0;
+      padding: clamp(10px, 2.8vw, 16px) var(--page-pad) 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--surface);
+      border-bottom: 1px solid #29292b;
+      scrollbar-width: none;
+    }
+
+    .top-window-60::-webkit-scrollbar,
+    .cart-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .display-section {
+      flex: 1 1 auto;
+      min-height: 108px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .section-label {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .main-display {
+      min-width: 0;
+      text-align: right;
+    }
+
+    .price-display {
+      width: 100%;
+      overflow: hidden;
+      color: var(--text);
+      font-size: clamp(2.65rem, 11vw, 4.25rem);
+      font-weight: 400;
+      letter-spacing: -0.055em;
+      line-height: 0.98;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .price-display.has-input {
+      color: var(--blue-soft);
+    }
+
+    .display-meta {
+      margin-top: 8px;
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .weight-subdisplay {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .quote-subdisplay {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 500;
+    }
+
+    .selection-area {
+      flex: 0 0 auto;
+    }
+
+    .selector-group + .selector-group {
+      margin-top: 10px;
+    }
+
+    .weight-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .target-weight-row-custom {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .weight-btn {
+      min-width: 0;
+      min-height: 40px;
+      padding: 7px 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #363638;
+      border-radius: 11px;
+      background: #222224;
+      color: #a9a9ae;
+      font-size: clamp(0.68rem, 2.7vw, 0.78rem);
+      font-weight: 650;
+      line-height: 1;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .weight-btn:active {
+      transform: scale(0.96);
+    }
+
+    .weight-btn.base-selected {
+      border-color: var(--blue);
+      background: rgba(10, 132, 255, 0.24);
+      color: #fff;
+    }
+
+    .target-btn:active {
+      background: rgba(48, 209, 88, 0.34);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .custom-inline-btn {
+      border-color: rgba(255, 159, 10, 0.7);
+      background: rgba(255, 159, 10, 0.16);
+      color: #ffb340;
+    }
+
+    /* =========================================================
+       KEYPAD
+       Protected from information-panel shrinking/cropping.
+       ========================================================= */
+
+    .bottom-numpad-40 {
+      width: 100%;
+      height: clamp(292px, 43dvh, 390px);
+      min-height: 292px;
+      flex-shrink: 0;
+      padding:
+        8px var(--page-pad)
+        max(10px, var(--safe-bottom));
+      display: flex;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .keypad-container {
+      width: min(100%, 410px);
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(4, minmax(var(--key-min-height), 1fr));
+      gap: var(--key-gap);
+    }
+
+    .key {
+      min-width: 0;
+      min-height: var(--key-min-height);
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: clamp(18px, 6vw, 30px);
+      background: var(--key-bg);
+      color: var(--text);
+      font-size: clamp(1.55rem, 7vw, 2.15rem);
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .key:active {
+      background: var(--key-active);
+      transform: scale(0.965);
+    }
+
+    .key.action-clear-all {
+      background: #a5a5a5;
+      color: #000;
+      font-weight: 600;
+    }
+
+    .key.action-clear-all:active {
+      background: #c5c5c5;
+    }
+
+    .key.action-backspace {
+      background: var(--orange);
+      color: #000;
+      font-size: clamp(1.35rem, 6vw, 1.9rem);
+      font-weight: 600;
+    }
+
+    .key.action-backspace:active {
+      background: #ffb340;
+    }
+
+    /* =========================================================
+       CUSTOM WEIGHT SCREEN
+       ========================================================= */
+
+    #customWeightView {
+      display: none;
+      grid-template-rows: minmax(0, 1fr) auto;
+      background: var(--bg);
+    }
+
+    .custom-top-60 {
+      min-height: 0;
+      padding: 18px var(--page-pad) 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--surface);
+      border-bottom: 1px solid #29292b;
+    }
+
+    .custom-display-group {
+      flex: 1 1 auto;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .custom-title {
+      margin-bottom: 8px;
+      color: var(--purple);
+      font-size: 0.68rem;
+      font-weight: 750;
+      letter-spacing: 1px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .custom-display {
+      overflow: hidden;
+      color: var(--yellow);
+      font-size: clamp(2.5rem, 12vw, 4.2rem);
+      font-weight: 400;
+      letter-spacing: -0.055em;
+      line-height: 1;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .custom-subdisplay {
+      margin-top: 8px;
+      color: var(--purple);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .custom-action-row {
+      width: min(100%, 360px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .btn-cancel,
+    .btn-add-cart {
+      min-height: 44px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+
+    .btn-cancel {
+      background: var(--surface-3);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-add-cart {
+      background: var(--green);
+      color: #000;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .btn-cancel:active,
+    .btn-add-cart:active {
+      transform: scale(0.97);
+    }
+
+    /* =========================================================
+       CART MODAL
+       ========================================================= */
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      padding:
+        max(14px, var(--safe-top))
+        max(14px, var(--safe-right))
+        max(14px, var(--safe-bottom))
+        max(14px, var(--safe-left));
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .modal-content {
+      width: min(100%, 420px);
+      max-height: min(88dvh, 700px);
+      min-height: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #38383a;
+      border-radius: 22px;
+      background: #1c1c1e;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .cart-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .cart-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .cart-count {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .cart-scroll-container {
+      min-height: 0;
+      margin-top: 10px;
+      overflow: auto;
+      border-radius: 10px;
+    }
+
+    .cart-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .cart-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #1c1c1e;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .cart-table th,
+    .cart-table td {
+      padding: 9px 3px;
+      border-bottom: 1px solid #29292b;
+      text-align: center;
+      font-size: 0.72rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .cart-table th:nth-child(1),
+    .cart-table td:nth-child(1) {
+      width: 19%;
+    }
+
+    .cart-table th:nth-child(2),
+    .cart-table td:nth-child(2) {
+      width: 18%;
+    }
+
+    .cart-table th:nth-child(3),
+    .cart-table td:nth-child(3) {
+      width: 25%;
+    }
+
+    .cart-table th:nth-child(4),
+    .cart-table td:nth-child(4) {
+      width: 27%;
+    }
+
+    .cart-table th:nth-child(5),
+    .cart-table td:nth-child(5) {
+      width: 11%;
+    }
+
+    .remove-item-btn {
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 15px;
+      background: transparent;
+      color: var(--red);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .remove-item-btn:active {
+      background: rgba(255, 69, 58, 0.16);
+    }
+
+    .cart-empty {
+      padding: 24px 8px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    .cart-modal-actions {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .btn-clear-cart,
+    .close-modal-btn {
+      min-height: 44px;
+      border-radius: 13px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 650;
+    }
+
+    .btn-clear-cart {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .close-modal-btn {
+      background: var(--surface-2);
+      color: #fff;
+    }
+
+    .btn-clear-cart:active,
+    .close-modal-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* =========================================================
+       VERY SHORT MOBILE VIEWPORTS
+       Protect keypad first.
+       ========================================================= */
+
+    @media (max-height: 650px) {
+      :root {
+        --key-min-height: 52px;
+      }
+
+      .bottom-numpad-40 {
+        height: 278px;
+        min-height: 278px;
+      }
+
+      .top-window-60 {
+        padding-top: 7px;
+        padding-bottom: 6px;
+        gap: 8px;
+      }
+
+      .display-section {
+        min-height: 88px;
+      }
+
+      .price-display {
+        font-size: clamp(2.25rem, 10vw, 3.3rem);
+      }
+
+      .weight-btn {
+        min-height: 35px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+      }
+
+      .selector-group + .selector-group {
+        margin-top: 6px;
+      }
+    }
+
+    /* Wider mobile screens: retain compact Apple-like density. */
+    @media (min-width: 500px) {
+      .top-window-60 {
+        padding-left: max(20px, var(--page-pad));
+        padding-right: max(20px, var(--page-pad));
+      }
+
+      .bottom-numpad-40 {
+        padding-left: max(20px, var(--page-pad));
+        padding-right: max(20px, var(--page-pad));
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================================================
+       VIEW 1: HOME MAIN POS SCREEN
+       ========================================================= -->
+  <div class="view-container" id="homeView">
+
+    <header class="top-cart-bar" id="topHeader">
+      <div class="vendor-mini">
+        <div class="vendor-quote-label">Vendor Price</div>
+        <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
+      </div>
+
+      <button class="view-cart-btn" id="openCartBtn" type="button" aria-label="Open shopping cart">
+        <span class="cart-btn-title" id="cartBtnTitle">Cart (0) · ₹0.00</span>
+        <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
+      </button>
+    </header>
+
+    <!-- FLEXIBLE INFORMATION AREA -->
+    <main class="top-window-60" id="homeDisplayContainer">
+
+      <section class="display-section">
+        <div class="section-label">Vendor Price Quote</div>
+
+        <div class="main-display">
+          <div class="price-display" id="displayCurrentItemPrice">₹0</div>
+
+          <div class="display-meta">
+            <div class="weight-subdisplay" id="displayCurrentItemWeight">Weight: --</div>
+            <div class="quote-subdisplay" id="displayQuoteBase">Base: 250g</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="selection-area">
+
+        <div class="selector-group">
+          <div class="section-label">Quote Base Weight</div>
+
+          <div class="weight-row" id="baseWeightRow">
+            <div class="weight-btn base-btn" data-weight="0.1">100g</div>
+            <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
+            <div class="weight-btn base-btn" data-weight="0.5">500g</div>
+            <div class="weight-btn base-btn" data-weight="0.75">750g</div>
+            <div class="weight-btn base-btn" data-weight="1">1Kg</div>
+          </div>
+        </div>
+
+        <div class="selector-group">
+          <div class="section-label">Tap Target Weight to Add</div>
+
+          <div class="target-weight-row-custom" id="targetWeightRow">
+            <div class="weight-btn target-btn" data-weight="0.1">100g</div>
+            <div class="weight-btn target-btn" data-weight="0.25">250g</div>
+            <div class="weight-btn target-btn" data-weight="0.5">500g</div>
+            <div class="weight-btn target-btn" data-weight="0.75">750g</div>
+            <div class="weight-btn target-btn" data-weight="1">1Kg</div>
+            <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom</div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- PROTECTED NUMPAD -->
+    <section class="bottom-numpad-40" aria-label="Number keypad">
+      <div class="keypad-container" id="homeKeypad">
+        <button class="key num-key" type="button">7</button>
+        <button class="key num-key" type="button">8</button>
+        <button class="key num-key" type="button">9</button>
+
+        <button class="key num-key" type="button">4</button>
+        <button class="key num-key" type="button">5</button>
+        <button class="key num-key" type="button">6</button>
+
+        <button class="key num-key" type="button">1</button>
+        <button class="key num-key" type="button">2</button>
+        <button class="key num-key" type="button">3</button>
+
+        <button class="key action-clear-all" id="homeClearEntryBtn" type="button">C</button>
+        <button class="key num-key" type="button">0</button>
+        <button class="key action-backspace" id="homeBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- =========================================================
+       VIEW 2: CUSTOM WEIGHT SCREEN
+       ========================================================= -->
+  <div class="view-container" id="customWeightView">
+
+    <section class="custom-top-60" id="customDisplayContainer">
+
+      <div class="custom-display-group">
+        <div class="custom-title">Enter Custom Weight</div>
+        <div class="custom-display" id="customDisplay">0 Kg</div>
+        <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
+      </div>
+
+      <div class="custom-action-row">
+        <button class="btn-cancel" id="cancelCustomBtn" type="button">Cancel</button>
+        <button class="btn-add-cart" id="addCustomToCartBtn" type="button">Add to Cart</button>
+      </div>
+
+    </section>
+
+    <section class="bottom-numpad-40" aria-label="Custom weight keypad">
+      <div class="keypad-container" id="customKeypad">
+        <button class="key c-num-key" type="button">7</button>
+        <button class="key c-num-key" type="button">8</button>
+        <button class="key c-num-key" type="button">9</button>
+
+        <button class="key c-num-key" type="button">4</button>
+        <button class="key c-num-key" type="button">5</button>
+        <button class="key c-num-key" type="button">6</button>
+
+        <button class="key c-num-key" type="button">1</button>
+        <button class="key c-num-key" type="button">2</button>
+        <button class="key c-num-key" type="button">3</button>
+
+        <button class="key c-num-key" type="button">.</button>
+        <button class="key c-num-key" type="button">0</button>
+        <button class="key action-backspace" id="customBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- =========================================================
+       CART MODAL
+       ========================================================= -->
+  <div class="modal" id="cartModal" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+    <div class="modal-content">
+
+      <div class="cart-title-row">
+        <h3 class="cart-title" id="cartTitle">Shopping Cart</h3>
+        <span class="cart-count" id="cartCountLabel">0 items</span>
+      </div>
+
+      <div class="cart-scroll-container">
+        <table class="cart-table" id="cartTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Weight</th>
+              <th>Quote</th>
+              <th>Price</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="cart-empty" id="cartEmptyMessage">
+          Your cart is empty.
+        </div>
+      </div>
+
+      <div class="cart-modal-actions">
+        <button class="btn-clear-cart" id="clearAllCartBtn" type="button">Clear Cart</button>
+        <button class="close-modal-btn" id="closeCartBtn" type="button">Back</button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <script>
+    /* =========================================================
+       CORE STATE
+       ========================================================= */
+
+    let priceInput = "";
+    let customWeightInput = "";
+    let baseWeight = 0.25;
+    let itemCounter = 1;
+    let cart = [];
+
+
+    /* =========================================================
+       DOM REFERENCES
+       ========================================================= */
+
+    const homeView = document.getElementById("homeView");
+    const customWeightView = document.getElementById("customWeightView");
+
+    const displayCurrentItemPrice =
+      document.getElementById("displayCurrentItemPrice");
+
+    const displayCurrentItemWeight =
+      document.getElementById("displayCurrentItemWeight");
+
+    const displayQuoteBase =
+      document.getElementById("displayQuoteBase");
+
+    const headerVendorQuote =
+      document.getElementById("headerVendorQuote");
+
+    const homeKeypad =
+      document.getElementById("homeKeypad");
+
+    const homeBackspaceBtn =
+      document.getElementById("homeBackspaceBtn");
+
+    const homeClearEntryBtn =
+      document.getElementById("homeClearEntryBtn");
+
+    const openCustomWtBtn =
+      document.getElementById("openCustomWtBtn");
+
+    const baseWeightRow =
+      document.getElementById("baseWeightRow");
+
+    const targetWeightRow =
+      document.getElementById("targetWeightRow");
+
+    const customDisplay =
+      document.getElementById("customDisplay");
+
+    const customSubDisplay =
+      document.getElementById("customSubDisplay");
+
+    const customKeypad =
+      document.getElementById("customKeypad");
+
+    const customBackspaceBtn =
+      document.getElementById("customBackspaceBtn");
+
+    const cancelCustomBtn =
+      document.getElementById("cancelCustomBtn");
+
+    const addCustomToCartBtn =
+      document.getElementById("addCustomToCartBtn");
+
+    const cartBtnTitle =
+      document.getElementById("cartBtnTitle");
+
+    const cartBtnSub =
+      document.getElementById("cartBtnSub");
+
+    const cartCountLabel =
+      document.getElementById("cartCountLabel");
+
+    const openCartBtn =
+      document.getElementById("openCartBtn");
+
+    const cartModal =
+      document.getElementById("cartModal");
+
+    const closeCartBtn =
+      document.getElementById("closeCartBtn");
+
+    const clearAllCartBtn =
+      document.getElementById("clearAllCartBtn");
+
+    const cartTableBody =
+      document.querySelector("#cartTable tbody");
+
+    const cartEmptyMessage =
+      document.getElementById("cartEmptyMessage");
+
+
+    /* =========================================================
+       DISPLAY HELPERS
+       ========================================================= */
+
+    function formatWeight(weightKg) {
+      if (weightKg < 1) {
+        return `${Math.round(weightKg * 1000)}g`;
+      }
+
+      return `${weightKg.toFixed(2)}Kg`;
+    }
+
+    function formatBaseWeight(weightKg) {
+      return weightKg >= 1
+        ? `${weightKg}Kg`
+        : `${Math.round(weightKg * 1000)}g`;
+    }
+
+    function updateHomeDisplay() {
+      headerVendorQuote.textContent =
+        priceInput ? `₹${priceInput}` : "₹0";
+
+      displayQuoteBase.textContent =
+        `Base: ${formatBaseWeight(baseWeight)}`;
+
+      if (priceInput) {
+        displayCurrentItemPrice.textContent = `₹${priceInput}`;
+        displayCurrentItemPrice.classList.add("has-input");
+      } else {
+        displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemPrice.classList.remove("has-input");
+      }
+    }
+
+
+    /* =========================================================
+       SMART NUMPAD LOGIC — MAIN SCREEN
+       ========================================================= */
+
+    homeKeypad.addEventListener("click", (e) => {
+      const key = e.target.closest(".num-key");
+
+      if (!key || !homeKeypad.contains(key)) {
+        return;
+      }
+
+      const val = key.textContent.trim();
+
+      if (priceInput === "0" && val === "0") {
+        return;
+      }
+
+      if (priceInput === "0" && val !== "0") {
+        priceInput = val;
+        updateHomeDisplay();
+        return;
+      }
+
+      if (priceInput.length >= 6) {
+        return;
+      }
+
+      priceInput += val;
+      updateHomeDisplay();
+    });
+
+
+    homeBackspaceBtn.addEventListener("click", () => {
+      priceInput = priceInput.slice(0, -1);
+      updateHomeDisplay();
+    });
+
+
+    homeClearEntryBtn.addEventListener("click", () => {
+      priceInput = "";
+
+      displayCurrentItemPrice.textContent = "₹0";
+      displayCurrentItemWeight.textContent = "Weight: --";
+
+      updateHomeDisplay();
+    });
+
+
+    /* =========================================================
+       BASE WEIGHT SELECTOR
+       ========================================================= */
+
+    baseWeightRow.addEventListener("click", (e) => {
+      const button = e.target.closest(".base-btn");
+
+      if (!button || !baseWeightRow.contains(button)) {
+        return;
+      }
+
+      document
+        .querySelectorAll(".base-btn")
+        .forEach((b) => b.classList.remove("base-selected"));
+
+      button.classList.add("base-selected");
+
+      baseWeight = parseFloat(button.dataset.weight);
+
+      updateHomeDisplay();
+    });
+
+
+    /* =========================================================
+       TARGET WEIGHT
+       ========================================================= */
+
+    targetWeightRow.addEventListener("click", (e) => {
+      const button = e.target.closest(".target-btn");
+
+      if (!button || !targetWeightRow.contains(button)) {
+        return;
+      }
+
+      const targetWeight = parseFloat(button.dataset.weight);
+
+      processAddToCart(targetWeight);
+
+      /*
+       * Target buttons are intentionally not left permanently
+       * selected. The tap itself is the action.
+       */
+    });
+
+
+    /* =========================================================
+       CUSTOM WEIGHT SCREEN
+       ========================================================= */
+
+    openCustomWtBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+
+      const priceVal = parseFloat(priceInput);
+
+      if (isNaN(priceVal) || priceVal <= 0) {
+        showTemporaryMessage("Enter a vendor price first.");
+        return;
+      }
+
+      customWeightInput = "";
+      updateCustomDisplay();
+
+      homeView.style.display = "none";
+      customWeightView.style.display = "grid";
+    });
+
+
+    cancelCustomBtn.addEventListener("click", () => {
+      customWeightView.style.display = "none";
+      homeView.style.display = "grid";
+    });
+
+
+    /* =========================================================
+       SMART NUMPAD LOGIC — CUSTOM WEIGHT
+       ========================================================= */
+
+    customKeypad.addEventListener("click", (e) => {
+      const key = e.target.closest(".c-num-key");
+
+      if (!key || !customKeypad.contains(key)) {
+        return;
+      }
+
+      const val = key.textContent.trim();
+
+      if (val === ".") {
+        if (customWeightInput.includes(".")) {
+          return;
+        }
+
+        if (customWeightInput === "") {
+          customWeightInput = "0";
+        }
+
+        customWeightInput += ".";
+        updateCustomDisplay();
+        return;
+      }
+
+      if (customWeightInput === "0" && val === "0") {
+        return;
+      }
+
+      if (customWeightInput === "0" && val !== "0") {
+        customWeightInput = val;
+        updateCustomDisplay();
+        return;
+      }
+
+      if (customWeightInput.length >= 6) {
+        return;
+      }
+
+      customWeightInput += val;
+      updateCustomDisplay();
+    });
+
+
+    customBackspaceBtn.addEventListener("click", () => {
+      customWeightInput = customWeightInput.slice(0, -1);
+      updateCustomDisplay();
+    });
+
+
+    function updateCustomDisplay() {
+      if (!customWeightInput) {
+        customDisplay.textContent = "0 Kg";
+        customSubDisplay.textContent = "Equivalent: 0g";
+        return;
+      }
+
+      if (customWeightInput === ".") {
+        customDisplay.textContent = "0. Kg";
+        customSubDisplay.textContent = "Equivalent: 0g";
+        return;
+      }
+
+      customDisplay.textContent =
+        `${customWeightInput} Kg`;
+
+      const numericVal =
+        parseFloat(customWeightInput);
+
+      if (isNaN(numericVal)) {
+        customSubDisplay.textContent =
+          "Equivalent: 0g";
+        return;
+      }
+
+      const calculatedGrams =
+        Math.round(numericVal * 1000);
+
+      customSubDisplay.textContent =
+        `Equivalent: ${calculatedGrams}g`;
+    }
+
+
+    addCustomToCartBtn.addEventListener("click", () => {
+      const finalWeightInKg =
+        parseFloat(customWeightInput);
+
+      if (
+        isNaN(finalWeightInKg) ||
+        finalWeightInKg <= 0
+      ) {
+        showTemporaryMessage("Type a valid weight.");
+        return;
+      }
+
+      processAddToCart(finalWeightInKg);
+
+      customWeightView.style.display = "none";
+      homeView.style.display = "grid";
+    });
+
+
+    /* =========================================================
+       CART CALCULATION — ORIGINAL CORE LOGIC PRESERVED
+       ========================================================= */
+
+    function processAddToCart(targetWeight) {
+      const priceVal = parseFloat(priceInput);
+
+      if (isNaN(priceVal) || priceVal <= 0) {
+        showTemporaryMessage("Enter a price first.");
+        return false;
+      }
+
+      const calculatedPrice =
+        ((priceVal / baseWeight) * targetWeight).toFixed(2);
+
+      const baseLabel =
+        baseWeight >= 1
+          ? `${baseWeight}Kg`
+          : `${baseWeight * 1000}g`;
+
+      const newItem = {
+        id: itemCounter++,
+        weight: targetWeight,
+        quote: `₹${priceVal}/${baseLabel}`,
+        price: parseFloat(calculatedPrice)
+      };
+
+      cart.push(newItem);
+
+      displayCurrentItemPrice.textContent =
+        `₹${newItem.price.toFixed(2)}`;
+
+      displayCurrentItemPrice.classList.remove("has-input");
+
+      displayCurrentItemWeight.textContent =
+        `Weight: ${formatWeight(newItem.weight)}`;
+
+      renderCart();
+
+      priceInput = "";
+      updateHomeDisplay();
+
+      return true;
+    }
+
+
+    /* =========================================================
+       CART RENDERING
+       ========================================================= */
+
+    function renderCart() {
+      cartTableBody.innerHTML = "";
+
+      let totalP = 0;
+      let totalW = 0;
+
+      cart.forEach((item, idx) => {
+        totalP += item.price;
+        totalW += item.weight;
+
+        const row = cartTableBody.insertRow();
+
+        row.innerHTML = `
+          <td>Item #${item.id}</td>
+          <td>${formatWeight(item.weight)}</td>
+          <td>${item.quote}</td>
+          <td>₹${item.price.toFixed(2)}</td>
+          <td>
+            <button
+              class="remove-item-btn"
+              type="button"
+              data-index="${idx}"
+              aria-label="Remove item ${item.id}"
+            >×</button>
+          </td>
+        `;
+      });
+
+      cartBtnTitle.textContent =
+        `Cart (${cart.length}) · ₹${totalP.toFixed(2)}`;
+
+      cartBtnSub.textContent =
+        `Total: ${totalW.toFixed(2)} Kg`;
+
+      cartCountLabel.textContent =
+        `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
+
+      cartEmptyMessage.style.display =
+        cart.length === 0 ? "block" : "none";
+
+      if (cart.length === 0) {
+        displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemWeight.textContent = "Weight: --";
+      }
+    }
+
+
+    /* =========================================================
+       CART ITEM DELETION
+       ========================================================= */
+
+    cartTableBody.addEventListener("click", (e) => {
+      const button = e.target.closest(".remove-item-btn");
+
+      if (!button) {
+        return;
+      }
+
+      const index =
+        parseInt(button.dataset.index, 10);
+
+      if (Number.isNaN(index)) {
+        return;
+      }
+
+      removeItem(index);
+    });
+
+
+    window.removeItem = function(index) {
+      if (
+        index < 0 ||
+        index >= cart.length
+      ) {
+        return;
+      }
+
+      cart.splice(index, 1);
+      renderCart();
+    };
+
+
+    /* =========================================================
+       CLEAR CART
+       ========================================================= */
+
+    clearAllCartBtn.addEventListener("click", () => {
+      if (cart.length === 0) {
+        return;
+      }
+
+      if (window.confirm("Clear all items in cart?")) {
+        cart = [];
+        itemCounter = 1;
+        priceInput = "";
+
+        displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemWeight.textContent = "Weight: --";
+
+        updateHomeDisplay();
+        renderCart();
+
+        cartModal.style.display = "none";
+      }
+    });
+
+
+    /* =========================================================
+       CART MODAL
+       ========================================================= */
+
+    openCartBtn.addEventListener("click", () => {
+      renderCart();
+      cartModal.style.display = "flex";
+    });
+
+
+    closeCartBtn.addEventListener("click", () => {
+      cartModal.style.display = "none";
+    });
+
+
+    cartModal.addEventListener("click", (e) => {
+      if (e.target === cartModal) {
+        cartModal.style.display = "none";
+      }
+    });
+
+
+    /* =========================================================
+       SMALL NON-BLOCKING FEEDBACK
+       ========================================================= */
+
+    let messageTimer = null;
+
+    function showTemporaryMessage(message) {
+      let toast = document.getElementById("appToast");
+
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+
+        Object.assign(toast.style, {
+          position: "fixed",
+          left: "50%",
+          bottom: "calc(43dvh + 14px)",
+          transform: "translateX(-50%)",
+          zIndex: "3000",
+          maxWidth: "calc(100vw - 32px)",
+          padding: "10px 15px",
+          borderRadius: "16px",
+          background: "rgba(44,44,46,0.96)",
+          color: "#fff",
+          fontSize: "0.78rem",
+          fontWeight: "650",
+          textAlign: "center",
+          boxShadow: "0 8px 30px rgba(0,0,0,.35)",
+          pointerEvents: "none",
+          transition: "opacity .18s ease, transform .18s ease"
+        });
+
+        document.body.appendChild(toast);
+      }
+
+      toast.textContent = message;
+      toast.style.opacity = "1";
+      toast.style.transform = "translateX(-50%) translateY(0)";
+
+      clearTimeout(messageTimer);
+
+      messageTimer = setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform =
+          "translateX(-50%) translateY(6px)";
+      }, 1600);
+    }
+
+
+    /* =========================================================
+       INITIAL STATE
+       ========================================================= */
+
+    updateHomeDisplay();
+    renderCart();
+  </script>
+
+</body>
+</html>
