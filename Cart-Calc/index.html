@@ -93,10 +93,10 @@
       width: 100%;
     }
 
-    /* 55% TOP WINDOW SECTION (8vh header + 47vh content) */
-    .top-window-55 {
-      height: 47vh;
-      flex: 0 0 47vh;
+    /* 60% TOP WINDOW SECTION (8vh header + 52vh content) */
+    .top-window-60 {
+      height: 52vh;
+      flex: 0 0 52vh;
       background-color: var(--card);
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
@@ -179,10 +179,10 @@
       font-weight: 700;
     }
 
-    /* 45% BOTTOM NUMPAD SECTION */
-    .bottom-numpad-45 {
-      height: 45vh;
-      flex: 0 0 45vh;
+    /* 40% BOTTOM NUMPAD SECTION */
+    .bottom-numpad-40 {
+      height: 40vh;
+      flex: 0 0 40vh;
       background-color: var(--bg);
       padding: 10px 16px;
       display: flex;
@@ -203,7 +203,7 @@
     .key {
       background-color: var(--key-bg);
       color: var(--text);
-      font-size: 1.54rem; /* 10% Increase from 1.4rem */
+      font-size: 1.54rem;
       font-weight: 600;
       border-radius: 12px;
       display: flex;
@@ -229,21 +229,28 @@
       font-weight: 700;
     }
 
-    /* DEDICATED CUSTOM WEIGHT SCREEN (55/45 RATIO) */
+    /* DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) */
     #customWeightView {
       display: none;
       background-color: var(--bg);
     }
 
-    .custom-top-55 {
-      height: 55vh;
-      flex: 0 0 55vh;
+    .custom-top-60 {
+      height: 60vh;
+      flex: 0 0 60vh;
       background-color: #1c1c1e;
-      padding: 20px;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .custom-display-group {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      border-bottom: 1px solid var(--border);
+      flex: 1;
     }
 
     .custom-title {
@@ -268,17 +275,21 @@
       font-weight: 600;
     }
 
+    /* Action Buttons in 60% Top Section */
     .custom-action-row {
-      grid-column: span 3;
       display: grid;
       grid-template-columns: 1fr 2fr;
       gap: 10px;
+      width: 100%;
+      max-width: 340px;
+      margin: 0 auto;
     }
 
     .btn-cancel {
       background-color: #3a3a3c;
       color: white;
       border: none;
+      height: 48px;
       border-radius: 12px;
       font-weight: 600;
       font-size: 0.95rem;
@@ -289,6 +300,7 @@
       background-color: #30d158;
       color: #000000;
       border: none;
+      height: 48px;
       border-radius: 12px;
       font-weight: 700;
       font-size: 0.95rem;
@@ -316,13 +328,30 @@
       padding: 20px;
       width: 100%;
       max-width: 380px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
       border: 1px solid var(--border);
+    }
+
+    /* SCROLLABLE CART TABLE CONTAINER */
+    .cart-scroll-container {
+      overflow-y: auto;
+      max-height: 50vh;
+      margin-top: 10px;
+      border-radius: 8px;
     }
 
     .cart-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+    }
+
+    .cart-table th {
+      position: sticky;
+      top: 0;
+      background-color: #1c1c1e;
+      z-index: 10;
     }
 
     .cart-table th, .cart-table td {
@@ -337,6 +366,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       margin-top: 15px;
+      flex-shrink: 0;
     }
 
     .btn-clear-cart {
@@ -365,7 +395,7 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
     
-    <!-- TOP 55% WINDOW AREA -->
+    <!-- TOP 60% WINDOW AREA -->
     <div class="top-cart-bar" id="topHeader">
       <div>
         <div class="vendor-quote-label">Vendor Price Quote</div>
@@ -377,7 +407,7 @@
       </button>
     </div>
 
-    <div class="top-window-55" id="homeDisplayContainer">
+    <div class="top-window-60" id="homeDisplayContainer">
       <div>
         <div class="section-label">Current Item Calculated</div>
         <div class="display-row">
@@ -410,8 +440,8 @@
       </div>
     </div>
 
-    <!-- BOTTOM 45% NUMPAD AREA -->
-    <div class="bottom-numpad-45">
+    <!-- BOTTOM 40% NUMPAD AREA -->
+    <div class="bottom-numpad-40">
       <div class="keypad-container" id="homeKeypad">
         <div class="key num-key">7</div>
         <div class="key num-key">8</div>
@@ -429,17 +459,25 @@
     </div>
   </div>
 
-  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (55/45 RATIO) -->
+  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) -->
   <div class="view-container" id="customWeightView">
-    <!-- TOP 55% WINDOW AREA -->
-    <div class="custom-top-55" id="customDisplayContainer">
-      <div class="custom-title">Enter Custom Weight</div>
-      <div class="custom-display" id="customDisplay">0 Kg</div>
-      <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
+    <!-- TOP 60% WINDOW AREA -->
+    <div class="custom-top-60" id="customDisplayContainer">
+      <div class="custom-display-group">
+        <div class="custom-title">Enter Custom Weight</div>
+        <div class="custom-display" id="customDisplay">0 Kg</div>
+        <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
+      </div>
+
+      <!-- Action Buttons in 60% Top Section -->
+      <div class="custom-action-row">
+        <button class="btn-cancel" id="cancelCustomBtn">Cancel</button>
+        <button class="btn-add-cart" id="addCustomToCartBtn">Add to Cart</button>
+      </div>
     </div>
 
-    <!-- BOTTOM 45% NUMPAD AREA -->
-    <div class="bottom-numpad-45">
+    <!-- BOTTOM 40% NUMPAD AREA -->
+    <div class="bottom-numpad-40">
       <div class="keypad-container" id="customKeypad">
         <div class="key c-num-key">7</div>
         <div class="key c-num-key">8</div>
@@ -450,28 +488,25 @@
         <div class="key c-num-key">1</div>
         <div class="key c-num-key">2</div>
         <div class="key c-num-key">3</div>
-        <div class="key action-backspace" id="customBackspaceBtn">⌫</div>
-        <div class="key c-num-key">0</div>
         <div class="key c-num-key">.</div>
-
-        <div class="custom-action-row">
-          <button class="btn-cancel" id="cancelCustomBtn">Cancel</button>
-          <button class="btn-add-cart" id="addCustomToCartBtn">Add to Cart</button>
-        </div>
+        <div class="key c-num-key">0</div>
+        <div class="key action-backspace" id="customBackspaceBtn">⌫</div>
       </div>
     </div>
   </div>
 
-  <!-- Cart Modal Sheet -->
+  <!-- Cart Modal Sheet with Scrollable Body -->
   <div class="modal" id="cartModal">
     <div class="modal-content">
-      <h3 style="margin-top:0;">🛒 Shopping Cart</h3>
-      <table class="cart-table" id="cartTable">
-        <thead>
-          <tr><th>#</th><th>Weight</th><th>Quote</th><th>Price</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <h3 style="margin: 0;">🛒 Shopping Cart</h3>
+      <div class="cart-scroll-container">
+        <table class="cart-table" id="cartTable">
+          <thead>
+            <tr><th>#</th><th>Weight</th><th>Quote</th><th>Price</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       
       <div class="cart-modal-actions">
         <button class="btn-clear-cart" id="clearAllCartBtn">Clear Cart</button>
