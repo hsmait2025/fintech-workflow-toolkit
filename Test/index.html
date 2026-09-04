@@ -887,7 +887,14 @@
     <div class="modal-content">
       <div class="cart-title">Item Name (Optional)</div>
       
-      <input type="text" id="itemNameInput" class="name-input-field" placeholder="e.g. Tomato, Onion, Apple..." />
+      <!-- Added readonly attribute to prevent soft keyboard autofocus -->
+      <input 
+        type="text" 
+        id="itemNameInput" 
+        class="name-input-field" 
+        placeholder="e.g. Tomato, Onion, Apple..." 
+        readonly 
+      />
 
       <div class="quick-chips-row" id="quickChipsContainer">
         <button class="chip-btn" type="button" data-name="Tomato">Tomato</button>
@@ -897,11 +904,21 @@
         <select class="chip-dropdown-select" id="moreItemsDropdown" aria-label="More grocery items">
           <option value="" disabled selected hidden>More...</option>
           <option value="Garlic">Garlic</option>
+          <option value="Green Garlic">Green Garlic</option>
+          <option value="Green Onion">Green Onion</option>
           <option value="Gobhi">Gobhi</option>
+          <option value="Cabbge">Cabbge</option>
+          <option value="Palak">Palak</option>
+          <option value="Saag">Saag</option>
+          <option value="Carrot">Carrot</option>
           <option value="Bengan">Bengan</option>
           <option value="Bhindi">Bhindi</option>
           <option value="Ghiya">Ghiya</option>
           <option value="Tori">Tori</option>
+          <option value="Carrot">Carrot</option>
+          <option value="Radish">Radish</option>
+          <option value="Kathal">Kathal</option>
+          <option value="Beans">Beans</option>
           <option value="Green Chilli">Green Chilli</option>
           <option value="Lemon">Lemon</option>
           <option value="Apple">Apple</option>
@@ -1103,19 +1120,30 @@
     /* NAME PROMPT MODAL LOGIC */
     function promptItemName() {
       itemNameInput.value = "";
+      itemNameInput.readOnly = true; // Lock input on open to prevent soft keyboard
       moreItemsDropdown.selectedIndex = 0;
       itemNameModal.style.display = "flex";
-      /* Keyboard auto-focus removed to keep soft keyboard hidden until text area is tapped */
     }
+
+    // Unlock input when user explicitly focuses or taps the box
+    itemNameInput.addEventListener("focus", () => {
+      itemNameInput.readOnly = false;
+    });
+
+    itemNameInput.addEventListener("touchstart", () => {
+      itemNameInput.readOnly = false;
+    }, { passive: true });
 
     quickChipsContainer.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip-btn");
       if (!chip) return;
+      itemNameInput.readOnly = true; // Ensure keyboard stays down when clicking preset
       itemNameInput.value = chip.dataset.name;
     });
 
     moreItemsDropdown.addEventListener("change", (e) => {
       if (e.target.value) {
+        itemNameInput.readOnly = true; // Ensure keyboard stays down when picking from dropdown
         itemNameInput.value = e.target.value;
       }
     });
