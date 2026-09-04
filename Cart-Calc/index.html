@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Grocery Calc POS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
   <style>
     :root {
@@ -22,17 +22,28 @@
       --btn-idle-text: #8e8e93;
     }
 
-    * { box-sizing: border-box; touch-action: manipulation; }
+    * { 
+      box-sizing: border-box; 
+      touch-action: manipulation; 
+    }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
       padding: 0;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* MAIN VIEW STRUCTURE using dvh (Dynamic Viewport Height) */
+    .view-container {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
       overflow: hidden;
     }
 
@@ -40,16 +51,15 @@
     .top-cart-bar {
       background-color: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: 8px 16px;
+      padding: 6px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      height: 8vh;
-      flex: 0 0 8vh;
+      flex-shrink: 0;
     }
 
     .vendor-quote-label {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       text-transform: uppercase;
       color: var(--text-muted);
       letter-spacing: 0.5px;
@@ -57,7 +67,7 @@
     }
 
     .vendor-quote-price {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: 700;
       color: #64d2ff;
     }
@@ -66,7 +76,7 @@
       background-color: var(--primary);
       color: white;
       border: none;
-      padding: 6px 14px;
+      padding: 4px 12px;
       border-radius: 20px;
       display: flex;
       flex-direction: column;
@@ -76,37 +86,29 @@
 
     .cart-btn-title {
       font-weight: 700;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
     }
 
     .cart-btn-sub {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       opacity: 0.85;
       font-weight: 500;
     }
 
-    /* MAIN VIEW STRUCTURE (100vh TOTAL) */
-    .view-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100%;
-    }
-
-    /* 60% TOP WINDOW SECTION (8vh header + 52vh content) */
+    /* TOP WINDOW SECTION */
     .top-window-60 {
-      height: 52vh;
-      flex: 0 0 52vh;
+      height: 52dvh;
       background-color: var(--card);
-      padding: 12px 16px;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      overflow-y: auto;
     }
 
     .section-label {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       text-transform: uppercase;
       color: var(--text-muted);
       letter-spacing: 0.8px;
@@ -121,14 +123,14 @@
     }
 
     .price-display {
-      font-size: 2.2rem;
+      font-size: 1.8rem;
       font-weight: 700;
       color: #64d2ff;
       letter-spacing: -0.5px;
     }
 
     .weight-subdisplay {
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       font-weight: 600;
     }
@@ -136,23 +138,23 @@
     .weight-row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
+      gap: 4px;
     }
 
     .target-weight-row-custom {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 5px;
+      gap: 4px;
     }
 
     .weight-btn {
       background-color: var(--btn-idle-bg);
       border: 1px solid var(--btn-idle-border);
       color: var(--btn-idle-text);
-      padding: 10px 0;
-      font-size: 0.8rem;
+      padding: 8px 0;
+      font-size: 0.75rem;
       font-weight: 600;
-      border-radius: 10px;
+      border-radius: 8px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -179,39 +181,41 @@
       font-weight: 700;
     }
 
-    /* 40% BOTTOM NUMPAD SECTION */
+    /* BOTTOM NUMPAD SECTION FIXED FIT */
     .bottom-numpad-40 {
-      height: 40vh;
-      flex: 0 0 40vh;
+      height: 48dvh;
       background-color: var(--bg);
-      padding: 10px 16px;
+      padding: 8px 12px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
+      box-sizing: border-box;
     }
 
     .keypad-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
       width: 100%;
-      max-width: 340px;
       height: 100%;
-      max-height: 100%;
+      max-width: 400px;
+      margin: 0 auto;
     }
 
     .key {
       background-color: var(--key-bg);
       color: var(--text);
-      font-size: 1.54rem;
+      font-size: 1.4rem;
       font-weight: 600;
-      border-radius: 12px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       user-select: none;
       border: none;
+      height: 100%;
+      min-height: 0;
     }
 
     .key:active {
@@ -229,17 +233,16 @@
       font-weight: 700;
     }
 
-    /* DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) */
+    /* DEDICATED CUSTOM WEIGHT SCREEN */
     #customWeightView {
       display: none;
       background-color: var(--bg);
     }
 
     .custom-top-60 {
-      height: 60vh;
-      flex: 0 0 60vh;
+      height: 52dvh;
       background-color: #1c1c1e;
-      padding: 20px 16px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -263,19 +266,18 @@
     }
 
     .custom-display {
-      font-size: 2.8rem;
+      font-size: 2.5rem;
       font-weight: 700;
       color: #ffd60a;
     }
 
     .custom-subdisplay {
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: #bf5af2;
       margin-top: 6px;
       font-weight: 600;
     }
 
-    /* Action Buttons in 60% Top Section */
     .custom-action-row {
       display: grid;
       grid-template-columns: 1fr 2fr;
@@ -289,10 +291,10 @@
       background-color: #3a3a3c;
       color: white;
       border: none;
-      height: 48px;
-      border-radius: 12px;
+      height: 44px;
+      border-radius: 10px;
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       cursor: pointer;
     }
 
@@ -300,10 +302,10 @@
       background-color: #30d158;
       color: #000000;
       border: none;
-      height: 48px;
-      border-radius: 12px;
+      height: 44px;
+      border-radius: 10px;
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       text-transform: uppercase;
       cursor: pointer;
     }
@@ -328,16 +330,15 @@
       padding: 20px;
       width: 100%;
       max-width: 380px;
-      max-height: 80vh;
+      max-height: 80dvh;
       display: flex;
       flex-direction: column;
       border: 1px solid var(--border);
     }
 
-    /* SCROLLABLE CART TABLE CONTAINER */
     .cart-scroll-container {
       overflow-y: auto;
-      max-height: 50vh;
+      max-height: 50dvh;
       margin-top: 10px;
       border-radius: 8px;
     }
@@ -358,7 +359,7 @@
       padding: 10px 4px;
       border-bottom: 1px solid var(--border);
       text-align: center;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .cart-modal-actions {
@@ -395,7 +396,6 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
     
-    <!-- TOP 60% WINDOW AREA -->
     <div class="top-cart-bar" id="topHeader">
       <div>
         <div class="vendor-quote-label">Vendor Price Quote</div>
@@ -407,6 +407,7 @@
       </button>
     </div>
 
+    <!-- TOP DISPLAY AREA -->
     <div class="top-window-60" id="homeDisplayContainer">
       <div>
         <div class="section-label">Current Item Calculated</div>
@@ -428,7 +429,7 @@
         </div>
 
         <!-- Target Purchase Selector + CW Button -->
-        <div class="section-label" style="margin-top: 10px;">Tap Target Weight to Add</div>
+        <div class="section-label" style="margin-top: 8px;">Tap Target Weight to Add</div>
         <div class="target-weight-row-custom" id="targetWeightRow">
           <div class="weight-btn target-btn" data-weight="0.1">100g</div>
           <div class="weight-btn target-btn" data-weight="0.25">250g</div>
@@ -440,7 +441,7 @@
       </div>
     </div>
 
-    <!-- BOTTOM 40% NUMPAD AREA -->
+    <!-- BOTTOM NUMPAD AREA -->
     <div class="bottom-numpad-40">
       <div class="keypad-container" id="homeKeypad">
         <div class="key num-key">7</div>
@@ -459,9 +460,8 @@
     </div>
   </div>
 
-  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) -->
+  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN -->
   <div class="view-container" id="customWeightView">
-    <!-- TOP 60% WINDOW AREA -->
     <div class="custom-top-60" id="customDisplayContainer">
       <div class="custom-display-group">
         <div class="custom-title">Enter Custom Weight</div>
@@ -469,14 +469,12 @@
         <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
       </div>
 
-      <!-- Action Buttons in 60% Top Section -->
       <div class="custom-action-row">
         <button class="btn-cancel" id="cancelCustomBtn">Cancel</button>
         <button class="btn-add-cart" id="addCustomToCartBtn">Add to Cart</button>
       </div>
     </div>
 
-    <!-- BOTTOM 40% NUMPAD AREA -->
     <div class="bottom-numpad-40">
       <div class="keypad-container" id="customKeypad">
         <div class="key c-num-key">7</div>
@@ -495,7 +493,7 @@
     </div>
   </div>
 
-  <!-- Cart Modal Sheet with Scrollable Body -->
+  <!-- Cart Modal Sheet -->
   <div class="modal" id="cartModal">
     <div class="modal-content">
       <h3 style="margin: 0;">🛒 Shopping Cart</h3>
@@ -551,10 +549,21 @@
     const clearAllCartBtn = document.getElementById("clearAllCartBtn");
     const cartTableBody = document.querySelector("#cartTable tbody");
 
+    /* SMART NUMPAD LOGIC (MAIN SCREEN) */
     homeKeypad.addEventListener("click", (e) => {
       if (!e.target.classList.contains("num-key")) return;
+      const val = e.target.textContent;
+
+      if (priceInput === "0" && val === "0") return;
+
+      if (priceInput === "0" && val !== "0") {
+        priceInput = val;
+        updateHomeDisplay();
+        return;
+      }
+
       if (priceInput.length >= 6) return;
-      priceInput += e.target.textContent;
+      priceInput += val;
       updateHomeDisplay();
     });
 
@@ -610,11 +619,27 @@
       homeView.style.display = "flex";
     });
 
+    /* SMART NUMPAD LOGIC (CUSTOM WEIGHT SCREEN) */
     customKeypad.addEventListener("click", (e) => {
       if (!e.target.classList.contains("c-num-key")) return;
       const val = e.target.textContent;
-      
-      if (val === "." && customWeightInput.includes(".")) return;
+
+      if (val === ".") {
+        if (customWeightInput.includes(".")) return;
+        if (customWeightInput === "") customWeightInput = "0";
+        customWeightInput += ".";
+        updateCustomDisplay();
+        return;
+      }
+
+      if (customWeightInput === "0" && val === "0") return;
+
+      if (customWeightInput === "0" && val !== "0") {
+        customWeightInput = val;
+        updateCustomDisplay();
+        return;
+      }
+
       if (customWeightInput.length >= 6) return;
 
       customWeightInput += val;
@@ -627,20 +652,25 @@
     });
 
     function updateCustomDisplay() {
-      if (!customWeightInput || customWeightInput === ".") {
-        customDisplay.textContent = customWeightInput === "." ? ". Kg" : "0 Kg";
-        customSubDisplay.textContent = "Equivalent: 0g";
-        return;
-      }
-
-      const numericVal = parseFloat(customWeightInput);
-      if (isNaN(numericVal)) {
+      if (!customWeightInput) {
         customDisplay.textContent = "0 Kg";
         customSubDisplay.textContent = "Equivalent: 0g";
         return;
       }
 
+      if (customWeightInput === ".") {
+        customDisplay.textContent = "0. Kg";
+        customSubDisplay.textContent = "Equivalent: 0g";
+        return;
+      }
+
       customDisplay.textContent = `${customWeightInput} Kg`;
+      const numericVal = parseFloat(customWeightInput);
+      if (isNaN(numericVal)) {
+        customSubDisplay.textContent = "Equivalent: 0g";
+        return;
+      }
+
       const calculatedGrams = Math.round(numericVal * 1000);
       customSubDisplay.textContent = `Equivalent: ${calculatedGrams}g`;
     }
