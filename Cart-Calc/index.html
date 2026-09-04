@@ -4,30 +4,28 @@
   <meta charset="UTF-8" />
   <title>Grocery Calc POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#121318" />
+  <meta name="theme-color" content="#000000" />
   <style>
     :root {
-      --bg: #121318;
-      --card: #1a1c23;
-      --primary: #2563eb;
-      --accent: #16a34a;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --key-bg: #262933;
-      --key-active: #3b82f6;
-      --border: #2e323e;
-      --amber: #f59e0b;
+      --bg: #000000;
+      --card: #121212;
+      --primary: #0a84ff;
+      --accent: #30d158;
+      --text: #ffffff;
+      --text-muted: #8e8e93;
+      --key-bg: #2c2c2e;
+      --key-active: #48484a;
+      --border: #1c1c1e;
       
-      /* Weight Button Palette */
-      --btn-idle-bg: #242731;
-      --btn-idle-border: #333745;
-      --btn-idle-text: #64748b;
+      --btn-idle-bg: #1c1c1e;
+      --btn-idle-border: #2c2c2e;
+      --btn-idle-text: #8e8e93;
     }
 
     * { box-sizing: border-box; touch-action: manipulation; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
@@ -41,12 +39,13 @@
     /* TOP HEADER */
     .top-cart-bar {
       background-color: var(--card);
-      border-bottom: 2px solid var(--border);
-      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex: 0 0 auto;
+      height: 8vh;
+      flex: 0 0 8vh;
     }
 
     .vendor-quote-label {
@@ -54,20 +53,21 @@
       text-transform: uppercase;
       color: var(--text-muted);
       letter-spacing: 0.5px;
+      font-weight: 600;
     }
 
     .vendor-quote-price {
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: #38edf8;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #64d2ff;
     }
 
     .view-cart-btn {
       background-color: var(--primary);
       color: white;
       border: none;
-      padding: 6px 12px;
-      border-radius: 10px;
+      padding: 6px 14px;
+      border-radius: 20px;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
@@ -75,36 +75,42 @@
     }
 
     .cart-btn-title {
-      font-weight: 800;
-      font-size: 0.85rem;
+      font-weight: 700;
+      font-size: 0.8rem;
     }
 
     .cart-btn-sub {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       opacity: 0.85;
       font-weight: 500;
     }
 
-    /* MAIN POS VIEW */
+    /* MAIN VIEW STRUCTURE (100vh TOTAL) */
     .view-container {
       display: flex;
       flex-direction: column;
-      flex: 1;
-      height: 100%;
+      height: 100vh;
+      width: 100%;
     }
 
-    .display-container {
+    /* 60% TOP WINDOW SECTION (8vh header + 52vh content) */
+    .top-window-60 {
+      height: 52vh;
+      flex: 0 0 52vh;
       background-color: var(--card);
       padding: 12px 16px;
-      border-bottom: 2px solid var(--border);
-      flex: 0 0 auto;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .section-label {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       text-transform: uppercase;
       color: var(--text-muted);
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
+      font-weight: 600;
       margin-bottom: 2px;
     }
 
@@ -116,12 +122,13 @@
 
     .price-display {
       font-size: 2.2rem;
-      font-weight: 800;
-      color: #38edf8;
+      font-weight: 700;
+      color: #64d2ff;
+      letter-spacing: -0.5px;
     }
 
     .weight-subdisplay {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: var(--text-muted);
       font-weight: 600;
     }
@@ -130,55 +137,60 @@
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       gap: 6px;
-      margin-top: 6px;
     }
 
-    /* Default Greyed Out Weight Button Styling */
     .weight-btn {
       background-color: var(--btn-idle-bg);
       border: 1px solid var(--btn-idle-border);
       color: var(--btn-idle-text);
-      padding: 8px 0;
-      font-size: 0.85rem;
-      font-weight: 700;
-      border-radius: 6px;
+      padding: 10px 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 10px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
     }
 
-    /* Active Highlighted Base Selected Button */
     .weight-btn.base-selected {
-      border-color: #3b82f6;
-      background-color: #1e3a8a;
-      color: #93c5fd;
-      box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+      border-color: #0a84ff;
+      background-color: #0040dd;
+      color: #ffffff;
     }
 
-    /* Target Buttons: Flash Active Green State on Press/Click */
     .weight-btn.target-btn:active,
     .weight-btn.target-btn.target-selected {
-      background-color: #14532d;
-      border-color: var(--accent);
-      color: #4ade80;
-      box-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
+      background-color: #30d158;
+      border-color: #30d158;
+      color: #000000;
+      font-weight: 700;
     }
 
-    /* Keypads */
+    /* 40% BOTTOM NUMPAD SECTION */
+    .bottom-numpad-40 {
+      height: 40vh;
+      flex: 0 0 40vh;
+      background-color: var(--bg);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .keypad-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      padding: 12px;
-      flex: 1;
-      background-color: var(--bg);
+      width: 100%;
+      max-width: 340px;
+      height: 100%;
+      max-height: 100%;
     }
 
     .key {
       background-color: var(--key-bg);
-      border: 1px solid var(--border);
       color: var(--text);
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       font-weight: 600;
       border-radius: 12px;
       display: flex;
@@ -186,102 +198,97 @@
       justify-content: center;
       cursor: pointer;
       user-select: none;
+      border: none;
     }
 
     .key:active {
       background-color: var(--key-active);
-      color: white;
     }
 
     .key.action-backspace {
-      background-color: #7f1d1d;
-      color: #fca5a5;
+      background-color: #ff453a;
+      color: #ffffff;
     }
 
     .key.action-clear-all {
-      background-color: #991b1b;
-      color: #ffffff;
-      font-size: 1.4rem;
-      font-weight: 800;
+      background-color: #a5a5a5;
+      color: #000000;
+      font-weight: 700;
     }
 
     .key.custom-wt-btn {
-      background-color: #1e3a8a;
-      border-color: #3b82f6;
-      color: #93c5fd;
-      font-size: 1.2rem;
+      background-color: #ff9f0a;
+      color: #ffffff;
+      font-size: 1rem;
       font-weight: 700;
-      text-transform: uppercase;
+      grid-column: span 3;
     }
 
-    /* DEDICATED CUSTOM WEIGHT SCREEN */
+    /* DEDICATED CUSTOM WEIGHT SCREEN (SAME 60/40 RATIO) */
     #customWeightView {
       display: none;
       background-color: var(--bg);
     }
 
-    .custom-display-container {
-      background-color: #2e1065;
-      border-bottom: 2px solid #581c87;
-      padding: 12px 16px;
-      flex: 0 0 auto;
+    .custom-top-60 {
+      height: 60vh;
+      flex: 0 0 60vh;
+      background-color: #1c1c1e;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
     }
 
     .custom-title {
-      color: #d8b4fe;
-      font-size: 0.7rem;
+      color: #bf5af2;
+      font-size: 0.75rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 2px;
+      margin-bottom: 8px;
     }
 
     .custom-display {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: #fde047;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: #ffd60a;
     }
 
     .custom-subdisplay {
-      font-size: 0.85rem;
-      color: #c084fc;
-      margin-top: 4px;
+      font-size: 1rem;
+      color: #bf5af2;
+      margin-top: 6px;
       font-weight: 600;
     }
 
     .custom-action-row {
+      grid-column: span 3;
       display: grid;
       grid-template-columns: 1fr 2fr;
       gap: 8px;
-      grid-column: span 3;
     }
 
     .btn-cancel {
-      background-color: #3f3f46;
+      background-color: #3a3a3c;
       color: white;
       border: none;
       border-radius: 12px;
-      font-weight: 700;
-      font-size: 1rem;
+      font-weight: 600;
+      font-size: 0.95rem;
       cursor: pointer;
     }
 
     .btn-add-cart {
-      background-color: var(--accent);
-      color: white;
+      background-color: #30d158;
+      color: #000000;
       border: none;
       border-radius: 12px;
-      font-weight: 800;
-      font-size: 1.1rem;
+      font-weight: 700;
+      font-size: 0.95rem;
       text-transform: uppercase;
       cursor: pointer;
-    }
-
-    .home-bottom-row {
-      grid-column: span 3;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
     }
 
     /* Modal Cart Sheet */
@@ -289,6 +296,7 @@
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
       display: none;
       flex-direction: column;
       justify-content: center;
@@ -298,8 +306,8 @@
     }
 
     .modal-content {
-      background: var(--card);
-      border-radius: 16px;
+      background: #1c1c1e;
+      border-radius: 20px;
       padding: 20px;
       width: 100%;
       max-width: 380px;
@@ -316,6 +324,7 @@
       padding: 10px 4px;
       border-bottom: 1px solid var(--border);
       text-align: center;
+      font-size: 0.9rem;
     }
 
     .cart-modal-actions {
@@ -326,117 +335,124 @@
     }
 
     .btn-clear-cart {
-      background-color: #991b1b;
+      background-color: #ff453a;
       color: white;
-      border: 1px solid #ef4444;
+      border: none;
       padding: 12px;
-      border-radius: 10px;
-      font-weight: 700;
+      border-radius: 12px;
+      font-weight: 600;
       cursor: pointer;
     }
 
     .close-modal-btn {
-      background: var(--key-bg);
+      background: #2c2c2e;
       color: var(--text);
-      border: 1px solid var(--border);
+      border: none;
       padding: 12px;
-      border-radius: 10px;
-      font-weight: 700;
+      border-radius: 12px;
+      font-weight: 600;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <!-- TOP HEADER -->
-  <div class="top-cart-bar" id="topHeader">
-    <div>
-      <div class="vendor-quote-label">Vendor Price Quote</div>
-      <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
-    </div>
-    <button class="view-cart-btn" id="openCartBtn">
-      <span class="cart-btn-title" id="cartBtnTitle">Cart (0) • ₹0.00</span>
-      <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
-    </button>
-  </div>
-
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
-    <div class="display-container" id="homeDisplayContainer">
-      <div class="section-label">Current Item Calculated</div>
-      <div class="display-row">
-        <div class="price-display" id="displayCurrentItemPrice">₹0.00</div>
-        <div class="weight-subdisplay" id="displayCurrentItemWeight">Weight: --</div>
+    
+    <!-- TOP 60% WINDOW AREA -->
+    <div class="top-cart-bar" id="topHeader">
+      <div>
+        <div class="vendor-quote-label">Vendor Price Quote</div>
+        <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
+      </div>
+      <button class="view-cart-btn" id="openCartBtn">
+        <span class="cart-btn-title" id="cartBtnTitle">Cart (0) • ₹0.00</span>
+        <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
+      </button>
+    </div>
+
+    <div class="top-window-60" id="homeDisplayContainer">
+      <div>
+        <div class="section-label">Current Item Calculated</div>
+        <div class="display-row">
+          <div class="price-display" id="displayCurrentItemPrice">₹0.00</div>
+          <div class="weight-subdisplay" id="displayCurrentItemWeight">Weight: --</div>
+        </div>
       </div>
 
-      <!-- Base Quote Selector (Greyed out except active) -->
-      <div class="section-label" style="margin-top: 8px;">Quote Base Weight</div>
-      <div class="weight-row" id="baseWeightRow">
-        <div class="weight-btn base-btn" data-weight="0.1">100g</div>
-        <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
-        <div class="weight-btn base-btn" data-weight="0.5">500g</div>
-        <div class="weight-btn base-btn" data-weight="0.75">750g</div>
-        <div class="weight-btn base-btn" data-weight="1">1Kg</div>
-      </div>
+      <div>
+        <!-- Base Quote Selector -->
+        <div class="section-label">Quote Base Weight</div>
+        <div class="weight-row" id="baseWeightRow">
+          <div class="weight-btn base-btn" data-weight="0.1">100g</div>
+          <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
+          <div class="weight-btn base-btn" data-weight="0.5">500g</div>
+          <div class="weight-btn base-btn" data-weight="0.75">750g</div>
+          <div class="weight-btn base-btn" data-weight="1">1Kg</div>
+        </div>
 
-      <!-- Target Purchase Selector (Greyed out except active) -->
-      <div class="section-label" style="margin-top: 8px;">Tap Target Weight to Add</div>
-      <div class="weight-row" id="targetWeightRow">
-        <div class="weight-btn target-btn" data-weight="0.1">100g</div>
-        <div class="weight-btn target-btn" data-weight="0.25">250g</div>
-        <div class="weight-btn target-btn" data-weight="0.5">500g</div>
-        <div class="weight-btn target-btn" data-weight="0.75">750g</div>
-        <div class="weight-btn target-btn" data-weight="1">1Kg</div>
+        <!-- Target Purchase Selector -->
+        <div class="section-label" style="margin-top: 10px;">Tap Target Weight to Add</div>
+        <div class="weight-row" id="targetWeightRow">
+          <div class="weight-btn target-btn" data-weight="0.1">100g</div>
+          <div class="weight-btn target-btn" data-weight="0.25">250g</div>
+          <div class="weight-btn target-btn" data-weight="0.5">500g</div>
+          <div class="weight-btn target-btn" data-weight="0.75">750g</div>
+          <div class="weight-btn target-btn" data-weight="1">1Kg</div>
+        </div>
       </div>
     </div>
 
-    <!-- Main Home Numpad -->
-    <div class="keypad-container" id="homeKeypad">
-      <div class="key num-key">7</div>
-      <div class="key num-key">8</div>
-      <div class="key num-key">9</div>
-      <div class="key num-key">4</div>
-      <div class="key num-key">5</div>
-      <div class="key num-key">6</div>
-      <div class="key num-key">1</div>
-      <div class="key num-key">2</div>
-      <div class="key num-key">3</div>
-      
-      <div class="home-bottom-row">
+    <!-- BOTTOM 40% NUMPAD AREA -->
+    <div class="bottom-numpad-40">
+      <div class="keypad-container" id="homeKeypad">
+        <div class="key num-key">7</div>
+        <div class="key num-key">8</div>
+        <div class="key num-key">9</div>
+        <div class="key num-key">4</div>
+        <div class="key num-key">5</div>
+        <div class="key num-key">6</div>
+        <div class="key num-key">1</div>
+        <div class="key num-key">2</div>
+        <div class="key num-key">3</div>
         <div class="key action-backspace" id="homeBackspaceBtn">⌫</div>
         <div class="key num-key">0</div>
         <div class="key action-clear-all" id="homeClearEntryBtn">C</div>
+        <div class="key custom-wt-btn" id="openCustomWtBtn">Custom Weight</div>
       </div>
-      <div class="key custom-wt-btn" id="openCustomWtBtn" style="grid-column: span 3;">CW</div>
     </div>
   </div>
 
-  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN -->
+  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) -->
   <div class="view-container" id="customWeightView">
-    <div class="custom-display-container" id="customDisplayContainer">
+    <!-- TOP 60% WINDOW AREA -->
+    <div class="custom-top-60" id="customDisplayContainer">
       <div class="custom-title">Enter Custom Weight</div>
       <div class="custom-display" id="customDisplay">0 Kg</div>
       <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
     </div>
 
-    <!-- Dedicated Custom Weight Numpad -->
-    <div class="keypad-container" id="customKeypad">
-      <div class="key c-num-key">7</div>
-      <div class="key c-num-key">8</div>
-      <div class="key c-num-key">9</div>
-      <div class="key c-num-key">4</div>
-      <div class="key c-num-key">5</div>
-      <div class="key c-num-key">6</div>
-      <div class="key c-num-key">1</div>
-      <div class="key c-num-key">2</div>
-      <div class="key c-num-key">3</div>
-      <div class="key action-backspace" id="customBackspaceBtn">⌫</div>
-      <div class="key c-num-key">0</div>
-      <div class="key c-num-key">.</div>
+    <!-- BOTTOM 40% NUMPAD AREA -->
+    <div class="bottom-numpad-40">
+      <div class="keypad-container" id="customKeypad">
+        <div class="key c-num-key">7</div>
+        <div class="key c-num-key">8</div>
+        <div class="key c-num-key">9</div>
+        <div class="key c-num-key">4</div>
+        <div class="key c-num-key">5</div>
+        <div class="key c-num-key">6</div>
+        <div class="key c-num-key">1</div>
+        <div class="key c-num-key">2</div>
+        <div class="key c-num-key">3</div>
+        <div class="key action-backspace" id="customBackspaceBtn">⌫</div>
+        <div class="key c-num-key">0</div>
+        <div class="key c-num-key">.</div>
 
-      <div class="custom-action-row">
-        <button class="btn-cancel" id="cancelCustomBtn">Cancel</button>
-        <button class="btn-add-cart" id="addCustomToCartBtn">Add to Cart</button>
+        <div class="custom-action-row">
+          <button class="btn-cancel" id="cancelCustomBtn">Cancel</button>
+          <button class="btn-add-cart" id="addCustomToCartBtn">Add to Cart</button>
+        </div>
       </div>
     </div>
   </div>
@@ -462,20 +478,13 @@
   <script>
     let priceInput = "";
     let customWeightInput = "";
-    let baseWeight = 0.25; // Default 250g
+    let baseWeight = 0.25;
     let itemCounter = 1;
     let cart = [];
 
-    // Views & Global Components
-    const topHeader = document.getElementById("topHeader");
     const homeView = document.getElementById("homeView");
     const customWeightView = document.getElementById("customWeightView");
 
-    // Display Containers
-    const homeDisplayContainer = document.getElementById("homeDisplayContainer");
-    const customDisplayContainer = document.getElementById("customDisplayContainer");
-
-    // Home Elements
     const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
     const displayCurrentItemWeight = document.getElementById("displayCurrentItemWeight");
     const headerVendorQuote = document.getElementById("headerVendorQuote");
@@ -486,7 +495,6 @@
     const baseWeightRow = document.getElementById("baseWeightRow");
     const targetWeightRow = document.getElementById("targetWeightRow");
 
-    // Custom Weight Elements
     const customDisplay = document.getElementById("customDisplay");
     const customSubDisplay = document.getElementById("customSubDisplay");
     const customKeypad = document.getElementById("customKeypad");
@@ -494,18 +502,15 @@
     const cancelCustomBtn = document.getElementById("cancelCustomBtn");
     const addCustomToCartBtn = document.getElementById("addCustomToCartBtn");
 
-    // Top Header Elements
     const cartBtnTitle = document.getElementById("cartBtnTitle");
     const cartBtnSub = document.getElementById("cartBtnSub");
     
-    // Modal Cart Elements
     const openCartBtn = document.getElementById("openCartBtn");
     const cartModal = document.getElementById("cartModal");
     const closeCartBtn = document.getElementById("closeCartBtn");
     const clearAllCartBtn = document.getElementById("clearAllCartBtn");
     const cartTableBody = document.querySelector("#cartTable tbody");
 
-    // Home Numpad Logic
     homeKeypad.addEventListener("click", (e) => {
       if (!e.target.classList.contains("num-key")) return;
       if (priceInput.length >= 6) return;
@@ -518,13 +523,10 @@
       updateHomeDisplay();
     });
 
-    // Clear Current Calculation AND Vendor Price Quote
     homeClearEntryBtn.addEventListener("click", () => {
       priceInput = "";
       displayCurrentItemPrice.textContent = "₹0.00";
       displayCurrentItemWeight.textContent = "Weight: --";
-      
-      // Clear target button active indicator state
       document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
       updateHomeDisplay();
     });
@@ -533,7 +535,6 @@
       headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
     }
 
-    // Base Weight Selection
     baseWeightRow.addEventListener("click", (e) => {
       if (!e.target.classList.contains("base-btn")) return;
       document.querySelectorAll(".base-btn").forEach(b => b.classList.remove("base-selected"));
@@ -541,10 +542,8 @@
       baseWeight = parseFloat(e.target.dataset.weight);
     });
 
-    // Preset Target Weight Selection -> Auto Add
     targetWeightRow.addEventListener("click", (e) => {
       if (!e.target.classList.contains("target-btn")) return;
-      
       document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
       e.target.classList.add("target-selected");
 
@@ -552,31 +551,24 @@
       processAddToCart(targetWeight);
     });
 
-    // Switch to Custom Weight Screen
     openCustomWtBtn.addEventListener("click", () => {
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
         alert("Enter a vendor price first!");
         return;
       }
-      
-      const homeHeaderHeight = homeDisplayContainer.offsetHeight + topHeader.offsetHeight;
-      customDisplayContainer.style.height = `${homeHeaderHeight}px`;
 
       customWeightInput = "";
       updateCustomDisplay();
-      topHeader.style.display = "none";
       homeView.style.display = "none";
       customWeightView.style.display = "flex";
     });
 
     cancelCustomBtn.addEventListener("click", () => {
       customWeightView.style.display = "none";
-      topHeader.style.display = "flex";
       homeView.style.display = "flex";
     });
 
-    // Custom Weight Numpad Logic
     customKeypad.addEventListener("click", (e) => {
       if (!e.target.classList.contains("c-num-key")) return;
       const val = e.target.textContent;
@@ -623,11 +615,9 @@
       processAddToCart(finalWeightInKg);
 
       customWeightView.style.display = "none";
-      topHeader.style.display = "flex";
       homeView.style.display = "flex";
     });
 
-    // Add to Cart Logic & Header Updates
     function processAddToCart(targetWeight) {
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
@@ -647,14 +637,12 @@
 
       cart.push(newItem);
 
-      // Display Current Calculated Item Prominently
       displayCurrentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
       const formattedWt = newItem.weight < 1 ? `${Math.round(newItem.weight * 1000)}g` : `${newItem.weight.toFixed(2)}Kg`;
       displayCurrentItemWeight.textContent = `Weight: ${formattedWt}`;
 
       renderCart();
 
-      // Clear Price Input for next item entry
       priceInput = "";
       updateHomeDisplay();
     }
@@ -673,7 +661,7 @@
           <td>${item.weight < 1 ? Math.round(item.weight * 1000) + 'g' : item.weight.toFixed(2) + 'Kg'}</td>
           <td>${item.quote}</td>
           <td>₹${item.price.toFixed(2)}</td>
-          <td><button onclick="removeItem(${idx})" style="background:none;border:none;color:#ef4444;font-weight:bold;cursor:pointer;">🗑️</button></td>
+          <td><button onclick="removeItem(${idx})" style="background:none;border:none;color:#ff453a;font-weight:bold;cursor:pointer;">🗑️</button></td>
         `;
       });
 
