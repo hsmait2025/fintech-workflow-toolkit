@@ -91,10 +91,7 @@
       background: var(--bg);
     }
 
-    /* =========================================================
-       TOP BAR (BOOSTED SIZES)
-       ========================================================= */
-
+    /* TOP BAR */
     .top-cart-bar {
       min-height: 56px;
       padding: 8px var(--page-pad);
@@ -149,7 +146,6 @@
       opacity: 0.88;
     }
 
-    /* CART BUTTON FONT SIZES BOOSTED BY 10% */
     .cart-btn-title {
       max-width: 100%;
       overflow: hidden;
@@ -171,10 +167,7 @@
       opacity: 0.9;
     }
 
-    /* =========================================================
-       HOME INFORMATION PANEL (BOOSTED SIZES)
-       ========================================================= */
-
+    /* HOME INFORMATION PANEL */
     .top-window-60 {
       min-height: 0;
       padding: clamp(10px, 2.8vw, 16px) var(--page-pad) 8px;
@@ -243,7 +236,6 @@
       flex-wrap: wrap;
     }
 
-    /* Equation Display Styling */
     .formula-display {
       color: var(--yellow);
       font-size: clamp(0.85rem, 3.4vw, 1.05rem);
@@ -260,17 +252,10 @@
       margin-top: 12px;
     }
 
-    /* Base Weight Grid Layout */
     .base-weight-row-updated {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 7px;
-    }
-
-    .weight-row {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 6px;
     }
 
     .target-weight-row-custom {
@@ -280,7 +265,8 @@
     }
 
     .weight-btn,
-    .base-dropdown-select {
+    .base-dropdown-select,
+    .chip-dropdown-select {
       min-width: 0;
       min-height: 48px;
       padding: 7px 3px;
@@ -299,8 +285,8 @@
       user-select: none;
     }
 
-    /* Base Dropdown Specific Styling */
-    .base-dropdown-select {
+    .base-dropdown-select,
+    .chip-dropdown-select {
       width: 100%;
       text-align-last: center;
       appearance: none;
@@ -311,7 +297,8 @@
       padding-right: 18px;
     }
 
-    .base-dropdown-select option {
+    .base-dropdown-select option,
+    .chip-dropdown-select option {
       background: #1c1c1e;
       color: #fff;
     }
@@ -339,18 +326,13 @@
       color: #ffb340;
     }
 
-    /* =========================================================
-       KEYPAD (INTACT)
-       ========================================================= */
-
+    /* KEYPAD */
     .bottom-numpad-40 {
       width: 100%;
       height: clamp(292px, 43dvh, 390px);
       min-height: 292px;
       flex-shrink: 0;
-      padding:
-        8px var(--page-pad)
-        max(10px, var(--safe-bottom));
+      padding: 8px var(--page-pad) max(10px, var(--safe-bottom));
       display: flex;
       overflow: hidden;
       background: var(--bg);
@@ -413,10 +395,7 @@
       background: #ffb340;
     }
 
-    /* =========================================================
-       CUSTOM WEIGHT SCREEN (BOOSTED SIZES)
-       ========================================================= */
-
+    /* CUSTOM WEIGHT SCREEN */
     #customWeightView {
       display: none;
       grid-template-rows: minmax(0, 1fr) auto;
@@ -509,10 +488,7 @@
       transform: scale(0.97);
     }
 
-    /* =========================================================
-       CART MODAL (BOOSTED SIZES)
-       ========================================================= */
-
+    /* MODAL BASE */
     .modal {
       position: fixed;
       inset: 0;
@@ -543,6 +519,61 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
 
+    /* NAME PROMPT MODAL STYLES */
+    .name-input-field {
+      width: 100%;
+      height: 48px;
+      margin-top: 14px;
+      padding: 0 14px;
+      border: 1px solid #3a3a3c;
+      border-radius: 12px;
+      background: #2c2c2e;
+      color: #ffffff;
+      font-size: 1.05rem;
+      outline: none;
+    }
+
+    .name-input-field:focus {
+      border-color: var(--blue);
+    }
+
+    .quick-chips-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip-btn {
+      min-height: 40px;
+      padding: 6px 10px;
+      border: 1px solid #3a3a3c;
+      border-radius: 12px;
+      background: #2c2c2e;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chip-btn:active {
+      background: var(--blue);
+    }
+
+    .chip-dropdown-select {
+      min-height: 40px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+
+    .modal-action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    /* CART MODAL */
     .cart-title-row {
       display: flex;
       align-items: center;
@@ -599,22 +630,24 @@
 
     .cart-table th:nth-child(1),
     .cart-table td:nth-child(1) {
-      width: 20%;
+      width: 25%;
+      text-align: left;
+      padding-left: 6px;
     }
 
     .cart-table th:nth-child(2),
     .cart-table td:nth-child(2) {
-      width: 20%;
+      width: 18%;
     }
 
     .cart-table th:nth-child(3),
     .cart-table td:nth-child(3) {
-      width: 24%;
+      width: 23%;
     }
 
     .cart-table th:nth-child(4),
     .cart-table td:nth-child(4) {
-      width: 24%;
+      width: 22%;
     }
 
     .cart-table th:nth-child(5),
@@ -675,10 +708,6 @@
       transform: scale(0.97);
     }
 
-    /* =========================================================
-       VERY SHORT MOBILE VIEWPORTS
-       ========================================================= */
-
     @media (max-height: 650px) {
       :root {
         --key-min-height: 52px;
@@ -704,7 +733,8 @@
       }
 
       .weight-btn,
-      .base-dropdown-select {
+      .base-dropdown-select,
+      .chip-dropdown-select {
         min-height: 40px;
         padding-top: 5px;
         padding-bottom: 5px;
@@ -715,13 +745,8 @@
       }
     }
 
-    /* Wider mobile screens: retain compact Apple-like density. */
     @media (min-width: 500px) {
-      .top-window-60 {
-        padding-left: max(20px, var(--page-pad));
-        padding-right: max(20px, var(--page-pad));
-      }
-
+      .top-window-60,
       .bottom-numpad-40 {
         padding-left: max(20px, var(--page-pad));
         padding-right: max(20px, var(--page-pad));
@@ -732,9 +757,7 @@
 
 <body>
 
-  <!-- =========================================================
-       VIEW 1: HOME MAIN POS SCREEN
-       ========================================================= -->
+  <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
 
     <header class="top-cart-bar" id="topHeader">
@@ -749,7 +772,6 @@
       </button>
     </header>
 
-    <!-- FLEXIBLE INFORMATION AREA -->
     <main class="top-window-60" id="homeDisplayContainer">
 
       <section class="display-section">
@@ -797,7 +819,6 @@
       </section>
     </main>
 
-    <!-- PROTECTED NUMPAD -->
     <section class="bottom-numpad-40" aria-label="Number keypad">
       <div class="keypad-container" id="homeKeypad">
         <button class="key num-key" type="button">7</button>
@@ -820,9 +841,7 @@
   </div>
 
 
-  <!-- =========================================================
-       VIEW 2: CUSTOM WEIGHT SCREEN
-       ========================================================= -->
+  <!-- VIEW 2: CUSTOM WEIGHT SCREEN -->
   <div class="view-container" id="customWeightView">
 
     <section class="custom-top-60" id="customDisplayContainer">
@@ -862,9 +881,54 @@
   </div>
 
 
-  <!-- =========================================================
-       CART MODAL
-       ========================================================= -->
+  <!-- QUICK-NAME PROMPT MODAL -->
+  <div class="modal" id="itemNameModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="cart-title">Item Name (Optional)</div>
+      
+      <input type="text" id="itemNameInput" class="name-input-field" placeholder="e.g. Tomato, Onion, Apple..." />
+
+      <div class="quick-chips-row" id="quickChipsContainer">
+        <button class="chip-btn" type="button" data-name="Tomato">Tomato</button>
+        <button class="chip-btn" type="button" data-name="Potato">Potato</button>
+        <button class="chip-btn" type="button" data-name="Onion">Onion</button>
+        
+        <select class="chip-dropdown-select" id="moreItemsDropdown" aria-label="More grocery items">
+          <option value="" disabled selected hidden>More...</option>
+          <option value="Garlic">Garlic</option>
+          <option value="Green Garlic">Green Garlic</option>
+          <option value="Green Onion">Green Onion</option>
+          <option value="Gobhi">Gobhi</option>
+          <option value="Cabbge">Cabbge</option>
+          <option value="Palak">Palak</option>
+          <option value="Saag">Saag</option>
+          <option value="Carrot">Carrot</option>
+          <option value="Bengan">Bengan</option>
+          <option value="Bhindi">Bhindi</option>
+          <option value="Ghiya">Ghiya</option>
+          <option value="Tori">Tori</option>
+          <option value="Carrot">Carrot</option>
+          <option value="Radish">Radish</option>
+          <option value="Kathal">Kathal</option>
+          <option value="Beans">Beans</option>
+          <option value="Green Chilli">Green Chilli</option>
+          <option value="Lemon">Lemon</option>
+          <option value="Apple">Apple</option>
+          <option value="Papaya">Papaya</option>
+          <option value="Amrud">Amrud</option>
+          <option value="Anaar">Anaar</option>
+        </select>
+      </div>
+
+      <div class="modal-action-row">
+        <button class="btn-cancel" id="skipItemNameBtn" type="button">Skip</button>
+        <button class="btn-add-cart" id="confirmItemNameBtn" type="button">Add</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- CART MODAL -->
   <div class="modal" id="cartModal" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
     <div class="modal-content">
 
@@ -877,7 +941,7 @@
         <table class="cart-table" id="cartTable">
           <thead>
             <tr>
-              <th>#</th>
+              <th>Item</th>
               <th>Weight</th>
               <th>Quote</th>
               <th>Price</th>
@@ -902,109 +966,59 @@
 
 
   <script>
-    /* =========================================================
-       CORE STATE
-       ========================================================= */
-
+    /* CORE STATE */
     let priceInput = "";
     let customWeightInput = "";
     let baseWeight = 0.25;
+    let pendingTargetWeight = null;
     let itemCounter = 1;
     let cart = [];
 
-
-    /* =========================================================
-       DOM REFERENCES
-       ========================================================= */
-
+    /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
     const customWeightView = document.getElementById("customWeightView");
+    const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
+    const displayMathFormula = document.getElementById("displayMathFormula");
+    const headerVendorQuote = document.getElementById("headerVendorQuote");
 
-    const displayCurrentItemPrice =
-      document.getElementById("displayCurrentItemPrice");
+    const homeKeypad = document.getElementById("homeKeypad");
+    const homeBackspaceBtn = document.getElementById("homeBackspaceBtn");
+    const homeClearEntryBtn = document.getElementById("homeClearEntryBtn");
 
-    const displayMathFormula =
-      document.getElementById("displayMathFormula");
+    const openCustomWtBtn = document.getElementById("openCustomWtBtn");
+    const baseWeightRow = document.getElementById("baseWeightRow");
+    const baseWeightDropdown = document.getElementById("baseWeightDropdown");
+    const targetWeightRow = document.getElementById("targetWeightRow");
 
-    const headerVendorQuote =
-      document.getElementById("headerVendorQuote");
+    const customDisplay = document.getElementById("customDisplay");
+    const customSubDisplay = document.getElementById("customSubDisplay");
+    const customKeypad = document.getElementById("customKeypad");
+    const customBackspaceBtn = document.getElementById("customBackspaceBtn");
+    const cancelCustomBtn = document.getElementById("cancelCustomBtn");
+    const addCustomToCartBtn = document.getElementById("addCustomToCartBtn");
 
-    const homeKeypad =
-      document.getElementById("homeKeypad");
+    const cartBtnTitle = document.getElementById("cartBtnTitle");
+    const cartBtnSub = document.getElementById("cartBtnSub");
+    const cartCountLabel = document.getElementById("cartCountLabel");
+    const openCartBtn = document.getElementById("openCartBtn");
+    const cartModal = document.getElementById("cartModal");
+    const closeCartBtn = document.getElementById("closeCartBtn");
+    const clearAllCartBtn = document.getElementById("clearAllCartBtn");
+    const cartTableBody = document.querySelector("#cartTable tbody");
+    const cartEmptyMessage = document.getElementById("cartEmptyMessage");
 
-    const homeBackspaceBtn =
-      document.getElementById("homeBackspaceBtn");
+    const itemNameModal = document.getElementById("itemNameModal");
+    const itemNameInput = document.getElementById("itemNameInput");
+    const quickChipsContainer = document.getElementById("quickChipsContainer");
+    const moreItemsDropdown = document.getElementById("moreItemsDropdown");
+    const skipItemNameBtn = document.getElementById("skipItemNameBtn");
+    const confirmItemNameBtn = document.getElementById("confirmItemNameBtn");
 
-    const homeClearEntryBtn =
-      document.getElementById("homeClearEntryBtn");
-
-    const openCustomWtBtn =
-      document.getElementById("openCustomWtBtn");
-
-    const baseWeightRow =
-      document.getElementById("baseWeightRow");
-
-    const baseWeightDropdown =
-      document.getElementById("baseWeightDropdown");
-
-    const targetWeightRow =
-      document.getElementById("targetWeightRow");
-
-    const customDisplay =
-      document.getElementById("customDisplay");
-
-    const customSubDisplay =
-      document.getElementById("customSubDisplay");
-
-    const customKeypad =
-      document.getElementById("customKeypad");
-
-    const customBackspaceBtn =
-      document.getElementById("customBackspaceBtn");
-
-    const cancelCustomBtn =
-      document.getElementById("cancelCustomBtn");
-
-    const addCustomToCartBtn =
-      document.getElementById("addCustomToCartBtn");
-
-    const cartBtnTitle =
-      document.getElementById("cartBtnTitle");
-
-    const cartBtnSub =
-      document.getElementById("cartBtnSub");
-
-    const cartCountLabel =
-      document.getElementById("cartCountLabel");
-
-    const openCartBtn =
-      document.getElementById("openCartBtn");
-
-    const cartModal =
-      document.getElementById("cartModal");
-
-    const closeCartBtn =
-      document.getElementById("closeCartBtn");
-
-    const clearAllCartBtn =
-      document.getElementById("clearAllCartBtn");
-
-    const cartTableBody =
-      document.querySelector("#cartTable tbody");
-
-    const cartEmptyMessage =
-      document.getElementById("cartEmptyMessage");
-
-
-    /* =========================================================
-       DISPLAY HELPERS
-       ========================================================= */
-
+    /* DISPLAY HELPERS */
     function formatWeight(weightKg) {
       if (weightKg < 1) {
         return `${Math.round(weightKg * 1000)}g`;
       }
-
       return `${weightKg.toFixed(2)}Kg`;
     }
 
@@ -1015,10 +1029,8 @@
     }
 
     function updateHomeDisplay() {
-      headerVendorQuote.textContent =
-        priceInput ? `₹${priceInput}` : "₹0";
+      headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
 
-      // Dynamically display math equation
       if (priceInput && parseFloat(priceInput) > 0) {
         const val = parseFloat(priceInput);
         const bLabel = formatBaseWeight(baseWeight);
@@ -1028,125 +1040,121 @@
       }
     }
 
-
-    /* =========================================================
-       SMART NUMPAD LOGIC — MAIN SCREEN
-       ========================================================= */
-
+    /* MAIN KEYPAD */
     homeKeypad.addEventListener("click", (e) => {
       const key = e.target.closest(".num-key");
-
-      if (!key || !homeKeypad.contains(key)) {
-        return;
-      }
+      if (!key || !homeKeypad.contains(key)) return;
 
       const val = key.textContent.trim();
-
-      if (priceInput === "0" && val === "0") {
-        return;
-      }
-
+      if (priceInput === "0" && val === "0") return;
       if (priceInput === "0" && val !== "0") {
         priceInput = val;
         updateHomeDisplay();
         return;
       }
-
-      if (priceInput.length >= 6) {
-        return;
-      }
+      if (priceInput.length >= 6) return;
 
       priceInput += val;
       updateHomeDisplay();
     });
-
 
     homeBackspaceBtn.addEventListener("click", () => {
       priceInput = priceInput.slice(0, -1);
       updateHomeDisplay();
     });
 
-
     homeClearEntryBtn.addEventListener("click", () => {
       priceInput = "";
-
       displayCurrentItemPrice.textContent = "₹0";
       displayCurrentItemPrice.classList.remove("has-input");
-
       updateHomeDisplay();
     });
 
-
-    /* =========================================================
-       BASE WEIGHT SELECTOR LOGIC
-       ========================================================= */
-
+    /* BASE WEIGHT SELECTOR */
     baseWeightRow.addEventListener("click", (e) => {
       const button = e.target.closest(".base-btn");
+      if (!button || !baseWeightRow.contains(button)) return;
 
-      if (!button || !baseWeightRow.contains(button)) {
-        return;
-      }
-
-      document
-        .querySelectorAll(".base-btn")
-        .forEach((b) => b.classList.remove("base-selected"));
-
+      document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
       baseWeightDropdown.classList.remove("base-selected");
       baseWeightDropdown.selectedIndex = 0;
 
       button.classList.add("base-selected");
-
       baseWeight = parseFloat(button.dataset.weight);
-
       updateHomeDisplay();
     });
 
     baseWeightDropdown.addEventListener("change", (e) => {
       const selectedVal = parseFloat(e.target.value);
+      if (isNaN(selectedVal)) return;
 
-      if (isNaN(selectedVal)) {
-        return;
-      }
-
-      document
-        .querySelectorAll(".base-btn")
-        .forEach((b) => b.classList.remove("base-selected"));
-
+      document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
       baseWeightDropdown.classList.add("base-selected");
-
       baseWeight = selectedVal;
-
       updateHomeDisplay();
     });
 
-
-    /* =========================================================
-       TARGET WEIGHT
-       ========================================================= */
-
+    /* TARGET WEIGHT & PROMPT INTERCEPT */
     targetWeightRow.addEventListener("click", (e) => {
       const button = e.target.closest(".target-btn");
+      if (!button || !targetWeightRow.contains(button)) return;
 
-      if (!button || !targetWeightRow.contains(button)) {
+      const priceVal = parseFloat(priceInput);
+      if (isNaN(priceVal) || priceVal <= 0) {
+        showTemporaryMessage("Enter a price first.");
         return;
       }
 
-      const targetWeight = parseFloat(button.dataset.weight);
-
-      processAddToCart(targetWeight);
+      pendingTargetWeight = parseFloat(button.dataset.weight);
+      promptItemName();
     });
 
+    /* NAME PROMPT MODAL LOGIC */
+    function promptItemName() {
+      itemNameInput.value = "";
+      moreItemsDropdown.selectedIndex = 0;
+      itemNameModal.style.display = "flex";
+      itemNameInput.focus();
+    }
 
-    /* =========================================================
-       CUSTOM WEIGHT SCREEN
-       ========================================================= */
+    quickChipsContainer.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip-btn");
+      if (!chip) return;
+      itemNameInput.value = chip.dataset.name;
+    });
 
+    moreItemsDropdown.addEventListener("change", (e) => {
+      if (e.target.value) {
+        itemNameInput.value = e.target.value;
+      }
+    });
+
+    skipItemNameBtn.addEventListener("click", () => {
+      finalizeAddToCart("");
+    });
+
+    confirmItemNameBtn.addEventListener("click", () => {
+      finalizeAddToCart(itemNameInput.value.trim());
+    });
+
+    itemNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        finalizeAddToCart(itemNameInput.value.trim());
+      }
+    });
+
+    function finalizeAddToCart(nameVal) {
+      itemNameModal.style.display = "none";
+      if (pendingTargetWeight !== null) {
+        processAddToCart(pendingTargetWeight, nameVal);
+        pendingTargetWeight = null;
+      }
+    }
+
+    /* CUSTOM WEIGHT SCREEN */
     openCustomWtBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-
       const priceVal = parseFloat(priceInput);
-
       if (isNaN(priceVal) || priceVal <= 0) {
         showTemporaryMessage("Enter a vendor price first.");
         return;
@@ -1154,69 +1162,45 @@
 
       customWeightInput = "";
       updateCustomDisplay();
-
       homeView.style.display = "none";
       customWeightView.style.display = "grid";
     });
-
 
     cancelCustomBtn.addEventListener("click", () => {
       customWeightView.style.display = "none";
       homeView.style.display = "grid";
     });
 
-
-    /* =========================================================
-       SMART NUMPAD LOGIC — CUSTOM WEIGHT
-       ========================================================= */
-
     customKeypad.addEventListener("click", (e) => {
       const key = e.target.closest(".c-num-key");
-
-      if (!key || !customKeypad.contains(key)) {
-        return;
-      }
+      if (!key || !customKeypad.contains(key)) return;
 
       const val = key.textContent.trim();
-
       if (val === ".") {
-        if (customWeightInput.includes(".")) {
-          return;
-        }
-
-        if (customWeightInput === "") {
-          customWeightInput = "0";
-        }
-
+        if (customWeightInput.includes(".")) return;
+        if (customWeightInput === "") customWeightInput = "0";
         customWeightInput += ".";
         updateCustomDisplay();
         return;
       }
 
-      if (customWeightInput === "0" && val === "0") {
-        return;
-      }
-
+      if (customWeightInput === "0" && val === "0") return;
       if (customWeightInput === "0" && val !== "0") {
         customWeightInput = val;
         updateCustomDisplay();
         return;
       }
 
-      if (customWeightInput.length >= 6) {
-        return;
-      }
+      if (customWeightInput.length >= 6) return;
 
       customWeightInput += val;
       updateCustomDisplay();
     });
 
-
     customBackspaceBtn.addEventListener("click", () => {
       customWeightInput = customWeightInput.slice(0, -1);
       updateCustomDisplay();
     });
-
 
     function updateCustomDisplay() {
       if (!customWeightInput) {
@@ -1231,65 +1215,46 @@
         return;
       }
 
-      customDisplay.textContent =
-        `${customWeightInput} Kg`;
-
-      const numericVal =
-        parseFloat(customWeightInput);
+      customDisplay.textContent = `${customWeightInput} Kg`;
+      const numericVal = parseFloat(customWeightInput);
 
       if (isNaN(numericVal)) {
-        customSubDisplay.textContent =
-          "Equivalent: 0g";
+        customSubDisplay.textContent = "Equivalent: 0g";
         return;
       }
 
-      const calculatedGrams =
-        Math.round(numericVal * 1000);
-
-      customSubDisplay.textContent =
-        `Equivalent: ${calculatedGrams}g`;
+      const calculatedGrams = Math.round(numericVal * 1000);
+      customSubDisplay.textContent = `Equivalent: ${calculatedGrams}g`;
     }
 
-
     addCustomToCartBtn.addEventListener("click", () => {
-      const finalWeightInKg =
-        parseFloat(customWeightInput);
-
-      if (
-        isNaN(finalWeightInKg) ||
-        finalWeightInKg <= 0
-      ) {
+      const finalWeightInKg = parseFloat(customWeightInput);
+      if (isNaN(finalWeightInKg) || finalWeightInKg <= 0) {
         showTemporaryMessage("Type a valid weight.");
         return;
       }
 
-      processAddToCart(finalWeightInKg);
-
+      pendingTargetWeight = finalWeightInKg;
       customWeightView.style.display = "none";
       homeView.style.display = "grid";
+      promptItemName();
     });
 
-
-    /* =========================================================
-       CART CALCULATION — ORIGINAL CORE LOGIC PRESERVED
-       ========================================================= */
-
-    function processAddToCart(targetWeight) {
+    /* CART CALCULATION */
+    function processAddToCart(targetWeight, customName = "") {
       const priceVal = parseFloat(priceInput);
-
       if (isNaN(priceVal) || priceVal <= 0) {
         showTemporaryMessage("Enter a price first.");
         return false;
       }
 
-      const calculatedPrice =
-        ((priceVal / baseWeight) * targetWeight).toFixed(2);
-
+      const calculatedPrice = ((priceVal / baseWeight) * targetWeight).toFixed(2);
       const baseLabel = formatBaseWeight(baseWeight);
       const targetLabel = formatWeight(targetWeight);
 
       const newItem = {
         id: itemCounter++,
+        name: customName || `Item #${itemCounter - 1}`,
         weight: targetWeight,
         quote: `₹${priceVal}/${baseLabel}`,
         price: parseFloat(calculatedPrice)
@@ -1297,7 +1262,6 @@
 
       cart.push(newItem);
 
-      // Display calculated item price and complete math equation on main display
       displayCurrentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
       displayCurrentItemPrice.classList.add("has-input");
 
@@ -1306,21 +1270,14 @@
 
       renderCart();
 
-      // Reset input for next item while preserving output display
       priceInput = "";
       headerVendorQuote.textContent = "₹0";
-
       return true;
     }
 
-
-    /* =========================================================
-       CART RENDERING
-       ========================================================= */
-
+    /* CART RENDERING */
     function renderCart() {
       cartTableBody.innerHTML = "";
-
       let totalP = 0;
       let totalW = 0;
 
@@ -1329,34 +1286,21 @@
         totalW += item.weight;
 
         const row = cartTableBody.insertRow();
-
         row.innerHTML = `
-          <td>Item #${item.id}</td>
+          <td>${item.name}</td>
           <td>${formatWeight(item.weight)}</td>
           <td>${item.quote}</td>
           <td>₹${item.price.toFixed(2)}</td>
           <td>
-            <button
-              class="remove-item-btn"
-              type="button"
-              data-index="${idx}"
-              aria-label="Remove item ${item.id}"
-            >×</button>
+            <button class="remove-item-btn" type="button" data-index="${idx}" aria-label="Remove item">×</button>
           </td>
         `;
       });
 
-      cartBtnTitle.textContent =
-        `Cart (${cart.length}) · ₹${totalP.toFixed(2)}`;
-
-      cartBtnSub.textContent =
-        `Total: ${totalW.toFixed(2)} Kg`;
-
-      cartCountLabel.textContent =
-        `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
-
-      cartEmptyMessage.style.display =
-        cart.length === 0 ? "block" : "none";
+      cartBtnTitle.textContent = `Cart (${cart.length}) · ₹${totalP.toFixed(2)}`;
+      cartBtnSub.textContent = `Total: ${totalW.toFixed(2)} Kg`;
+      cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
+      cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
 
       if (cart.length === 0) {
         displayCurrentItemPrice.textContent = "₹0";
@@ -1365,50 +1309,26 @@
       }
     }
 
-
-    /* =========================================================
-       CART ITEM DELETION
-       ========================================================= */
-
+    /* CART ITEM DELETION */
     cartTableBody.addEventListener("click", (e) => {
       const button = e.target.closest(".remove-item-btn");
+      if (!button) return;
 
-      if (!button) {
-        return;
-      }
-
-      const index =
-        parseInt(button.dataset.index, 10);
-
-      if (Number.isNaN(index)) {
-        return;
-      }
+      const index = parseInt(button.dataset.index, 10);
+      if (Number.isNaN(index)) return;
 
       removeItem(index);
     });
 
-
     window.removeItem = function(index) {
-      if (
-        index < 0 ||
-        index >= cart.length
-      ) {
-        return;
-      }
-
+      if (index < 0 || index >= cart.length) return;
       cart.splice(index, 1);
       renderCart();
     };
 
-
-    /* =========================================================
-       CLEAR CART
-       ========================================================= */
-
+    /* CLEAR CART */
     clearAllCartBtn.addEventListener("click", () => {
-      if (cart.length === 0) {
-        return;
-      }
+      if (cart.length === 0) return;
 
       if (window.confirm("Clear all items in cart?")) {
         cart = [];
@@ -1420,40 +1340,26 @@
 
         updateHomeDisplay();
         renderCart();
-
         cartModal.style.display = "none";
       }
     });
 
-
-    /* =========================================================
-       CART MODAL
-       ========================================================= */
-
+    /* CART MODAL SHOW/HIDE */
     openCartBtn.addEventListener("click", () => {
       renderCart();
       cartModal.style.display = "flex";
     });
 
-
     closeCartBtn.addEventListener("click", () => {
       cartModal.style.display = "none";
     });
 
-
     cartModal.addEventListener("click", (e) => {
-      if (e.target === cartModal) {
-        cartModal.style.display = "none";
-      }
+      if (e.target === cartModal) cartModal.style.display = "none";
     });
 
-
-    /* =========================================================
-       SMALL NON-BLOCKING FEEDBACK
-       ========================================================= */
-
+    /* NON-BLOCKING FEEDBACK TOAST */
     let messageTimer = null;
-
     function showTemporaryMessage(message) {
       let toast = document.getElementById("appToast");
 
@@ -1488,19 +1394,13 @@
       toast.style.transform = "translateX(-50%) translateY(0)";
 
       clearTimeout(messageTimer);
-
       messageTimer = setTimeout(() => {
         toast.style.opacity = "0";
-        toast.style.transform =
-          "translateX(-50%) translateY(6px)";
+        toast.style.transform = "translateX(-50%) translateY(6px)";
       }, 1600);
     }
 
-
-    /* =========================================================
-       INITIAL STATE
-       ========================================================= */
-
+    /* INITIALIZATION */
     updateHomeDisplay();
     renderCart();
   </script>
