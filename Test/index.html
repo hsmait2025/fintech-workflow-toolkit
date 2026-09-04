@@ -91,12 +91,12 @@
     }
 
     /* =========================================================
-       TOP BAR
+       TOP BAR (BOOSTED SIZES)
        ========================================================= */
 
     .top-cart-bar {
-      min-height: 48px;
-      padding: 7px var(--page-pad);
+      min-height: 56px;
+      padding: 8px var(--page-pad);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -111,9 +111,9 @@
     }
 
     .vendor-quote-label {
-      margin-bottom: 1px;
+      margin-bottom: 2px;
       color: var(--muted);
-      font-size: 0.56rem;
+      font-size: clamp(0.72rem, 2.8vw, 0.85rem);
       font-weight: 700;
       letter-spacing: 0.75px;
       line-height: 1.1;
@@ -122,16 +122,16 @@
 
     .vendor-quote-price {
       color: var(--blue-soft);
-      font-size: 0.98rem;
-      font-weight: 700;
+      font-size: clamp(1.2rem, 4.5vw, 1.45rem);
+      font-weight: 750;
       line-height: 1.1;
       font-variant-numeric: tabular-nums;
     }
 
     .view-cart-btn {
-      min-height: 36px;
-      max-width: 58%;
-      padding: 5px 12px;
+      min-height: 44px;
+      max-width: 62%;
+      padding: 6px 14px;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
@@ -153,7 +153,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 0.7rem;
+      font-size: clamp(0.85rem, 3.2vw, 0.98rem);
       font-weight: 700;
       line-height: 1.15;
     }
@@ -163,15 +163,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 0.55rem;
-      font-weight: 500;
+      font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+      font-weight: 600;
       line-height: 1.15;
-      opacity: 0.86;
+      opacity: 0.9;
     }
 
     /* =========================================================
-       HOME INFORMATION PANEL
-       This area is flexible. The keypad is protected below it.
+       HOME INFORMATION PANEL (BOOSTED SIZES)
        ========================================================= */
 
     .top-window-60 {
@@ -202,9 +201,9 @@
     }
 
     .section-label {
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       color: var(--muted);
-      font-size: 0.58rem;
+      font-size: clamp(0.72rem, 2.8vw, 0.85rem);
       font-weight: 700;
       letter-spacing: 0.8px;
       line-height: 1.15;
@@ -220,8 +219,8 @@
       width: 100%;
       overflow: hidden;
       color: var(--text);
-      font-size: clamp(2.65rem, 11vw, 4.25rem);
-      font-weight: 400;
+      font-size: clamp(2.9rem, 12vw, 4.5rem);
+      font-weight: 500;
       letter-spacing: -0.055em;
       line-height: 0.98;
       white-space: nowrap;
@@ -238,20 +237,20 @@
       display: flex;
       align-items: baseline;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     .weight-subdisplay {
-      color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 600;
+      color: #fff;
+      font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+      font-weight: 700;
     }
 
     .quote-subdisplay {
       color: var(--muted);
-      font-size: 0.76rem;
-      font-weight: 500;
+      font-size: clamp(0.88rem, 3.4vw, 1.05rem);
+      font-weight: 600;
     }
 
     .selection-area {
@@ -259,7 +258,7 @@
     }
 
     .selector-group + .selector-group {
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     .weight-row {
@@ -276,17 +275,17 @@
 
     .weight-btn {
       min-width: 0;
-      min-height: 40px;
+      min-height: 48px;
       padding: 7px 3px;
       display: flex;
       align-items: center;
       justify-content: center;
       border: 1px solid #363638;
-      border-radius: 11px;
+      border-radius: 12px;
       background: #222224;
-      color: #a9a9ae;
-      font-size: clamp(0.68rem, 2.7vw, 0.78rem);
-      font-weight: 650;
+      color: #ffffff;
+      font-size: clamp(0.85rem, 3.4vw, 1.02rem);
+      font-weight: 700;
       line-height: 1;
       text-align: center;
       cursor: pointer;
@@ -299,7 +298,7 @@
 
     .weight-btn.base-selected {
       border-color: var(--blue);
-      background: rgba(10, 132, 255, 0.24);
+      background: rgba(10, 132, 255, 0.28);
       color: #fff;
     }
 
@@ -311,13 +310,12 @@
 
     .custom-inline-btn {
       border-color: rgba(255, 159, 10, 0.7);
-      background: rgba(255, 159, 10, 0.16);
+      background: rgba(255, 159, 10, 0.2);
       color: #ffb340;
     }
 
     /* =========================================================
-       KEYPAD
-       Protected from information-panel shrinking/cropping.
+       KEYPAD (INTACT)
        ========================================================= */
 
     .bottom-numpad-40 {
@@ -391,7 +389,7 @@
     }
 
     /* =========================================================
-       CUSTOM WEIGHT SCREEN
+       CUSTOM WEIGHT SCREEN (BOOSTED SIZES)
        ========================================================= */
 
     #customWeightView {
@@ -425,7 +423,7 @@
     .custom-title {
       margin-bottom: 8px;
       color: var(--purple);
-      font-size: 0.68rem;
+      font-size: clamp(0.8rem, 3.2vw, 0.95rem);
       font-weight: 750;
       letter-spacing: 1px;
       line-height: 1.1;
@@ -435,8 +433,8 @@
     .custom-display {
       overflow: hidden;
       color: var(--yellow);
-      font-size: clamp(2.5rem, 12vw, 4.2rem);
-      font-weight: 400;
+      font-size: clamp(2.8rem, 13vw, 4.5rem);
+      font-weight: 500;
       letter-spacing: -0.055em;
       line-height: 1;
       white-space: nowrap;
@@ -447,7 +445,7 @@
     .custom-subdisplay {
       margin-top: 8px;
       color: var(--purple);
-      font-size: 0.88rem;
+      font-size: clamp(1rem, 3.8vw, 1.2rem);
       font-weight: 600;
     }
 
@@ -462,10 +460,10 @@
 
     .btn-cancel,
     .btn-add-cart {
-      min-height: 44px;
+      min-height: 48px;
       border-radius: 14px;
       cursor: pointer;
-      font-size: 0.82rem;
+      font-size: clamp(0.9rem, 3.6vw, 1.05rem);
     }
 
     .btn-cancel {
@@ -487,7 +485,7 @@
     }
 
     /* =========================================================
-       CART MODAL
+       CART MODAL (BOOSTED SIZES)
        ========================================================= */
 
     .modal {
@@ -530,13 +528,13 @@
 
     .cart-title {
       margin: 0;
-      font-size: 1.05rem;
+      font-size: clamp(1.15rem, 4.2vw, 1.3rem);
       font-weight: 700;
     }
 
     .cart-count {
       color: var(--muted);
-      font-size: 0.72rem;
+      font-size: clamp(0.82rem, 3vw, 0.92rem);
       font-weight: 600;
     }
 
@@ -559,53 +557,53 @@
       z-index: 2;
       background: #1c1c1e;
       color: var(--muted);
-      font-size: 0.66rem;
+      font-size: clamp(0.75rem, 2.8vw, 0.85rem);
       font-weight: 700;
       text-transform: uppercase;
     }
 
     .cart-table th,
     .cart-table td {
-      padding: 9px 3px;
+      padding: 10px 4px;
       border-bottom: 1px solid #29292b;
       text-align: center;
-      font-size: 0.72rem;
+      font-size: clamp(0.82rem, 3.2vw, 0.95rem);
       line-height: 1.15;
       overflow-wrap: anywhere;
     }
 
     .cart-table th:nth-child(1),
     .cart-table td:nth-child(1) {
-      width: 19%;
+      width: 20%;
     }
 
     .cart-table th:nth-child(2),
     .cart-table td:nth-child(2) {
-      width: 18%;
+      width: 20%;
     }
 
     .cart-table th:nth-child(3),
     .cart-table td:nth-child(3) {
-      width: 25%;
+      width: 24%;
     }
 
     .cart-table th:nth-child(4),
     .cart-table td:nth-child(4) {
-      width: 27%;
+      width: 24%;
     }
 
     .cart-table th:nth-child(5),
     .cart-table td:nth-child(5) {
-      width: 11%;
+      width: 12%;
     }
 
     .remove-item-btn {
-      min-width: 30px;
-      min-height: 30px;
-      border-radius: 15px;
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: 16px;
       background: transparent;
       color: var(--red);
-      font-size: 1rem;
+      font-size: 1.2rem;
       cursor: pointer;
     }
 
@@ -617,7 +615,7 @@
       padding: 24px 8px;
       color: var(--muted);
       text-align: center;
-      font-size: 0.8rem;
+      font-size: clamp(0.9rem, 3.5vw, 1.05rem);
     }
 
     .cart-modal-actions {
@@ -630,10 +628,10 @@
 
     .btn-clear-cart,
     .close-modal-btn {
-      min-height: 44px;
+      min-height: 48px;
       border-radius: 13px;
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: clamp(0.88rem, 3.4vw, 1rem);
       font-weight: 650;
     }
 
@@ -654,7 +652,6 @@
 
     /* =========================================================
        VERY SHORT MOBILE VIEWPORTS
-       Protect keypad first.
        ========================================================= */
 
     @media (max-height: 650px) {
@@ -678,11 +675,11 @@
       }
 
       .price-display {
-        font-size: clamp(2.25rem, 10vw, 3.3rem);
+        font-size: clamp(2.4rem, 11vw, 3.5rem);
       }
 
       .weight-btn {
-        min-height: 35px;
+        min-height: 40px;
         padding-top: 5px;
         padding-bottom: 5px;
       }
@@ -1425,7 +1422,7 @@
           borderRadius: "16px",
           background: "rgba(44,44,46,0.96)",
           color: "#fff",
-          fontSize: "0.78rem",
+          fontSize: "0.88rem",
           fontWeight: "650",
           textAlign: "center",
           boxShadow: "0 8px 30px rgba(0,0,0,.35)",
