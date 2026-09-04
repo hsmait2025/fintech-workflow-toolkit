@@ -83,7 +83,7 @@
       height: 100svh;
       min-height: 0;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
       overflow: hidden;
       padding-top: var(--safe-top);
       padding-right: var(--safe-right);
@@ -91,10 +91,41 @@
       background: var(--bg);
     }
 
+    /* VENDOR SWITCHER BAR - DROPDOWN */
+    .vendor-switcher-bar {
+      padding: 8px var(--page-pad);
+      background: #121214;
+      border-bottom: 1px solid #29292b;
+    }
+
+    .vendor-select-btn {
+      width: 100%;
+      min-height: 42px;
+      padding: 6px 14px;
+      border-radius: 12px;
+      background: var(--surface-2);
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: 1px solid var(--purple);
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url('data:image/svg+xml;utf8,<svg fill="%23bf5af2" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .vendor-select-btn option {
+      background: #1c1c1e;
+      color: #ffffff;
+    }
+
     /* TOP BAR */
     .top-cart-bar {
-      min-height: 56px;
-      padding: 8px var(--page-pad);
+      min-height: 52px;
+      padding: 6px var(--page-pad);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -120,7 +151,7 @@
 
     .vendor-quote-price {
       color: var(--blue-soft);
-      font-size: clamp(2.2rem, 5.5vw, 2.45rem);
+      font-size: clamp(2rem, 5vw, 2.3rem);
       font-weight: 750;
       line-height: 1.1;
       font-variant-numeric: tabular-nums;
@@ -151,7 +182,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: clamp(0.935rem, 3.52vw, 1.08rem);
+      font-size: clamp(0.9rem, 3.4vw, 1.05rem);
       font-weight: 700;
       line-height: 1.15;
     }
@@ -161,7 +192,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: clamp(0.77rem, 2.75vw, 0.88rem);
+      font-size: clamp(0.75rem, 2.6vw, 0.85rem);
       font-weight: 600;
       line-height: 1.15;
       opacity: 0.9;
@@ -170,11 +201,11 @@
     /* HOME INFORMATION PANEL */
     .top-window-60 {
       min-height: 0;
-      padding: clamp(10px, 2.8vw, 16px) var(--page-pad) 8px;
+      padding: clamp(8px, 2.5vw, 14px) var(--page-pad) 8px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 14px;
+      gap: 10px;
       overflow-y: auto;
       overscroll-behavior: contain;
       background: var(--surface);
@@ -189,16 +220,16 @@
 
     .display-section {
       flex: 1 1 auto;
-      min-height: 108px;
+      min-height: 90px;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
 
     .section-label {
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       color: var(--muted);
-      font-size: clamp(0.72rem, 2.8vw, 0.85rem);
+      font-size: clamp(0.7rem, 2.6vw, 0.8rem);
       font-weight: 700;
       letter-spacing: 0.8px;
       line-height: 1.15;
@@ -214,7 +245,7 @@
       width: 100%;
       overflow: hidden;
       color: var(--text);
-      font-size: clamp(2.9rem, 12vw, 4.5rem);
+      font-size: clamp(2.6rem, 11vw, 4.2rem);
       font-weight: 500;
       letter-spacing: -0.055em;
       line-height: 0.98;
@@ -228,7 +259,7 @@
     }
 
     .display-meta {
-      margin-top: 8px;
+      margin-top: 6px;
       display: flex;
       align-items: baseline;
       justify-content: flex-end;
@@ -238,7 +269,7 @@
 
     .formula-display {
       color: var(--yellow);
-      font-size: clamp(0.85rem, 3.4vw, 1.05rem);
+      font-size: clamp(0.8rem, 3.2vw, 1rem);
       font-weight: 600;
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.2px;
@@ -249,15 +280,10 @@
     }
 
     .selector-group + .selector-group {
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
-    .base-weight-row-updated {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 7px;
-    }
-
+    .base-weight-row-updated,
     .target-weight-row-custom {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -268,8 +294,8 @@
     .base-dropdown-select,
     .chip-dropdown-select {
       min-width: 0;
-      min-height: 48px;
-      padding: 7px 3px;
+      min-height: 44px;
+      padding: 6px 3px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -277,7 +303,7 @@
       border-radius: 12px;
       background: #222224;
       color: #ffffff;
-      font-size: clamp(0.85rem, 3.4vw, 1.02rem);
+      font-size: clamp(0.82rem, 3.2vw, 0.98rem);
       font-weight: 700;
       line-height: 1;
       text-align: center;
@@ -329,8 +355,8 @@
     /* KEYPAD */
     .bottom-numpad-40 {
       width: 100%;
-      height: clamp(292px, 43dvh, 390px);
-      min-height: 292px;
+      height: clamp(280px, 41dvh, 370px);
+      min-height: 280px;
       flex-shrink: 0;
       padding: 8px var(--page-pad) max(10px, var(--safe-bottom));
       display: flex;
@@ -365,7 +391,6 @@
       line-height: 1;
       cursor: pointer;
       user-select: none;
-      -webkit-user-select: none;
       font-variant-numeric: tabular-nums;
     }
 
@@ -507,8 +532,8 @@
     }
 
     .modal-content {
-      width: min(100%, 420px);
-      max-height: min(88dvh, 700px);
+      width: min(100%, 460px);
+      max-height: min(90dvh, 720px);
       min-height: 0;
       padding: 16px;
       display: flex;
@@ -574,7 +599,7 @@
       margin-top: 18px;
     }
 
-    /* CART MODAL */
+    /* CART MODAL & DASHBOARD */
     .cart-title-row {
       display: flex;
       align-items: center;
@@ -600,6 +625,58 @@
       margin-top: 10px;
       overflow: auto;
       border-radius: 10px;
+    }
+
+    /* DASHBOARD TABLE */
+    .dashboard-container {
+      margin-bottom: 16px;
+      padding: 10px;
+      border: 1px solid #3a3a3c;
+      border-radius: 14px;
+      background: #252528;
+    }
+
+    .dashboard-title {
+      margin-bottom: 8px;
+      color: var(--yellow);
+      font-size: 0.85rem;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .dashboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .dashboard-table th {
+      color: var(--muted);
+      text-align: left;
+      padding: 4px;
+      border-bottom: 1px solid #38383a;
+    }
+
+    .dashboard-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid #2c2c2e;
+    }
+
+    .dashboard-table tr.total-row {
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    /* CART ITEMS TABLE */
+    .vendor-section-header {
+      padding: 8px 6px;
+      background: #2a2a2d;
+      color: var(--purple);
+      font-weight: 700;
+      font-size: 0.88rem;
+      border-radius: 6px;
+      margin-top: 10px;
     }
 
     .cart-table {
@@ -711,38 +788,38 @@
 
     @media (max-height: 650px) {
       :root {
-        --key-min-height: 52px;
+        --key-min-height: 50px;
       }
 
       .bottom-numpad-40 {
-        height: 278px;
-        min-height: 278px;
+        height: 260px;
+        min-height: 260px;
       }
 
       .top-window-60 {
-        padding-top: 7px;
+        padding-top: 6px;
         padding-bottom: 6px;
-        gap: 8px;
+        gap: 6px;
       }
 
       .display-section {
-        min-height: 88px;
+        min-height: 75px;
       }
 
       .price-display {
-        font-size: clamp(2.8rem, 11.4vw, 3.9rem);
+        font-size: clamp(2.4rem, 10vw, 3.6rem);
       }
 
       .weight-btn,
       .base-dropdown-select,
       .chip-dropdown-select {
-        min-height: 40px;
-        padding-top: 5px;
-        padding-bottom: 5px;
+        min-height: 38px;
+        padding-top: 4px;
+        padding-bottom: 4px;
       }
 
       .selector-group + .selector-group {
-        margin-top: 6px;
+        margin-top: 4px;
       }
     }
 
@@ -761,14 +838,26 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
 
+    <!-- VENDOR SWITCHER DROPDOWN BAR -->
+    <nav class="vendor-switcher-bar">
+      <select class="vendor-select-btn" id="vendorSelectDropdown" aria-label="Select Vendor">
+        <option value="1" selected>Vendor 1</option>
+        <option value="2">Vendor 2</option>
+        <option value="3">Vendor 3</option>
+        <option value="4">Vendor 4</option>
+        <option value="5">Vendor 5</option>
+        <option value="6">Vendor 6</option>
+      </select>
+    </nav>
+
     <header class="top-cart-bar" id="topHeader">
       <div class="vendor-mini">
-        <div class="vendor-quote-label">Vendor Price</div>
+        <div class="vendor-quote-label" id="vendorQuoteLabel">Vendor 1 Price</div>
         <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
       </div>
 
       <button class="view-cart-btn" id="openCartBtn" type="button" aria-label="Open shopping cart">
-        <span class="cart-btn-title" id="cartBtnTitle">Cart (0) · ₹0.00</span>
+        <span class="cart-btn-title" id="cartBtnTitle">Vendor 1 (0) · ₹0.00</span>
         <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
       </button>
     </header>
@@ -887,7 +976,6 @@
     <div class="modal-content">
       <div class="cart-title">Item Name (Optional)</div>
       
-      <!-- Added readonly attribute to prevent soft keyboard autofocus -->
       <input 
         type="text" 
         id="itemNameInput" 
@@ -936,28 +1024,39 @@
   </div>
 
 
-  <!-- CART MODAL -->
+  <!-- CART & VENDOR DASHBOARD MODAL -->
   <div class="modal" id="cartModal" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
     <div class="modal-content">
 
       <div class="cart-title-row">
-        <h3 class="cart-title" id="cartTitle">Shopping Cart</h3>
+        <h3 class="cart-title" id="cartTitle">Purchase Dashboard</h3>
         <span class="cart-count" id="cartCountLabel">0 items</span>
       </div>
 
       <div class="cart-scroll-container">
-        <table class="cart-table" id="cartTable">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Weight</th>
-              <th>Quote</th>
-              <th>Price</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+
+        <!-- DASHBOARD SUMMARY TABLE -->
+        <div class="dashboard-container">
+          <div class="dashboard-title">Vendor Summary Dashboard</div>
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th style="text-align: center;">Items</th>
+                <th style="text-align: center;">Total Wt</th>
+                <th style="text-align: right;">Total Price</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ITEMIZED LIST TABLE GROUPED BY VENDOR -->
+        <div id="vendorCartList">
+          <!-- Dynamically populated -->
+        </div>
 
         <div class="cart-empty" id="cartEmptyMessage">
           Your cart is empty.
@@ -974,13 +1073,17 @@
 
 
   <script>
+    /* STORAGE KEYS */
+    const STORAGE_KEY = "grocery_calc_pos_data_v1";
+
     /* CORE STATE */
+    let activeVendor = 1;
     let priceInput = "";
     let customWeightInput = "";
     let baseWeight = 0.25;
     let pendingTargetWeight = null;
     let itemCounter = 1;
-    let cart = [];
+    let cart = []; // Each item: { id, vendorId, name, weight, quote, price }
 
     /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
@@ -988,6 +1091,8 @@
     const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
     const displayMathFormula = document.getElementById("displayMathFormula");
     const headerVendorQuote = document.getElementById("headerVendorQuote");
+    const vendorQuoteLabel = document.getElementById("vendorQuoteLabel");
+    const vendorSelectDropdown = document.getElementById("vendorSelectDropdown");
 
     const homeKeypad = document.getElementById("homeKeypad");
     const homeBackspaceBtn = document.getElementById("homeBackspaceBtn");
@@ -1012,8 +1117,9 @@
     const cartModal = document.getElementById("cartModal");
     const closeCartBtn = document.getElementById("closeCartBtn");
     const clearAllCartBtn = document.getElementById("clearAllCartBtn");
-    const cartTableBody = document.querySelector("#cartTable tbody");
     const cartEmptyMessage = document.getElementById("cartEmptyMessage");
+    const dashboardTableBody = document.getElementById("dashboardTableBody");
+    const vendorCartList = document.getElementById("vendorCartList");
 
     const itemNameModal = document.getElementById("itemNameModal");
     const itemNameInput = document.getElementById("itemNameInput");
@@ -1021,6 +1127,71 @@
     const moreItemsDropdown = document.getElementById("moreItemsDropdown");
     const skipItemNameBtn = document.getElementById("skipItemNameBtn");
     const confirmItemNameBtn = document.getElementById("confirmItemNameBtn");
+
+    /* PERSISTENCE HELPERS */
+    function saveStateToStorage() {
+      try {
+        const payload = {
+          cart,
+          itemCounter,
+          activeVendor,
+          baseWeight,
+          priceInput
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Failed to save state to localStorage:", e);
+      }
+    }
+
+    function loadStateFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.cart)) cart = data.cart;
+        if (typeof data.itemCounter === "number") itemCounter = data.itemCounter;
+        if (typeof data.activeVendor === "number") activeVendor = data.activeVendor;
+        if (typeof data.baseWeight === "number") baseWeight = data.baseWeight;
+        if (typeof data.priceInput === "string") priceInput = data.priceInput;
+
+        // Sync Vendor Dropdown
+        if (vendorSelectDropdown) {
+          vendorSelectDropdown.value = activeVendor.toString();
+        }
+
+        // Sync Base Weight UI
+        syncBaseWeightUI();
+
+      } catch (e) {
+        console.error("Failed to restore state from localStorage:", e);
+      }
+    }
+
+    function syncBaseWeightUI() {
+      document.querySelectorAll(".base-btn").forEach((b) => {
+        b.classList.remove("base-selected");
+        if (parseFloat(b.dataset.weight) === baseWeight) {
+          b.classList.add("base-selected");
+        }
+      });
+
+      let foundInDropdown = false;
+      Array.from(baseWeightDropdown.options).forEach((opt) => {
+        if (parseFloat(opt.value) === baseWeight) {
+          foundInDropdown = true;
+        }
+      });
+
+      if (foundInDropdown) {
+        baseWeightDropdown.value = baseWeight.toString();
+        baseWeightDropdown.classList.add("base-selected");
+      } else {
+        baseWeightDropdown.selectedIndex = 0;
+        baseWeightDropdown.classList.remove("base-selected");
+      }
+    }
 
     /* DISPLAY HELPERS */
     function formatWeight(weightKg) {
@@ -1036,12 +1207,32 @@
         : `${Math.round(weightKg * 1000)}g`;
     }
 
+    /* VENDOR SWITCHING VIA DROPDOWN */
+    vendorSelectDropdown.addEventListener("change", (e) => {
+      activeVendor = parseInt(e.target.value, 10);
+      vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
+      
+      // Clear input state when changing vendor
+      priceInput = "";
+      displayCurrentItemPrice.textContent = "₹0";
+      displayCurrentItemPrice.classList.remove("has-input");
+
+      updateHomeDisplay();
+      renderCart();
+      saveStateToStorage();
+      
+      showTemporaryMessage(`Switched to Vendor ${activeVendor}`);
+    });
+
     function updateHomeDisplay() {
+      vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
       headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
 
       if (priceInput && parseFloat(priceInput) > 0) {
         const val = parseFloat(priceInput);
         const bLabel = formatBaseWeight(baseWeight);
+        displayCurrentItemPrice.textContent = `₹${val}`;
+        displayCurrentItemPrice.classList.add("has-input");
         displayMathFormula.textContent = `(₹${val} ÷ ${bLabel}) × Target Wt`;
       } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
         displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
@@ -1058,17 +1249,24 @@
       if (priceInput === "0" && val !== "0") {
         priceInput = val;
         updateHomeDisplay();
+        saveStateToStorage();
         return;
       }
       if (priceInput.length >= 6) return;
 
       priceInput += val;
       updateHomeDisplay();
+      saveStateToStorage();
     });
 
     homeBackspaceBtn.addEventListener("click", () => {
       priceInput = priceInput.slice(0, -1);
+      if (!priceInput) {
+        displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemPrice.classList.remove("has-input");
+      }
       updateHomeDisplay();
+      saveStateToStorage();
     });
 
     homeClearEntryBtn.addEventListener("click", () => {
@@ -1076,6 +1274,7 @@
       displayCurrentItemPrice.textContent = "₹0";
       displayCurrentItemPrice.classList.remove("has-input");
       updateHomeDisplay();
+      saveStateToStorage();
     });
 
     /* BASE WEIGHT SELECTOR */
@@ -1090,6 +1289,7 @@
       button.classList.add("base-selected");
       baseWeight = parseFloat(button.dataset.weight);
       updateHomeDisplay();
+      saveStateToStorage();
     });
 
     baseWeightDropdown.addEventListener("change", (e) => {
@@ -1100,6 +1300,7 @@
       baseWeightDropdown.classList.add("base-selected");
       baseWeight = selectedVal;
       updateHomeDisplay();
+      saveStateToStorage();
     });
 
     /* TARGET WEIGHT & PROMPT INTERCEPT */
@@ -1120,12 +1321,11 @@
     /* NAME PROMPT MODAL LOGIC */
     function promptItemName() {
       itemNameInput.value = "";
-      itemNameInput.readOnly = true; // Lock input on open to prevent soft keyboard
+      itemNameInput.readOnly = true;
       moreItemsDropdown.selectedIndex = 0;
       itemNameModal.style.display = "flex";
     }
 
-    // Unlock input when user explicitly focuses or taps the box
     itemNameInput.addEventListener("focus", () => {
       itemNameInput.readOnly = false;
     });
@@ -1137,13 +1337,13 @@
     quickChipsContainer.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip-btn");
       if (!chip) return;
-      itemNameInput.readOnly = true; // Ensure keyboard stays down when clicking preset
+      itemNameInput.readOnly = true;
       itemNameInput.value = chip.dataset.name;
     });
 
     moreItemsDropdown.addEventListener("change", (e) => {
       if (e.target.value) {
-        itemNameInput.readOnly = true; // Ensure keyboard stays down when picking from dropdown
+        itemNameInput.readOnly = true;
         itemNameInput.value = e.target.value;
       }
     });
@@ -1175,7 +1375,7 @@
       e.stopPropagation();
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
-        showTemporaryMessage("Enter a vendor price first.");
+        showTemporaryMessage("Enter a price first.");
         return;
       }
 
@@ -1273,6 +1473,7 @@
 
       const newItem = {
         id: itemCounter++,
+        vendorId: activeVendor,
         name: customName || `Item #${itemCounter - 1}`,
         weight: targetWeight,
         quote: `₹${priceVal}/${baseLabel}`,
@@ -1291,37 +1492,114 @@
 
       priceInput = "";
       headerVendorQuote.textContent = "₹0";
+
+      saveStateToStorage();
       return true;
     }
 
-    /* CART RENDERING */
+    /* CART & DASHBOARD RENDERING */
     function renderCart() {
-      cartTableBody.innerHTML = "";
-      let totalP = 0;
-      let totalW = 0;
+      dashboardTableBody.innerHTML = "";
+      vendorCartList.innerHTML = "";
 
-      cart.forEach((item, idx) => {
-        totalP += item.price;
-        totalW += item.weight;
+      let overallPrice = 0;
+      let overallWeight = 0;
 
-        const row = cartTableBody.insertRow();
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>${formatWeight(item.weight)}</td>
-          <td>${item.quote}</td>
-          <td>₹${item.price.toFixed(2)}</td>
-          <td>
-            <button class="remove-item-btn" type="button" data-index="${idx}" aria-label="Remove item">×</button>
-          </td>
-        `;
+      // Group totals per vendor (1 through 6)
+      const vendorStats = {};
+      for (let v = 1; v <= 6; v++) {
+        vendorStats[v] = { items: [], totalWeight: 0, totalPrice: 0 };
+      }
+
+      cart.forEach((item) => {
+        overallPrice += item.price;
+        overallWeight += item.weight;
+        vendorStats[item.vendorId].items.push(item);
+        vendorStats[item.vendorId].totalWeight += item.weight;
+        vendorStats[item.vendorId].totalPrice += item.price;
       });
 
-      cartBtnTitle.textContent = `Cart (${cart.length}) · ₹${totalP.toFixed(2)}`;
-      cartBtnSub.textContent = `Total: ${totalW.toFixed(2)} Kg`;
+      // 1. Render Dashboard Table Rows (All Vendors)
+      for (let v = 1; v <= 6; v++) {
+        const stats = vendorStats[v];
+        if (stats.items.length > 0) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>Vendor ${v}</td>
+            <td style="text-align: center;">${stats.items.length}</td>
+            <td style="text-align: center;">${stats.totalWeight.toFixed(2)} Kg</td>
+            <td style="text-align: right;">₹${stats.totalPrice.toFixed(2)}</td>
+          `;
+          dashboardTableBody.appendChild(row);
+        }
+      }
+
+      // Add Grand Total row to Dashboard
+      if (cart.length > 0) {
+        const totalRow = document.createElement("tr");
+        totalRow.className = "total-row";
+        totalRow.innerHTML = `
+          <td>TOTAL</td>
+          <td style="text-align: center;">${cart.length}</td>
+          <td style="text-align: center;">${overallWeight.toFixed(2)} Kg</td>
+          <td style="text-align: right;">₹${overallPrice.toFixed(2)}</td>
+        `;
+        dashboardTableBody.appendChild(totalRow);
+      }
+
+      // 2. Render Itemized Tables Grouped by Vendor
+      for (let v = 1; v <= 6; v++) {
+        const stats = vendorStats[v];
+        if (stats.items.length > 0) {
+          const sectionHeader = document.createElement("div");
+          sectionHeader.className = "vendor-section-header";
+          sectionHeader.textContent = `Vendor ${v} (${stats.items.length} items · ₹${stats.totalPrice.toFixed(2)})`;
+          vendorCartList.appendChild(sectionHeader);
+
+          const table = document.createElement("table");
+          table.className = "cart-table";
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Weight</th>
+                <th>Quote</th>
+                <th>Price</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          `;
+
+          const tbody = table.querySelector("tbody");
+
+          stats.items.forEach((item) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+              <td>${item.name}</td>
+              <td>${formatWeight(item.weight)}</td>
+              <td>${item.quote}</td>
+              <td>₹${item.price.toFixed(2)}</td>
+              <td>
+                <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove item">×</button>
+              </td>
+            `;
+          });
+
+          vendorCartList.appendChild(table);
+        }
+      }
+
+      // Update Top Header Cart Info for ACTIVE VENDOR ONLY
+      const activeStats = vendorStats[activeVendor];
+      cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
+      cartBtnSub.textContent = `Total: ${activeStats.totalWeight.toFixed(2)} Kg`;
+
+      // Update Modal Stats
       cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
       cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
 
-      if (cart.length === 0) {
+      if (cart.length === 0 && !priceInput) {
         displayCurrentItemPrice.textContent = "₹0";
         displayCurrentItemPrice.classList.remove("has-input");
         updateHomeDisplay();
@@ -1329,27 +1607,27 @@
     }
 
     /* CART ITEM DELETION */
-    cartTableBody.addEventListener("click", (e) => {
+    vendorCartList.addEventListener("click", (e) => {
       const button = e.target.closest(".remove-item-btn");
       if (!button) return;
 
-      const index = parseInt(button.dataset.index, 10);
-      if (Number.isNaN(index)) return;
+      const itemId = parseInt(button.dataset.id, 10);
+      if (Number.isNaN(itemId)) return;
 
-      removeItem(index);
+      removeItemById(itemId);
     });
 
-    window.removeItem = function(index) {
-      if (index < 0 || index >= cart.length) return;
-      cart.splice(index, 1);
+    function removeItemById(id) {
+      cart = cart.filter(item => item.id !== id);
       renderCart();
-    };
+      saveStateToStorage();
+    }
 
     /* CLEAR CART */
     clearAllCartBtn.addEventListener("click", () => {
       if (cart.length === 0) return;
 
-      if (window.confirm("Clear all items in cart?")) {
+      if (window.confirm("Clear all items across all vendors?")) {
         cart = [];
         itemCounter = 1;
         priceInput = "";
@@ -1359,6 +1637,8 @@
 
         updateHomeDisplay();
         renderCart();
+
+        localStorage.removeItem(STORAGE_KEY);
         cartModal.style.display = "none";
       }
     });
@@ -1389,7 +1669,7 @@
         Object.assign(toast.style, {
           position: "fixed",
           left: "50%",
-          bottom: "calc(43dvh + 14px)",
+          bottom: "calc(41dvh + 14px)",
           transform: "translateX(-50%)",
           zIndex: "3000",
           maxWidth: "calc(100vw - 32px)",
@@ -1420,6 +1700,7 @@
     }
 
     /* INITIALIZATION */
+    loadStateFromStorage();
     updateHomeDisplay();
     renderCart();
   </script>
