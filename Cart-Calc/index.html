@@ -93,10 +93,10 @@
       width: 100%;
     }
 
-    /* 60% TOP WINDOW SECTION (8vh header + 52vh content) */
-    .top-window-60 {
-      height: 52vh;
-      flex: 0 0 52vh;
+    /* 55% TOP WINDOW SECTION (8vh header + 47vh content) */
+    .top-window-55 {
+      height: 47vh;
+      flex: 0 0 47vh;
       background-color: var(--card);
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
@@ -139,6 +139,12 @@
       gap: 6px;
     }
 
+    .target-weight-row-custom {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+    }
+
     .weight-btn {
       background-color: var(--btn-idle-bg);
       border: 1px solid var(--btn-idle-border);
@@ -166,12 +172,19 @@
       font-weight: 700;
     }
 
-    /* 40% BOTTOM NUMPAD SECTION */
-    .bottom-numpad-40 {
-      height: 40vh;
-      flex: 0 0 40vh;
+    .weight-btn.custom-inline-btn {
+      background-color: #ff9f0a;
+      border-color: #ff9f0a;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    /* 45% BOTTOM NUMPAD SECTION */
+    .bottom-numpad-45 {
+      height: 45vh;
+      flex: 0 0 45vh;
       background-color: var(--bg);
-      padding: 8px 16px;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -180,7 +193,7 @@
     .keypad-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 10px;
       width: 100%;
       max-width: 340px;
       height: 100%;
@@ -190,7 +203,7 @@
     .key {
       background-color: var(--key-bg);
       color: var(--text);
-      font-size: 1.4rem;
+      font-size: 1.54rem; /* 10% Increase from 1.4rem */
       font-weight: 600;
       border-radius: 12px;
       display: flex;
@@ -216,23 +229,15 @@
       font-weight: 700;
     }
 
-    .key.custom-wt-btn {
-      background-color: #ff9f0a;
-      color: #ffffff;
-      font-size: 1rem;
-      font-weight: 700;
-      grid-column: span 3;
-    }
-
-    /* DEDICATED CUSTOM WEIGHT SCREEN (SAME 60/40 RATIO) */
+    /* DEDICATED CUSTOM WEIGHT SCREEN (55/45 RATIO) */
     #customWeightView {
       display: none;
       background-color: var(--bg);
     }
 
-    .custom-top-60 {
-      height: 60vh;
-      flex: 0 0 60vh;
+    .custom-top-55 {
+      height: 55vh;
+      flex: 0 0 55vh;
       background-color: #1c1c1e;
       padding: 20px;
       display: flex;
@@ -267,7 +272,7 @@
       grid-column: span 3;
       display: grid;
       grid-template-columns: 1fr 2fr;
-      gap: 8px;
+      gap: 10px;
     }
 
     .btn-cancel {
@@ -360,7 +365,7 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
     
-    <!-- TOP 60% WINDOW AREA -->
+    <!-- TOP 55% WINDOW AREA -->
     <div class="top-cart-bar" id="topHeader">
       <div>
         <div class="vendor-quote-label">Vendor Price Quote</div>
@@ -372,7 +377,7 @@
       </button>
     </div>
 
-    <div class="top-window-60" id="homeDisplayContainer">
+    <div class="top-window-55" id="homeDisplayContainer">
       <div>
         <div class="section-label">Current Item Calculated</div>
         <div class="display-row">
@@ -392,20 +397,21 @@
           <div class="weight-btn base-btn" data-weight="1">1Kg</div>
         </div>
 
-        <!-- Target Purchase Selector -->
+        <!-- Target Purchase Selector + CW Button -->
         <div class="section-label" style="margin-top: 10px;">Tap Target Weight to Add</div>
-        <div class="weight-row" id="targetWeightRow">
+        <div class="target-weight-row-custom" id="targetWeightRow">
           <div class="weight-btn target-btn" data-weight="0.1">100g</div>
           <div class="weight-btn target-btn" data-weight="0.25">250g</div>
           <div class="weight-btn target-btn" data-weight="0.5">500g</div>
           <div class="weight-btn target-btn" data-weight="0.75">750g</div>
           <div class="weight-btn target-btn" data-weight="1">1Kg</div>
+          <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">CW</div>
         </div>
       </div>
     </div>
 
-    <!-- BOTTOM 40% NUMPAD AREA -->
-    <div class="bottom-numpad-40">
+    <!-- BOTTOM 45% NUMPAD AREA -->
+    <div class="bottom-numpad-45">
       <div class="keypad-container" id="homeKeypad">
         <div class="key num-key">7</div>
         <div class="key num-key">8</div>
@@ -416,25 +422,24 @@
         <div class="key num-key">1</div>
         <div class="key num-key">2</div>
         <div class="key num-key">3</div>
-        <div class="key action-backspace" id="homeBackspaceBtn">⌫</div>
-        <div class="key num-key">0</div>
         <div class="key action-clear-all" id="homeClearEntryBtn">C</div>
-        <div class="key custom-wt-btn" id="openCustomWtBtn">Custom Weight</div>
+        <div class="key num-key">0</div>
+        <div class="key action-backspace" id="homeBackspaceBtn">⌫</div>
       </div>
     </div>
   </div>
 
-  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (60/40 RATIO) -->
+  <!-- VIEW 2: DEDICATED CUSTOM WEIGHT SCREEN (55/45 RATIO) -->
   <div class="view-container" id="customWeightView">
-    <!-- TOP 60% WINDOW AREA -->
-    <div class="custom-top-60" id="customDisplayContainer">
+    <!-- TOP 55% WINDOW AREA -->
+    <div class="custom-top-55" id="customDisplayContainer">
       <div class="custom-title">Enter Custom Weight</div>
       <div class="custom-display" id="customDisplay">0 Kg</div>
       <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
     </div>
 
-    <!-- BOTTOM 40% NUMPAD AREA -->
-    <div class="bottom-numpad-40">
+    <!-- BOTTOM 45% NUMPAD AREA -->
+    <div class="bottom-numpad-45">
       <div class="keypad-container" id="customKeypad">
         <div class="key c-num-key">7</div>
         <div class="key c-num-key">8</div>
@@ -551,7 +556,8 @@
       processAddToCart(targetWeight);
     });
 
-    openCustomWtBtn.addEventListener("click", () => {
+    openCustomWtBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
         alert("Enter a vendor price first!");
