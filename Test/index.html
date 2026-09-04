@@ -68,7 +68,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -148,12 +149,13 @@
       opacity: 0.88;
     }
 
+    /* CART BUTTON FONT SIZES BOOSTED BY 10% */
     .cart-btn-title {
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: clamp(0.85rem, 3.2vw, 0.98rem);
+      font-size: clamp(0.935rem, 3.52vw, 1.08rem);
       font-weight: 700;
       line-height: 1.15;
     }
@@ -163,7 +165,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+      font-size: clamp(0.77rem, 2.75vw, 0.88rem);
       font-weight: 600;
       line-height: 1.15;
       opacity: 0.9;
@@ -241,16 +243,13 @@
       flex-wrap: wrap;
     }
 
-    .weight-subdisplay {
-      color: #fff;
-      font-size: clamp(0.95rem, 3.8vw, 1.15rem);
-      font-weight: 700;
-    }
-
-    .quote-subdisplay {
-      color: var(--muted);
-      font-size: clamp(0.88rem, 3.4vw, 1.05rem);
+    /* Equation Display Styling */
+    .formula-display {
+      color: var(--yellow);
+      font-size: clamp(0.85rem, 3.4vw, 1.05rem);
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.2px;
     }
 
     .selection-area {
@@ -259,6 +258,13 @@
 
     .selector-group + .selector-group {
       margin-top: 12px;
+    }
+
+    /* Base Weight Grid Layout */
+    .base-weight-row-updated {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
     }
 
     .weight-row {
@@ -273,7 +279,8 @@
       gap: 7px;
     }
 
-    .weight-btn {
+    .weight-btn,
+    .base-dropdown-select {
       min-width: 0;
       min-height: 48px;
       padding: 7px 3px;
@@ -292,13 +299,31 @@
       user-select: none;
     }
 
+    /* Base Dropdown Specific Styling */
+    .base-dropdown-select {
+      width: 100%;
+      text-align-last: center;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url('data:image/svg+xml;utf8,<svg fill="%238e8e93" height="12" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 18px;
+    }
+
+    .base-dropdown-select option {
+      background: #1c1c1e;
+      color: #fff;
+    }
+
     .weight-btn:active {
       transform: scale(0.96);
     }
 
-    .weight-btn.base-selected {
+    .weight-btn.base-selected,
+    .base-dropdown-select.base-selected {
       border-color: var(--blue);
-      background: rgba(10, 132, 255, 0.28);
+      background-color: rgba(10, 132, 255, 0.28);
       color: #fff;
     }
 
@@ -678,7 +703,8 @@
         font-size: clamp(2.8rem, 11.4vw, 3.9rem);
       }
 
-      .weight-btn {
+      .weight-btn,
+      .base-dropdown-select {
         min-height: 40px;
         padding-top: 5px;
         padding-bottom: 5px;
@@ -733,8 +759,7 @@
           <div class="price-display" id="displayCurrentItemPrice">₹0</div>
 
           <div class="display-meta">
-            <div class="weight-subdisplay" id="displayCurrentItemWeight">Weight: --</div>
-            <div class="quote-subdisplay" id="displayQuoteBase">Base: 250g</div>
+            <div class="formula-display" id="displayMathFormula">Equation: --</div>
           </div>
         </div>
       </section>
@@ -744,17 +769,20 @@
         <div class="selector-group">
           <div class="section-label">Quote Base Weight</div>
 
-          <div class="weight-row" id="baseWeightRow">
-            <div class="weight-btn base-btn" data-weight="0.1">100g</div>
+          <div class="base-weight-row-updated" id="baseWeightRow">
             <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
-            <div class="weight-btn base-btn" data-weight="0.5">500g</div>
-            <div class="weight-btn base-btn" data-weight="0.75">750g</div>
             <div class="weight-btn base-btn" data-weight="1">1Kg</div>
+            <select class="base-dropdown-select" id="baseWeightDropdown" aria-label="Select alternate base weight">
+              <option value="" disabled selected hidden>More...</option>
+              <option value="0.1">100g</option>
+              <option value="0.5">500g</option>
+              <option value="0.75">750g</option>
+            </select>
           </div>
         </div>
 
         <div class="selector-group">
-          <div class="section-label">Tap Target Weight to Add</div>
+          <div class="section-label">Buying Weight</div>
 
           <div class="target-weight-row-custom" id="targetWeightRow">
             <div class="weight-btn target-btn" data-weight="0.1">100g</div>
@@ -895,11 +923,8 @@
     const displayCurrentItemPrice =
       document.getElementById("displayCurrentItemPrice");
 
-    const displayCurrentItemWeight =
-      document.getElementById("displayCurrentItemWeight");
-
-    const displayQuoteBase =
-      document.getElementById("displayQuoteBase");
+    const displayMathFormula =
+      document.getElementById("displayMathFormula");
 
     const headerVendorQuote =
       document.getElementById("headerVendorQuote");
@@ -918,6 +943,9 @@
 
     const baseWeightRow =
       document.getElementById("baseWeightRow");
+
+    const baseWeightDropdown =
+      document.getElementById("baseWeightDropdown");
 
     const targetWeightRow =
       document.getElementById("targetWeightRow");
@@ -990,8 +1018,14 @@
       headerVendorQuote.textContent =
         priceInput ? `₹${priceInput}` : "₹0";
 
-      displayQuoteBase.textContent =
-        `Base: ${formatBaseWeight(baseWeight)}`;
+      // Dynamically display math equation
+      if (priceInput && parseFloat(priceInput) > 0) {
+        const val = parseFloat(priceInput);
+        const bLabel = formatBaseWeight(baseWeight);
+        displayMathFormula.textContent = `(₹${val} ÷ ${bLabel}) × Target Wt`;
+      } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
+        displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
+      }
     }
 
 
@@ -1038,14 +1072,13 @@
 
       displayCurrentItemPrice.textContent = "₹0";
       displayCurrentItemPrice.classList.remove("has-input");
-      displayCurrentItemWeight.textContent = "Weight: --";
 
       updateHomeDisplay();
     });
 
 
     /* =========================================================
-       BASE WEIGHT SELECTOR
+       BASE WEIGHT SELECTOR LOGIC
        ========================================================= */
 
     baseWeightRow.addEventListener("click", (e) => {
@@ -1059,9 +1092,30 @@
         .querySelectorAll(".base-btn")
         .forEach((b) => b.classList.remove("base-selected"));
 
+      baseWeightDropdown.classList.remove("base-selected");
+      baseWeightDropdown.selectedIndex = 0;
+
       button.classList.add("base-selected");
 
       baseWeight = parseFloat(button.dataset.weight);
+
+      updateHomeDisplay();
+    });
+
+    baseWeightDropdown.addEventListener("change", (e) => {
+      const selectedVal = parseFloat(e.target.value);
+
+      if (isNaN(selectedVal)) {
+        return;
+      }
+
+      document
+        .querySelectorAll(".base-btn")
+        .forEach((b) => b.classList.remove("base-selected"));
+
+      baseWeightDropdown.classList.add("base-selected");
+
+      baseWeight = selectedVal;
 
       updateHomeDisplay();
     });
@@ -1231,10 +1285,8 @@
       const calculatedPrice =
         ((priceVal / baseWeight) * targetWeight).toFixed(2);
 
-      const baseLabel =
-        baseWeight >= 1
-          ? `${baseWeight}Kg`
-          : `${baseWeight * 1000}g`;
+      const baseLabel = formatBaseWeight(baseWeight);
+      const targetLabel = formatWeight(targetWeight);
 
       const newItem = {
         id: itemCounter++,
@@ -1245,19 +1297,18 @@
 
       cart.push(newItem);
 
-      // Display calculated item price on primary display
-      displayCurrentItemPrice.textContent =
-        `₹${newItem.price.toFixed(2)}`;
+      // Display calculated item price and complete math equation on main display
+      displayCurrentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
       displayCurrentItemPrice.classList.add("has-input");
 
-      displayCurrentItemWeight.textContent =
-        `Weight: ${formatWeight(newItem.weight)}`;
+      displayMathFormula.textContent =
+        `(₹${priceVal} ÷ ${baseLabel}) × ${targetLabel} = ₹${newItem.price.toFixed(2)}`;
 
       renderCart();
 
       // Reset input for next item while preserving output display
       priceInput = "";
-      updateHomeDisplay();
+      headerVendorQuote.textContent = "₹0";
 
       return true;
     }
@@ -1310,7 +1361,7 @@
       if (cart.length === 0) {
         displayCurrentItemPrice.textContent = "₹0";
         displayCurrentItemPrice.classList.remove("has-input");
-        displayCurrentItemWeight.textContent = "Weight: --";
+        updateHomeDisplay();
       }
     }
 
@@ -1366,7 +1417,6 @@
 
         displayCurrentItemPrice.textContent = "₹0";
         displayCurrentItemPrice.classList.remove("has-input");
-        displayCurrentItemWeight.textContent = "Weight: --";
 
         updateHomeDisplay();
         renderCart();
