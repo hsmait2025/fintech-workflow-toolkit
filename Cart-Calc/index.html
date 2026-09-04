@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ultra-Fast Grocery Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="theme-color" content="#4a6fa5" />
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --primary: #4a6fa5;
+      --border: #dbe1e7;
+      --text: #2f3e4d;
+      --active: #2e7d32;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      margin: 0;
+      padding: 12px;
+      padding-bottom: 80px; /* Clearance for sticky bottom bar */
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 480px;
+      margin: auto;
+      background-color: var(--card);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    h2 { text-align: center; color: var(--primary); margin: 0 0 12px 0; }
+    label { font-weight: 600; margin-top: 12px; display: block; font-size: 0.85rem; text-transform: uppercase; }
+    .sub-label { font-size: 0.75rem; color: #666; font-weight: normal; text-transform: none; }
+
+    input { 
+      width: 100%; 
+      padding: 12px; 
+      font-size: 1rem; 
+      margin-top: 4px; 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+    }
+    input:focus { border-color: var(--primary); outline: none; }
+
+    .chip-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .chip {
+      padding: 12px 4px;
+      background: #eef2f7;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+    }
+
+    .chip.selected {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .target-chip {
+      background: #eef7ed;
+      border-color: #c8e6c9;
+    }
+
+    .target-chip:active {
+      background-color: var(--active);
+      color: white;
+    }
+
+    .cart { margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.85rem; }
+    th, td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
+    thead { background-color: var(--bg); }
+
+    .actions button { margin: 0 2px; font-size: 0.75rem; padding: 4px 6px; border-radius: 4px; border: none; }
+    .remove-btn { background-color: #e88e8e; color: white; }
+
+    /* Sticky Bottom Total Bar */
+    .sticky-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--primary);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+      z-index: 1000;
+    }
+
+    .sticky-bar div { display: flex; flex-direction: column; }
+    .sticky-sub { font-size: 0.75rem; font-weight: normal; opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Price Calculator 🧮</h2>
+
+    <label for="quotedPrice">1. Quoted Price (₹)</label>
+    <input type="number" id="quotedPrice" placeholder="e.g. 20" inputmode="decimal" autofocus />
+
+    <label for="itemName">Item Name <span class="sub-label">(Optional)</span></label>
+    <input type="text" id="itemName" placeholder="e.g. Onions" />
+
+    <label>2. Quote Is For? <span class="sub-label">(Default: 250g)</span></label>
+    <div class="chip-container" id="baseWeightContainer">
+      <div class="chip base-chip selected" data-weight="0.25">250g</div>
+      <div class="chip base-chip" data-weight="0.5">500g</div>
+      <div class="chip base-chip" data-weight="0.75">750g</div>
+      <div class="chip base-chip" data-weight="1">1 Kg</div>
+      <div class="chip base-chip" data-weight="2">2 Kg</div>
+      <div class="chip base-chip" data-weight="0.1">100g</div>
+    </div>
+
+    <label>3. How Much To Buy? <span class="sub-label">(Adds to cart)</span></label>
+    <div class="chip-container" id="targetWeightContainer">
+      <div class="chip target-chip" data-weight="0.25">250g</div>
+      <div class="chip target-chip" data-weight="0.5">500g</div>
+      <div class="chip target-chip" data-weight="0.75">750g</div>
+      <div class="chip target-chip" data-weight="1">1 Kg</div>
+      <div class="chip target-chip" data-weight="1.5">1.5 Kg</div>
+      <div class="chip target-chip" data-weight="2">2 Kg</div>
+    </div>
+
+    <div class="cart" id="cartContainer">
+      <h3>🛒 Cart</h3>
+      <table id="cartTable">
+        <thead>
+          <tr><th>Item</th><th>Weight</th><th>Quote</th><th>Price</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sticky Bottom Bar -->
+  <div class="sticky-bar">
+    <div>
+      <span id="totalPrice">Total: ₹0.00</span>
+      <span class="sticky-sub" id="totalWeight">Total Weight: 0.00 Kg</span>
+    </div>
+    <span id="itemCount">0 Items</span>
+  </div>
+
+  <script>
+    const itemNameInput = document.getElementById("itemName");
+    const quotedPriceInput = document.getElementById("quotedPrice");
+    const baseWeightContainer = document.getElementById("baseWeightContainer");
+    const targetWeightContainer = document.getElementById("targetWeightContainer");
+    const cartTableBody = document.querySelector("#cartTable tbody");
+    const totalPriceDiv = document.getElementById("totalPrice");
+    const totalWeightDiv = document.getElementById("totalWeight");
+    const itemCountSpan = document.getElementById("itemCount");
+
+    // Smart default: 250g preset
+    let baseWeight = 0.25; 
+    let itemCounter = 1;
+
+    // Step 2: Select Base Weight Quote & Auto-Dismiss Keyboard
+    baseWeightContainer.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("base-chip")) return;
+
+      document.querySelectorAll(".base-chip").forEach(c => c.classList.remove("selected"));
+      e.target.classList.add("selected");
+      baseWeight = parseFloat(e.target.dataset.weight);
+
+      // Dismiss software keyboard so target pills stay fully visible
+      quotedPriceInput.blur();
+      itemNameInput.blur();
+    });
+
+    // Step 3: Tap Target Weight -> Auto Calculate, Auto Add & Reset
+    targetWeightContainer.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("target-chip")) return;
+
+      const price = parseFloat(quotedPriceInput.value);
+      if (isNaN(price) || price <= 0) {
+        alert("❗ Please enter the quoted price first.");
+        quotedPriceInput.focus();
+        return;
+      }
+
+      const targetWeight = parseFloat(e.target.dataset.weight);
+      
+      // Smart Auto-Naming if item field is left empty
+      const itemName = itemNameInput.value.trim() || `Item #${itemCounter}`;
+      if (!itemNameInput.value.trim()) itemCounter++;
+
+      // Math: (Quoted Price / Base Weight) * Target Weight
+      const finalPrice = ((price / baseWeight) * targetWeight).toFixed(2);
+      const baseLabel = baseWeight >= 1 ? `${baseWeight}Kg` : `${baseWeight * 1000}g`;
+
+      // Append row to cart
+      const row = cartTableBody.insertRow();
+      row.innerHTML = `
+        <td>${itemName}</td>
+        <td>${targetWeight} Kg</td>
+        <td>₹${price}/${baseLabel}</td>
+        <td>₹${finalPrice}</td>
+        <td class="actions">
+          <button class="remove-btn">🗑️</button>
+        </td>`;
+
+      row.querySelector(".remove-btn").onclick = () => {
+        cartTableBody.deleteRow(row.rowIndex - 1);
+        refreshTotal();
+      };
+
+      refreshTotal();
+
+      // Reset inputs & reset base unit back to 250g default
+      itemNameInput.value = "";
+      quotedPriceInput.value = "";
+      
+      document.querySelectorAll(".base-chip").forEach(c => c.classList.remove("selected"));
+      document.querySelector('.base-chip[data-weight="0.25"]').classList.add("selected");
+      baseWeight = 0.25;
+
+      // Refocus back on price input for next immediate calculation
+      quotedPriceInput.focus();
+    });
+
+    function refreshTotal() {
+      let total = 0, totalWeight = 0;
+      const rows = Array.from(cartTableBody.rows);
+      
+      rows.forEach(row => {
+        total += parseFloat(row.cells[3].textContent.replace('₹',''));
+        totalWeight += parseFloat(row.cells[1].textContent.replace(' Kg',''));
+      });
+
+      totalPriceDiv.textContent = `Total: ₹${total.toFixed(2)}`;
+      totalWeightDiv.textContent = `Total Weight: ${totalWeight.toFixed(2)} Kg`;
+      itemCountSpan.textContent = `${rows.length} ${rows.length === 1 ? 'Item' : 'Items'}`;
+    }
+  </script>
+</body>
+</html>
