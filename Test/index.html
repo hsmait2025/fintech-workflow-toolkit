@@ -730,7 +730,7 @@
     <main class="top-window-60" id="homeDisplayContainer">
 
       <section class="display-section">
-        <div class="section-label">Vendor Price Quote</div>
+        <div class="section-label">Price</div>
 
         <div class="main-display">
           <div class="price-display" id="displayCurrentItemPrice">₹0</div>
@@ -995,14 +995,6 @@
 
       displayQuoteBase.textContent =
         `Base: ${formatBaseWeight(baseWeight)}`;
-
-      if (priceInput) {
-        displayCurrentItemPrice.textContent = `₹${priceInput}`;
-        displayCurrentItemPrice.classList.add("has-input");
-      } else {
-        displayCurrentItemPrice.textContent = "₹0";
-        displayCurrentItemPrice.classList.remove("has-input");
-      }
     }
 
 
@@ -1048,6 +1040,7 @@
       priceInput = "";
 
       displayCurrentItemPrice.textContent = "₹0";
+      displayCurrentItemPrice.classList.remove("has-input");
       displayCurrentItemWeight.textContent = "Weight: --";
 
       updateHomeDisplay();
@@ -1091,11 +1084,6 @@
       const targetWeight = parseFloat(button.dataset.weight);
 
       processAddToCart(targetWeight);
-
-      /*
-       * Target buttons are intentionally not left permanently
-       * selected. The tap itself is the action.
-       */
     });
 
 
@@ -1260,16 +1248,17 @@
 
       cart.push(newItem);
 
+      // Display calculated item price on primary display
       displayCurrentItemPrice.textContent =
         `₹${newItem.price.toFixed(2)}`;
-
-      displayCurrentItemPrice.classList.remove("has-input");
+      displayCurrentItemPrice.classList.add("has-input");
 
       displayCurrentItemWeight.textContent =
         `Weight: ${formatWeight(newItem.weight)}`;
 
       renderCart();
 
+      // Reset input for next item while preserving output display
       priceInput = "";
       updateHomeDisplay();
 
@@ -1323,6 +1312,7 @@
 
       if (cart.length === 0) {
         displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemPrice.classList.remove("has-input");
         displayCurrentItemWeight.textContent = "Weight: --";
       }
     }
@@ -1378,6 +1368,7 @@
         priceInput = "";
 
         displayCurrentItemPrice.textContent = "₹0";
+        displayCurrentItemPrice.classList.remove("has-input");
         displayCurrentItemWeight.textContent = "Weight: --";
 
         updateHomeDisplay();
