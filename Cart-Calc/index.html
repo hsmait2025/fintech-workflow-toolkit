@@ -17,6 +17,11 @@
       --key-active: #3b82f6;
       --border: #2e323e;
       --amber: #f59e0b;
+      
+      /* Weight Button Palette */
+      --btn-idle-bg: #242731;
+      --btn-idle-border: #333745;
+      --btn-idle-text: #64748b;
     }
 
     * { box-sizing: border-box; touch-action: manipulation; }
@@ -44,22 +49,17 @@
       flex: 0 0 auto;
     }
 
-    .current-item-label {
+    .vendor-quote-label {
       font-size: 0.65rem;
       text-transform: uppercase;
       color: var(--text-muted);
       letter-spacing: 0.5px;
     }
 
-    .current-item-price {
+    .vendor-quote-price {
       font-size: 1.25rem;
       font-weight: 800;
       color: #38edf8;
-    }
-
-    .current-item-weight {
-      font-size: 0.75rem;
-      color: var(--text-muted);
     }
 
     .view-cart-btn {
@@ -111,6 +111,7 @@
     .display-row {
       display: flex;
       align-items: baseline;
+      justify-content: space-between;
     }
 
     .price-display {
@@ -119,38 +120,51 @@
       color: #38edf8;
     }
 
+    .weight-subdisplay {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
     .weight-row {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 6px;
       margin-top: 6px;
     }
 
+    /* Default Greyed Out Weight Button Styling */
     .weight-btn {
-      background-color: var(--key-bg);
-      border: 1px solid var(--border);
-      color: var(--text);
+      background-color: var(--btn-idle-bg);
+      border: 1px solid var(--btn-idle-border);
+      color: var(--btn-idle-text);
       padding: 8px 0;
       font-size: 0.85rem;
       font-weight: 700;
       border-radius: 6px;
       text-align: center;
       cursor: pointer;
+      transition: all 0.15s ease;
     }
 
+    /* Active Highlighted Base Selected Button */
     .weight-btn.base-selected {
-      border-color: var(--primary);
-      background-color: rgba(37, 99, 235, 0.2);
-      color: #60a5fa;
+      border-color: #3b82f6;
+      background-color: #1e3a8a;
+      color: #93c5fd;
+      box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
     }
 
-    .weight-btn.target-btn {
+    /* Target Buttons: Flash Active Green State on Press/Click */
+    .weight-btn.target-btn:active,
+    .weight-btn.target-btn.target-selected {
       background-color: #14532d;
       border-color: var(--accent);
       color: #4ade80;
+      box-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
     }
 
-    /* Keypads - Standardized Layout Dimensions */
+    /* Keypads */
     .keypad-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -179,16 +193,23 @@
       color: white;
     }
 
-    .key.action-clear {
+    .key.action-backspace {
       background-color: #7f1d1d;
       color: #fca5a5;
+    }
+
+    .key.action-clear-all {
+      background-color: #991b1b;
+      color: #ffffff;
+      font-size: 1.4rem;
+      font-weight: 800;
     }
 
     .key.custom-wt-btn {
       background-color: #1e3a8a;
       border-color: #3b82f6;
       color: #93c5fd;
-      font-size: 0.95rem;
+      font-size: 1.2rem;
       font-weight: 700;
       text-transform: uppercase;
     }
@@ -199,7 +220,6 @@
       background-color: var(--bg);
     }
 
-    /* Custom Display Container sized identically to .display-container */
     .custom-display-container {
       background-color: #2e1065;
       border-bottom: 2px solid #581c87;
@@ -257,6 +277,13 @@
       cursor: pointer;
     }
 
+    .home-bottom-row {
+      grid-column: span 3;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
     /* Modal Cart Sheet */
     .modal {
       position: fixed;
@@ -291,15 +318,31 @@
       text-align: center;
     }
 
+    .cart-modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn-clear-cart {
+      background-color: #991b1b;
+      color: white;
+      border: 1px solid #ef4444;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     .close-modal-btn {
-      width: 100%;
       background: var(--key-bg);
       color: var(--text);
       border: 1px solid var(--border);
       padding: 12px;
       border-radius: 10px;
       font-weight: 700;
-      margin-top: 15px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -308,9 +351,8 @@
   <!-- TOP HEADER -->
   <div class="top-cart-bar" id="topHeader">
     <div>
-      <div class="current-item-label">Current Item</div>
-      <div class="current-item-price" id="currentItemPrice">₹0.00</div>
-      <div class="current-item-weight" id="currentItemWeight">Weight: --</div>
+      <div class="vendor-quote-label">Vendor Price Quote</div>
+      <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
     </div>
     <button class="view-cart-btn" id="openCartBtn">
       <span class="cart-btn-title" id="cartBtnTitle">Cart (0) • ₹0.00</span>
@@ -321,12 +363,13 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
     <div class="display-container" id="homeDisplayContainer">
-      <div class="section-label">Vendor Price Quote</div>
+      <div class="section-label">Current Item Calculated</div>
       <div class="display-row">
-        <div class="price-display" id="displayPrice">₹0</div>
+        <div class="price-display" id="displayCurrentItemPrice">₹0.00</div>
+        <div class="weight-subdisplay" id="displayCurrentItemWeight">Weight: --</div>
       </div>
 
-      <!-- Base Quote Selector -->
+      <!-- Base Quote Selector (Greyed out except active) -->
       <div class="section-label" style="margin-top: 8px;">Quote Base Weight</div>
       <div class="weight-row" id="baseWeightRow">
         <div class="weight-btn base-btn" data-weight="0.1">100g</div>
@@ -334,18 +377,16 @@
         <div class="weight-btn base-btn" data-weight="0.5">500g</div>
         <div class="weight-btn base-btn" data-weight="0.75">750g</div>
         <div class="weight-btn base-btn" data-weight="1">1Kg</div>
-        <div class="weight-btn base-btn" data-weight="2">2Kg</div>
       </div>
 
-      <!-- Target Purchase Selector -->
+      <!-- Target Purchase Selector (Greyed out except active) -->
       <div class="section-label" style="margin-top: 8px;">Tap Target Weight to Add</div>
       <div class="weight-row" id="targetWeightRow">
+        <div class="weight-btn target-btn" data-weight="0.1">100g</div>
         <div class="weight-btn target-btn" data-weight="0.25">250g</div>
         <div class="weight-btn target-btn" data-weight="0.5">500g</div>
         <div class="weight-btn target-btn" data-weight="0.75">750g</div>
         <div class="weight-btn target-btn" data-weight="1">1Kg</div>
-        <div class="weight-btn target-btn" data-weight="1.5">1.5Kg</div>
-        <div class="weight-btn target-btn" data-weight="2">2Kg</div>
       </div>
     </div>
 
@@ -360,9 +401,13 @@
       <div class="key num-key">1</div>
       <div class="key num-key">2</div>
       <div class="key num-key">3</div>
-      <div class="key action-clear" id="homeClearBtn">⌫</div>
-      <div class="key num-key">0</div>
-      <div class="key custom-wt-btn" id="openCustomWtBtn">Custom Wt</div>
+      
+      <div class="home-bottom-row">
+        <div class="key action-backspace" id="homeBackspaceBtn">⌫</div>
+        <div class="key num-key">0</div>
+        <div class="key action-clear-all" id="homeClearEntryBtn">C</div>
+      </div>
+      <div class="key custom-wt-btn" id="openCustomWtBtn" style="grid-column: span 3;">CW</div>
     </div>
   </div>
 
@@ -385,7 +430,7 @@
       <div class="key c-num-key">1</div>
       <div class="key c-num-key">2</div>
       <div class="key c-num-key">3</div>
-      <div class="key action-clear" id="customClearBtn">⌫</div>
+      <div class="key action-backspace" id="customBackspaceBtn">⌫</div>
       <div class="key c-num-key">0</div>
       <div class="key c-num-key">.</div>
 
@@ -406,7 +451,11 @@
         </thead>
         <tbody></tbody>
       </table>
-      <button class="close-modal-btn" id="closeCartBtn">Back to Calculator</button>
+      
+      <div class="cart-modal-actions">
+        <button class="btn-clear-cart" id="clearAllCartBtn">Clear Cart</button>
+        <button class="close-modal-btn" id="closeCartBtn">Back</button>
+      </div>
     </div>
   </div>
 
@@ -427,9 +476,12 @@
     const customDisplayContainer = document.getElementById("customDisplayContainer");
 
     // Home Elements
-    const displayPrice = document.getElementById("displayPrice");
+    const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
+    const displayCurrentItemWeight = document.getElementById("displayCurrentItemWeight");
+    const headerVendorQuote = document.getElementById("headerVendorQuote");
     const homeKeypad = document.getElementById("homeKeypad");
-    const homeClearBtn = document.getElementById("homeClearBtn");
+    const homeBackspaceBtn = document.getElementById("homeBackspaceBtn");
+    const homeClearEntryBtn = document.getElementById("homeClearEntryBtn");
     const openCustomWtBtn = document.getElementById("openCustomWtBtn");
     const baseWeightRow = document.getElementById("baseWeightRow");
     const targetWeightRow = document.getElementById("targetWeightRow");
@@ -438,13 +490,11 @@
     const customDisplay = document.getElementById("customDisplay");
     const customSubDisplay = document.getElementById("customSubDisplay");
     const customKeypad = document.getElementById("customKeypad");
-    const customClearBtn = document.getElementById("customClearBtn");
+    const customBackspaceBtn = document.getElementById("customBackspaceBtn");
     const cancelCustomBtn = document.getElementById("cancelCustomBtn");
     const addCustomToCartBtn = document.getElementById("addCustomToCartBtn");
 
     // Top Header Elements
-    const currentItemPrice = document.getElementById("currentItemPrice");
-    const currentItemWeight = document.getElementById("currentItemWeight");
     const cartBtnTitle = document.getElementById("cartBtnTitle");
     const cartBtnSub = document.getElementById("cartBtnSub");
     
@@ -452,6 +502,7 @@
     const openCartBtn = document.getElementById("openCartBtn");
     const cartModal = document.getElementById("cartModal");
     const closeCartBtn = document.getElementById("closeCartBtn");
+    const clearAllCartBtn = document.getElementById("clearAllCartBtn");
     const cartTableBody = document.querySelector("#cartTable tbody");
 
     // Home Numpad Logic
@@ -462,13 +513,24 @@
       updateHomeDisplay();
     });
 
-    homeClearBtn.addEventListener("click", () => {
+    homeBackspaceBtn.addEventListener("click", () => {
       priceInput = priceInput.slice(0, -1);
       updateHomeDisplay();
     });
 
+    // Clear Current Calculation AND Vendor Price Quote
+    homeClearEntryBtn.addEventListener("click", () => {
+      priceInput = "";
+      displayCurrentItemPrice.textContent = "₹0.00";
+      displayCurrentItemWeight.textContent = "Weight: --";
+      
+      // Clear target button active indicator state
+      document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
+      updateHomeDisplay();
+    });
+
     function updateHomeDisplay() {
-      displayPrice.textContent = priceInput ? `₹${priceInput}` : "₹0";
+      headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
     }
 
     // Base Weight Selection
@@ -482,6 +544,10 @@
     // Preset Target Weight Selection -> Auto Add
     targetWeightRow.addEventListener("click", (e) => {
       if (!e.target.classList.contains("target-btn")) return;
+      
+      document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
+      e.target.classList.add("target-selected");
+
       const targetWeight = parseFloat(e.target.dataset.weight);
       processAddToCart(targetWeight);
     });
@@ -494,7 +560,6 @@
         return;
       }
       
-      // Sync layout heights perfectly with Home Screen Display Area
       const homeHeaderHeight = homeDisplayContainer.offsetHeight + topHeader.offsetHeight;
       customDisplayContainer.style.height = `${homeHeaderHeight}px`;
 
@@ -511,7 +576,7 @@
       homeView.style.display = "flex";
     });
 
-    // Custom Weight Numpad Logic (Pure Standard Calculator Behavior)
+    // Custom Weight Numpad Logic
     customKeypad.addEventListener("click", (e) => {
       if (!e.target.classList.contains("c-num-key")) return;
       const val = e.target.textContent;
@@ -523,7 +588,7 @@
       updateCustomDisplay();
     });
 
-    customClearBtn.addEventListener("click", () => {
+    customBackspaceBtn.addEventListener("click", () => {
       customWeightInput = customWeightInput.slice(0, -1);
       updateCustomDisplay();
     });
@@ -543,8 +608,6 @@
       }
 
       customDisplay.textContent = `${customWeightInput} Kg`;
-      
-      // Calculate direct metric equivalence (1 Kg = 1000g)
       const calculatedGrams = Math.round(numericVal * 1000);
       customSubDisplay.textContent = `Equivalent: ${calculatedGrams}g`;
     }
@@ -584,14 +647,14 @@
 
       cart.push(newItem);
 
-      // Update Left Header (Current Item Info)
-      currentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
+      // Display Current Calculated Item Prominently
+      displayCurrentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
       const formattedWt = newItem.weight < 1 ? `${Math.round(newItem.weight * 1000)}g` : `${newItem.weight.toFixed(2)}Kg`;
-      currentItemWeight.textContent = `Weight: ${formattedWt}`;
+      displayCurrentItemWeight.textContent = `Weight: ${formattedWt}`;
 
       renderCart();
 
-      // Clear Price Input for next item
+      // Clear Price Input for next item entry
       priceInput = "";
       updateHomeDisplay();
     }
@@ -610,18 +673,17 @@
           <td>${item.weight < 1 ? Math.round(item.weight * 1000) + 'g' : item.weight.toFixed(2) + 'Kg'}</td>
           <td>${item.quote}</td>
           <td>₹${item.price.toFixed(2)}</td>
-          <td><button onclick="removeItem(${idx})" style="background:none;border:none;color:#ef4444;font-weight:bold;">🗑️</button></td>
+          <td><button onclick="removeItem(${idx})" style="background:none;border:none;color:#ef4444;font-weight:bold;cursor:pointer;">🗑️</button></td>
         `;
       });
 
-      // Update Right Header (Cart Total Info inside Button)
       cartBtnTitle.textContent = `Cart (${cart.length}) • ₹${totalP.toFixed(2)}`;
       cartBtnSub.textContent = `Total: ${totalW.toFixed(2)} Kg`;
 
-      // Reset current item display if cart is completely emptied
       if (cart.length === 0) {
-        currentItemPrice.textContent = "₹0.00";
-        currentItemWeight.textContent = "Weight: --";
+        displayCurrentItemPrice.textContent = "₹0.00";
+        displayCurrentItemWeight.textContent = "Weight: --";
+        document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
       }
     }
 
@@ -630,7 +692,21 @@
       renderCart();
     };
 
-    // Modal Drawer Controls
+    clearAllCartBtn.addEventListener("click", () => {
+      if (cart.length === 0) return;
+      if (confirm("Clear all items in cart?")) {
+        cart = [];
+        itemCounter = 1;
+        priceInput = "";
+        displayCurrentItemPrice.textContent = "₹0.00";
+        displayCurrentItemWeight.textContent = "Weight: --";
+        document.querySelectorAll(".target-btn").forEach(b => b.classList.remove("target-selected"));
+        updateHomeDisplay();
+        renderCart();
+        cartModal.style.display = "none";
+      }
+    });
+
     openCartBtn.addEventListener("click", () => cartModal.style.display = "flex");
     closeCartBtn.addEventListener("click", () => cartModal.style.display = "none");
   </script>
