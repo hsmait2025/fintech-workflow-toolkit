@@ -517,6 +517,7 @@
       border-radius: 22px;
       background: #1c1c1e;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      overflow-y: auto;
     }
 
     /* NAME PROMPT MODAL STYLES */
@@ -896,21 +897,11 @@
         <select class="chip-dropdown-select" id="moreItemsDropdown" aria-label="More grocery items">
           <option value="" disabled selected hidden>More...</option>
           <option value="Garlic">Garlic</option>
-          <option value="Green Garlic">Green Garlic</option>
-          <option value="Green Onion">Green Onion</option>
           <option value="Gobhi">Gobhi</option>
-          <option value="Cabbge">Cabbge</option>
-          <option value="Palak">Palak</option>
-          <option value="Saag">Saag</option>
-          <option value="Carrot">Carrot</option>
           <option value="Bengan">Bengan</option>
           <option value="Bhindi">Bhindi</option>
           <option value="Ghiya">Ghiya</option>
           <option value="Tori">Tori</option>
-          <option value="Carrot">Carrot</option>
-          <option value="Radish">Radish</option>
-          <option value="Kathal">Kathal</option>
-          <option value="Beans">Beans</option>
           <option value="Green Chilli">Green Chilli</option>
           <option value="Lemon">Lemon</option>
           <option value="Apple">Apple</option>
@@ -1114,7 +1105,7 @@
       itemNameInput.value = "";
       moreItemsDropdown.selectedIndex = 0;
       itemNameModal.style.display = "flex";
-      itemNameInput.focus();
+      /* Keyboard auto-focus removed to keep soft keyboard hidden until text area is tapped */
     }
 
     quickChipsContainer.addEventListener("click", (e) => {
