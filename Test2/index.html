@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Office Document Stitcher</title>
+    <style>
+        /* Styles used when looking at the application screen */
+        @media screen {
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: #f4f6f9;
+                color: #333;
+                padding: 40px 20px;
+                margin: 0;
+            }
+            .container {
+                max-width: 700px;
+                margin: 0 auto;
+                background: #ffffff;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            }
+            h2 { margin-top: 0; color: #1a1a1a; font-size: 22px; }
+            p { color: #666; font-size: 14px; line-height: 1.5; }
+            textarea {
+                width: 100%;
+                height: 250px;
+                padding: 12px;
+                box-sizing: border-box;
+                border: 1px solid #ccd1d9;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+                resize: vertical;
+                background-color: #fafbfc;
+            }
+            textarea:focus {
+                border-color: #4a90e2;
+                outline: none;
+                background-color: #fff;
+            }
+            button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                font-size: 15px;
+                font-weight: 600;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-top: 15px;
+                width: 100%;
+                transition: background 0.2s;
+            }
+            button:hover { background-color: #0056b3; }
+            #preview-area { display: none; }
+        }
+
+        /* Styles used when printing or saving to PDF */
+        @media print {
+            #setup-area { display: none !important; }
+            #preview-area { display: block !important; }
+            body, html { margin: 0; padding: 0; background: #fff; }
+            .page-container {
+                page-break-after: always;
+                break-after: page;
+                width: 100vw;
+                height: auto;
+                margin: 0;
+                padding: 0;
+            }
+            img {
+                width: 100vw;
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SETUP SCREEN (Hidden during print) -->
+    <div id="setup-area" class="container">
+        <h2>URL Document Stitcher</h2>
+        <p>Paste all your image URLs below. Make sure each link is on its own separate line. No commas or quotes are necessary—just paste the raw text exactly as it looks in your Notepad file.</p>
+        
+        <textarea id="url-input" placeholder="Paste your URLs here...&#10;https://google.com..."></textarea>
+        
+        <button onclick="generatePrintLayout()">Compile Images</button>
+    </div>
+
+    <!-- PRINT VIEW AREA (Hidden during setup, active during print) -->
+    <div id="preview-area"></div>
+
+    <script>
+        function generatePrintLayout() {
+            const textarea = document.getElementById('url-input');
+            const previewArea = document.getElementById('preview-area');
+            
+            // Split the input text into rows and clean up empty lines
+            const lines = textarea.value.split('\n');
+            const urls = lines.map(line => line.trim()).filter(line => line.length > 0);
+            
+            if (urls.length === 0) {
+                alert("Please paste at least one URL before continuing.");
+                return;
+            }
+
+            // Clear out any old images
+            previewArea.innerHTML = '';
+
+            // Generate HTML tags for each URL
+            urls.forEach((url) => {
+                const div = document.createElement('div');
+                div.className = 'page-container';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                
+                div.appendChild(img);
+                previewArea.appendChild(div);
+            });
+
+            // Trigger Chrome's built-in Print window automatically
+            window.print();
+        }
+    </script>
+</body>
+</html>
