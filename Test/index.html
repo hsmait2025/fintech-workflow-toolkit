@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#000000" />
   <title>Grocery Calc POS</title>
 
-  <!-- html2pdf.js CDN for Multi-Page PDF Generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- html2canvas CDN for High-Resolution PNG Snapshots -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root {
@@ -1075,7 +1075,7 @@
 
       <div class="cart-modal-actions">
         <button class="btn-clear-cart" id="clearAllCartBtn" type="button">Clear Cart</button>
-        <button class="btn-share-cart" id="shareDashboardBtn" type="button">Share PDF</button>
+        <button class="btn-share-cart" id="shareDashboardBtn" type="button">Share Image</button>
         <button class="close-modal-btn" id="closeCartBtn" type="button">Back</button>
       </div>
 
@@ -1655,30 +1655,31 @@
       }
     });
 
-    /* SHARE DASHBOARD FUNCTIONALITY (MULTI-PAGE COMPLETE PDF FIX) */
+    /* SHARE DASHBOARD FUNCTIONALITY (HIGH-RES DIRECT PNG CAPTURE) */
     shareDashboardBtn.addEventListener("click", async () => {
       if (cart.length === 0) {
         showTemporaryMessage("Cart is empty.");
         return;
       }
 
-      showTemporaryMessage("Generating PDF...");
+      showTemporaryMessage("Generating image...");
 
       const scrollContainer = document.querySelector(".cart-scroll-container");
       if (!scrollContainer) return;
 
-      // 1. Create print container explicitly styled with fixed widths & explicit text colors
+      // 1. Create off-screen container with explicit high-contrast styling
       const captureWrapper = document.createElement("div");
       Object.assign(captureWrapper.style, {
         padding: "20px",
         background: "#1c1c1e",
         color: "#ffffff",
-        width: "700px",             // Fixed width ensures proper A4 grid mapping
-        position: "absolute",
-        left: "-9999px",
-        top: "0px",
+        width: "480px",
+        position: "fixed",
+        left: "0",
+        top: "0",
+        zIndex: "-9999",
         boxSizing: "border-box",
-        fontFamily: "Arial, sans-serif"
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       });
 
       // 2. Add Header
@@ -1695,26 +1696,21 @@
       headerEl.style.color = "#bf5af2";
       headerEl.style.borderBottom = "1px solid #38383a";
       headerEl.style.paddingBottom = "8px";
-      headerEl.textContent = "Complete Purchase Summary";
+      headerEl.textContent = "Purchase Summary Report";
       captureWrapper.appendChild(headerEl);
 
-      // 3. Clone cart content and remove hidden/action elements
+      // 3. Clone cart content and prepare full-height canvas raster
       const clone = scrollContainer.cloneNode(true);
-      
-      // Expand container so all scrollable content renders visible
       clone.style.overflow = "visible";
       clone.style.maxHeight = "none";
       clone.style.height = "auto";
 
-      // Remove interactive buttons from output
+      // Remove interactive "×" delete buttons
       clone.querySelectorAll(".no-pdf").forEach(el => el.remove());
 
-      // Force high-contrast explicit text colors on tables to prevent blank text rendering
+      // Override CSS variable inheritance with pure hex text values
       clone.querySelectorAll("th, td, div, span, h3").forEach(el => {
-        const style = window.getComputedStyle(el);
-        if (style.color === "rgba(0, 0, 0, 0)" || !el.style.color) {
-          el.style.color = "#ffffff";
-        }
+        el.style.color = "#ffffff";
       });
 
       captureWrapper.appendChild(clone);
@@ -1730,50 +1726,50 @@
 
       document.body.appendChild(captureWrapper);
 
-      const filename = `purchase-summary-${Date.now()}.pdf`;
-
-      // 5. PDF Render Options tuned for dark-mode capture
-      const options = {
-        margin: [10, 10, 10, 10],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          backgroundColor: '#1c1c1e',
-          useCORS: true,
-          scrollY: 0,
-          windowWidth: 800
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
       try {
-        const pdfWorker = html2pdf().set(options).from(captureWrapper);
+        // 5. Render directly with html2canvas
+        const canvas = await html2canvas(captureWrapper, {
+          backgroundColor: "#1c1c1e",
+          scale: 2,
+          useCORS: true,
+          logging: false
+        });
 
-        // Native Web Share API handling
-        if (navigator.canShare) {
-          const pdfBlob = await pdfWorker.output('blob');
-          const file = new File([pdfBlob], filename, { type: "application/pdf" });
+        const filename = `purchase-summary-${Date.now()}.png`;
 
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: "Purchase Dashboard",
-              text: `Full Purchase Summary Report - ${dateStamp}`,
-              files: [file]
-            });
+        // 6. Native Share API or direct PNG download fallback
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            showTemporaryMessage("Failed to generate image.");
             return;
           }
-        }
 
-        // Direct Download Fallback
-        await pdfWorker.save();
-        showTemporaryMessage("PDF downloaded.");
+          const file = new File([blob], filename, { type: "image/png" });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                title: "Purchase Dashboard",
+                text: `Purchase Summary Report - ${dateStamp}`,
+                files: [file]
+              });
+              return;
+            } catch (shareErr) {
+              if (shareErr.name === "AbortError") return;
+            }
+          }
+
+          const link = document.createElement("a");
+          link.download = filename;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          showTemporaryMessage("Image downloaded.");
+
+        }, "image/png");
 
       } catch (error) {
-        if (error.name !== "AbortError") {
-          console.error("PDF generation failed:", error);
-          showTemporaryMessage("Failed to generate PDF.");
-        }
+        console.error("PNG generation failed:", error);
+        showTemporaryMessage("Failed to generate image.");
       } finally {
         if (document.body.contains(captureWrapper)) {
           document.body.removeChild(captureWrapper);
