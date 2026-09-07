@@ -886,15 +886,32 @@
       width: 12%;
     }
 
-    .editable-name {
+    /* INLINE EDITABLE ITEM NAME STYLES */
+    .editable-item-name {
+      display: inline-block;
+      width: 100%;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px dashed var(--border);
       cursor: pointer;
-      color: var(--blue-soft);
-      text-decoration: underline dotted;
-      text-underline-offset: 3px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-
-    .editable-name:active {
-      opacity: 0.7;
+    .editable-item-name:hover {
+      border-color: var(--blue);
+    }
+    .item-name-input {
+      width: 100%;
+      padding: 4px 6px;
+      font-size: inherit;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      outline: none;
     }
 
     .remove-item-btn {
@@ -1143,7 +1160,7 @@
   </div>
 
 
-  <!-- VIEW 3: ISOLATED CALCULATOR SCREEN -->
+  <!-- VIEW 3: ISOLATED CALCULATOR WINDOW -->
   <div class="view-container" id="calculatorView">
     <header class="calc-top-bar">
       <button class="calc-back-btn" id="closeCalcBtn" type="button">← Back</button>
@@ -1186,17 +1203,17 @@
   </div>
 
 
-  <!-- ITEM NAME PROMPT MODAL -->
+  <!-- QUICK-NAME PROMPT MODAL -->
   <div class="modal" id="itemNameModal" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <div class="cart-title" id="itemNameModalTitle">Item Name</div>
+      <div class="cart-title">Item Name (Optional)</div>
       
       <input 
         type="text" 
         id="itemNameInput" 
         class="name-input-field" 
         placeholder="e.g. Tomato, Onion, Apple..." 
-        autocomplete="off"
+        readonly 
       />
 
       <div class="quick-chips-row" id="quickChipsContainer">
@@ -1232,7 +1249,7 @@
 
       <div class="modal-action-row">
         <button class="btn-cancel" id="skipItemNameBtn" type="button">Skip</button>
-        <button class="btn-add-cart" id="confirmItemNameBtn" type="button">Save</button>
+        <button class="btn-add-cart" id="confirmItemNameBtn" type="button">Add</button>
       </div>
     </div>
   </div>
@@ -1297,7 +1314,6 @@
     let customWeightInput = "";
     let baseWeight = 0.25;
     let pendingTargetWeight = null;
-    let editingItemId = null; // Tracks item being edited in cart
     let itemCounter = 1;
     let isLightTheme = false;
     let cart = []; // Each item: { id, vendorId, name, weight, quote, price }
@@ -1351,7 +1367,6 @@
     const vendorCartList = document.getElementById("vendorCartList");
 
     const itemNameModal = document.getElementById("itemNameModal");
-    const itemNameModalTitle = document.getElementById("itemNameModalTitle");
     const itemNameInput = document.getElementById("itemNameInput");
     const quickChipsContainer = document.getElementById("quickChipsContainer");
     const moreItemsDropdown = document.getElementById("moreItemsDropdown");
@@ -1553,7 +1568,7 @@
       if (!key || !homeKeypad.contains(key)) return;
 
       const rawVal = key.textContent.trim();
-      const val = rawVal.charAt(0);
+      const val = rawVal.charAt(0); // Extracts digits (e.g., '5' from '5☼' or '5☀︎')
 
       if (priceInput === "0" && val === "0") return;
       if (priceInput === "0" && val !== "0") {
@@ -1625,74 +1640,50 @@
       }
 
       pendingTargetWeight = parseFloat(button.dataset.weight);
-      editingItemId = null;
       promptItemName();
     });
 
-    /* NAME PROMPT MODAL LOGIC (EDITABLE DIRECTLY) */
-    function promptItemName(existingName = "") {
-      itemNameInput.value = existingName;
+    /* NAME PROMPT MODAL LOGIC */
+    function promptItemName() {
+      itemNameInput.value = "";
+      itemNameInput.readOnly = true;
       moreItemsDropdown.selectedIndex = 0;
-      
-      if (editingItemId !== null) {
-        itemNameModalTitle.textContent = "Edit Item Name";
-        skipItemNameBtn.textContent = "Cancel";
-      } else {
-        itemNameModalTitle.textContent = "Item Name (Optional)";
-        skipItemNameBtn.textContent = "Skip";
-      }
-
       itemNameModal.style.display = "flex";
-      
-      setTimeout(() => {
-        itemNameInput.focus();
-        itemNameInput.select();
-      }, 50);
     }
+
+    itemNameInput.addEventListener("focus", () => {
+      itemNameInput.readOnly = false;
+    });
+
+    itemNameInput.addEventListener("touchstart", () => {
+      itemNameInput.readOnly = false;
+    }, { passive: true });
 
     quickChipsContainer.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip-btn");
       if (!chip) return;
+      itemNameInput.readOnly = true;
       itemNameInput.value = chip.dataset.name;
-      itemNameInput.focus();
     });
 
     moreItemsDropdown.addEventListener("change", (e) => {
       if (e.target.value) {
+        itemNameInput.readOnly = true;
         itemNameInput.value = e.target.value;
-        itemNameInput.focus();
       }
     });
 
     skipItemNameBtn.addEventListener("click", () => {
-      if (editingItemId !== null) {
-        itemNameModal.style.display = "none";
-        editingItemId = null;
-      } else {
-        finalizeAddToCart("");
-      }
+      finalizeAddToCart("");
     });
 
     confirmItemNameBtn.addEventListener("click", () => {
-      if (editingItemId !== null) {
-        updateItemName(editingItemId, itemNameInput.value.trim());
-        itemNameModal.style.display = "none";
-        editingItemId = null;
-      } else {
-        finalizeAddToCart(itemNameInput.value.trim());
-      }
+      finalizeAddToCart(itemNameInput.value.trim());
     });
 
     itemNameInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
-        e.preventDefault();
-        if (editingItemId !== null) {
-          updateItemName(editingItemId, itemNameInput.value.trim());
-          itemNameModal.style.display = "none";
-          editingItemId = null;
-        } else {
-          finalizeAddToCart(itemNameInput.value.trim());
-        }
+        finalizeAddToCart(itemNameInput.value.trim());
       }
     });
 
@@ -1701,23 +1692,6 @@
       if (pendingTargetWeight !== null) {
         processAddToCart(pendingTargetWeight, nameVal);
         pendingTargetWeight = null;
-      }
-    }
-
-    function editCartItemName(id) {
-      const item = cart.find(i => i.id === id);
-      if (!item) return;
-      editingItemId = id;
-      promptItemName(item.name.startsWith("Item #") ? "" : item.name);
-    }
-
-    function updateItemName(id, newName) {
-      const item = cart.find(i => i.id === id);
-      if (item) {
-        item.name = newName || `Item #${item.id}`;
-        renderCart();
-        saveStateToStorage();
-        showTemporaryMessage("Item name updated.");
       }
     }
 
@@ -1809,7 +1783,6 @@
       }
 
       pendingTargetWeight = finalWeightInKg;
-      editingItemId = null;
       customWeightView.style.display = "none";
       homeView.style.display = "grid";
       promptItemName();
@@ -2108,7 +2081,9 @@
           stats.items.forEach((item) => {
             const row = tbody.insertRow();
             row.innerHTML = `
-              <td><span class="editable-name" data-id="${item.id}">${item.name}</span></td>
+              <td>
+                <div class="editable-item-name" data-id="${item.id}" title="Tap to edit item name">${item.name || '(No Name)'}</div>
+              </td>
               <td>${formatWeight(item.weight)}</td>
               <td>${item.quote}</td>
               <td>₹${item.price.toFixed(2)}</td>
@@ -2136,15 +2111,43 @@
       }
     }
 
-    /* CART ITEM INTERACTION (DELETE & EDIT) */
+    /* INLINE EDITING & ITEM REMOVAL HANDLING WITHIN PURCHASE DASHBOARD */
     vendorCartList.addEventListener("click", (e) => {
-      const editSpan = e.target.closest(".editable-name");
-      if (editSpan) {
-        const itemId = parseInt(editSpan.dataset.id, 10);
-        if (!isNaN(itemId)) editCartItemName(itemId);
+      // Check if item name container was tapped
+      const editableDiv = e.target.closest(".editable-item-name");
+      if (editableDiv) {
+        const itemId = parseInt(editableDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        // Turn div into an input field directly inside the cell
+        const currentName = item.name;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "item-name-input";
+        input.value = currentName;
+
+        editableDiv.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveInlineEdit = () => {
+          const newName = input.value.trim();
+          item.name = newName || `Item #${item.id}`;
+          saveStateToStorage();
+          renderCart();
+        };
+
+        input.addEventListener("blur", saveInlineEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            input.blur();
+          }
+        });
         return;
       }
 
+      // Check if delete button was tapped
       const button = e.target.closest(".remove-item-btn");
       if (!button) return;
 
