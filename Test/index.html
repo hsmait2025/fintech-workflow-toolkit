@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#000000" id="metaThemeColor" />
   <title>Grocery Calc POS</title>
 
   <!-- html2canvas CDN for High-Resolution PNG Snapshots -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
+    /* DARK THEME (DEFAULT) */
     :root {
       --bg: #000000;
       --surface: #1c1c1e;
@@ -29,7 +30,7 @@
       --yellow: #ffd60a;
       --purple: #bf5af2;
 
-      --border: #1c1c1e;
+      --border: #29292b;
 
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-right: env(safe-area-inset-right, 0px);
@@ -39,6 +40,29 @@
       --page-pad: clamp(10px, 3vw, 16px);
       --key-gap: clamp(7px, 2.2vw, 10px);
       --key-min-height: 58px;
+    }
+
+    /* LIGHT THEME OVERRIDES */
+    body.light-theme {
+      --bg: #f2f2f7;
+      --surface: #ffffff;
+      --surface-2: #e5e5ea;
+      --surface-3: #d1d1d6;
+      --key-bg: #e5e5ea;
+      --key-active: #d1d1d6;
+
+      --text: #000000;
+      --muted: #6c6c70;
+
+      --blue: #007aff;
+      --blue-soft: #0056b3;
+      --green: #28a745;
+      --orange: #ff9500;
+      --red: #ff3b30;
+      --yellow: #d3a000;
+      --purple: #8e24aa;
+
+      --border: #e5e5ea;
     }
 
     * {
@@ -68,6 +92,7 @@
         sans-serif;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     button,
@@ -97,8 +122,8 @@
     /* VENDOR SWITCHER BAR - DROPDOWN */
     .vendor-switcher-bar {
       padding: 8px var(--page-pad);
-      background: #121214;
-      border-bottom: 1px solid #29292b;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
     }
 
     .vendor-select-btn {
@@ -106,8 +131,8 @@
       min-height: 42px;
       padding: 6px 14px;
       border-radius: 12px;
-      background: var(--surface-2);
-      color: #ffffff;
+      background: var(--surface);
+      color: var(--text);
       font-size: 0.95rem;
       font-weight: 700;
       border: 1px solid var(--purple);
@@ -121,8 +146,8 @@
     }
 
     .vendor-select-btn option {
-      background: #1c1c1e;
-      color: #ffffff;
+      background: var(--surface);
+      color: var(--text);
     }
 
     /* TOP BAR */
@@ -135,7 +160,7 @@
       gap: 12px;
       flex-shrink: 0;
       background: var(--surface);
-      border-bottom: 1px solid #29292b;
+      border-bottom: 1px solid var(--border);
     }
 
     .vendor-mini {
@@ -212,7 +237,7 @@
       overflow-y: auto;
       overscroll-behavior: contain;
       background: var(--surface);
-      border-bottom: 1px solid #29292b;
+      border-bottom: 1px solid var(--border);
       scrollbar-width: none;
     }
 
@@ -302,10 +327,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #363638;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      background: #222224;
-      color: #ffffff;
+      background: var(--surface-2);
+      color: var(--text);
       font-size: clamp(0.82rem, 3.2vw, 0.98rem);
       font-weight: 700;
       line-height: 1;
@@ -328,8 +353,8 @@
 
     .base-dropdown-select option,
     .chip-dropdown-select option {
-      background: #1c1c1e;
-      color: #fff;
+      background: var(--surface);
+      color: var(--text);
     }
 
     .weight-btn:active {
@@ -340,19 +365,19 @@
     .base-dropdown-select.base-selected {
       border-color: var(--blue);
       background-color: rgba(10, 132, 255, 0.28);
-      color: #fff;
+      color: var(--text);
     }
 
     .target-btn:active {
       background: rgba(48, 209, 88, 0.34);
       border-color: var(--green);
-      color: #fff;
+      color: var(--text);
     }
 
     .custom-inline-btn {
       border-color: rgba(255, 159, 10, 0.7);
       background: rgba(255, 159, 10, 0.2);
-      color: #ffb340;
+      color: var(--orange);
     }
 
     /* KEYPAD */
@@ -440,7 +465,7 @@
       overflow-y: auto;
       overscroll-behavior: contain;
       background: var(--surface);
-      border-bottom: 1px solid #29292b;
+      border-bottom: 1px solid var(--border);
     }
 
     .custom-display-group {
@@ -500,7 +525,7 @@
 
     .btn-cancel {
       background: var(--surface-3);
-      color: #fff;
+      color: var(--text);
       font-weight: 600;
     }
 
@@ -516,6 +541,130 @@
       transform: scale(0.97);
     }
 
+    /* VIEW 3: ISOLATED CALCULATOR SCREEN */
+    #calculatorView {
+      display: none;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      background: var(--bg);
+    }
+
+    .calc-top-bar {
+      min-height: 52px;
+      padding: 8px var(--page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .calc-back-btn {
+      min-height: 38px;
+      padding: 0 16px;
+      border-radius: 10px;
+      background: var(--surface-3);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .calc-back-btn:active {
+      transform: scale(0.96);
+    }
+
+    .calc-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .calc-display-container {
+      min-height: 0;
+      padding: 18px var(--page-pad) 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-align: right;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .calc-history-display {
+      min-height: 24px;
+      color: var(--yellow);
+      font-size: clamp(1rem, 4vw, 1.35rem);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      direction: ltr;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      scrollbar-width: none;
+    }
+
+    .calc-history-display::-webkit-scrollbar {
+      display: none;
+    }
+
+    .calc-main-display {
+      margin-top: 4px;
+      color: var(--text);
+      font-size: clamp(2.8rem, 12vw, 4.5rem);
+      font-weight: 500;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .calc-keypad-container {
+      width: min(100%, 410px);
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      gap: clamp(5px, 1.8vw, 8px);
+    }
+
+    .key.op-key {
+      background: var(--orange);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .key.op-key:active {
+      background: #ffb340;
+    }
+
+    .key.calc-action-clear {
+      background: #a5a5a5;
+      color: #000;
+      font-weight: 600;
+    }
+
+    .key.calc-action-clear:active {
+      background: #c5c5c5;
+    }
+
+    .key.calc-equals {
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .key.calc-equals:active {
+      background: #50e377;
+    }
+
     /* MODAL BASE */
     .modal {
       position: fixed;
@@ -529,7 +678,7 @@
       display: none;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.82);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
@@ -541,10 +690,10 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      border: 1px solid #38383a;
+      border: 1px solid var(--border);
       border-radius: 22px;
-      background: #1c1c1e;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      background: var(--surface);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       overflow-y: auto;
     }
 
@@ -554,10 +703,10 @@
       height: 48px;
       margin-top: 14px;
       padding: 0 14px;
-      border: 1px solid #3a3a3c;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      background: #2c2c2e;
-      color: #ffffff;
+      background: var(--surface-2);
+      color: var(--text);
       font-size: 1.05rem;
       outline: none;
     }
@@ -576,10 +725,10 @@
     .chip-btn {
       min-height: 40px;
       padding: 6px 10px;
-      border: 1px solid #3a3a3c;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      background: #2c2c2e;
-      color: #fff;
+      background: var(--surface-2);
+      color: var(--text);
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
@@ -587,6 +736,7 @@
 
     .chip-btn:active {
       background: var(--blue);
+      color: #fff;
     }
 
     .chip-dropdown-select {
@@ -634,9 +784,9 @@
     .dashboard-container {
       margin-bottom: 16px;
       padding: 10px;
-      border: 1px solid #3a3a3c;
+      border: 1px solid var(--border);
       border-radius: 14px;
-      background: #252528;
+      background: var(--surface-2);
     }
 
     .dashboard-title {
@@ -658,12 +808,12 @@
       color: var(--muted);
       text-align: left;
       padding: 4px;
-      border-bottom: 1px solid #38383a;
+      border-bottom: 1px solid var(--border);
     }
 
     .dashboard-table td {
       padding: 6px 4px;
-      border-bottom: 1px solid #2c2c2e;
+      border-bottom: 1px solid var(--border);
     }
 
     .dashboard-table tr.total-row {
@@ -674,7 +824,7 @@
     /* CART ITEMS TABLE */
     .vendor-section-header {
       padding: 8px 6px;
-      background: #2a2a2d;
+      background: var(--surface-2);
       color: var(--purple);
       font-weight: 700;
       font-size: 0.88rem;
@@ -692,7 +842,7 @@
       position: sticky;
       top: 0;
       z-index: 2;
-      background: #1c1c1e;
+      background: var(--surface);
       color: var(--muted);
       font-size: clamp(0.75rem, 2.8vw, 0.85rem);
       font-weight: 700;
@@ -702,7 +852,7 @@
     .cart-table th,
     .cart-table td {
       padding: 10px 4px;
-      border-bottom: 1px solid #29292b;
+      border-bottom: 1px solid var(--border);
       text-align: center;
       font-size: clamp(0.82rem, 3.2vw, 0.95rem);
       line-height: 1.15;
@@ -787,7 +937,7 @@
 
     .close-modal-btn {
       background: var(--surface-2);
-      color: #fff;
+      color: var(--text);
     }
 
     .btn-clear-cart:active,
@@ -835,7 +985,8 @@
 
     @media (min-width: 500px) {
       .top-window-60,
-      .bottom-numpad-40 {
+      .bottom-numpad-40,
+      .calc-display-container {
         padding-left: max(20px, var(--page-pad));
         padding-right: max(20px, var(--page-pad));
       }
@@ -912,7 +1063,7 @@
             <div class="weight-btn target-btn" data-weight="0.5">500g</div>
             <div class="weight-btn target-btn" data-weight="0.75">750g</div>
             <div class="weight-btn target-btn" data-weight="1">1Kg</div>
-            <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom</div>
+            <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom/🟰</div>
           </div>
         </div>
 
@@ -926,7 +1077,7 @@
         <button class="key num-key" type="button">9</button>
 
         <button class="key num-key" type="button">4</button>
-        <button class="key num-key" type="button">5</button>
+        <button class="key num-key" id="keyFive" type="button">5☼</button>
         <button class="key num-key" type="button">6</button>
 
         <button class="key num-key" type="button">1</button>
@@ -981,6 +1132,49 @@
   </div>
 
 
+  <!-- VIEW 3: ISOLATED CALCULATOR WINDOW -->
+  <div class="view-container" id="calculatorView">
+    <header class="calc-top-bar">
+      <button class="calc-back-btn" id="closeCalcBtn" type="button">← Back</button>
+      <div class="calc-title">Calculator</div>
+    </header>
+
+    <section class="calc-display-container">
+      <div class="calc-history-display" id="calcHistoryDisplay"></div>
+      <div class="calc-main-display" id="calcMainDisplay">0</div>
+    </section>
+
+    <section class="bottom-numpad-40" aria-label="Calculator keypad">
+      <div class="calc-keypad-container" id="calcKeypad">
+        <button class="key calc-action-clear" id="calcClearBtn" type="button">C</button>
+        <button class="key op-key" data-op="%" type="button">%</button>
+        <button class="key action-backspace" id="calcBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
+        <button class="key op-key" data-op="÷" type="button">÷</button>
+
+        <button class="key calc-num-key" type="button">7</button>
+        <button class="key calc-num-key" type="button">8</button>
+        <button class="key calc-num-key" type="button">9</button>
+        <button class="key op-key" data-op="×" type="button">×</button>
+
+        <button class="key calc-num-key" type="button">4</button>
+        <button class="key calc-num-key" type="button">5</button>
+        <button class="key calc-num-key" type="button">6</button>
+        <button class="key op-key" data-op="-" type="button">-</button>
+
+        <button class="key calc-num-key" type="button">1</button>
+        <button class="key calc-num-key" type="button">2</button>
+        <button class="key calc-num-key" type="button">3</button>
+        <button class="key op-key" data-op="+" type="button">+</button>
+
+        <button class="key calc-num-key" type="button">0</button>
+        <button class="key calc-num-key" type="button">00</button>
+        <button class="key calc-num-key" type="button">.</button>
+        <button class="key calc-equals" id="calcEqualsBtn" type="button">=</button>
+      </div>
+    </section>
+  </div>
+
+
   <!-- QUICK-NAME PROMPT MODAL -->
   <div class="modal" id="itemNameModal" role="dialog" aria-modal="true">
     <div class="modal-content">
@@ -1013,7 +1207,6 @@
           <option value="Bhindi">Bhindi</option>
           <option value="Ghiya">Ghiya</option>
           <option value="Tori">Tori</option>
-          <option value="Carrot">Carrot</option>
           <option value="Radish">Radish</option>
           <option value="Kathal">Kathal</option>
           <option value="Beans">Beans</option>
@@ -1094,11 +1287,14 @@
     let baseWeight = 0.25;
     let pendingTargetWeight = null;
     let itemCounter = 1;
+    let isLightTheme = false;
     let cart = []; // Each item: { id, vendorId, name, weight, quote, price }
 
     /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
     const customWeightView = document.getElementById("customWeightView");
+    const calculatorView = document.getElementById("calculatorView");
+
     const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
     const displayMathFormula = document.getElementById("displayMathFormula");
     const headerVendorQuote = document.getElementById("headerVendorQuote");
@@ -1106,6 +1302,7 @@
     const vendorSelectDropdown = document.getElementById("vendorSelectDropdown");
 
     const homeKeypad = document.getElementById("homeKeypad");
+    const keyFive = document.getElementById("keyFive");
     const homeBackspaceBtn = document.getElementById("homeBackspaceBtn");
     const homeClearEntryBtn = document.getElementById("homeClearEntryBtn");
 
@@ -1120,6 +1317,14 @@
     const customBackspaceBtn = document.getElementById("customBackspaceBtn");
     const cancelCustomBtn = document.getElementById("cancelCustomBtn");
     const addCustomToCartBtn = document.getElementById("addCustomToCartBtn");
+
+    const closeCalcBtn = document.getElementById("closeCalcBtn");
+    const calcHistoryDisplay = document.getElementById("calcHistoryDisplay");
+    const calcMainDisplay = document.getElementById("calcMainDisplay");
+    const calcKeypad = document.getElementById("calcKeypad");
+    const calcClearBtn = document.getElementById("calcClearBtn");
+    const calcBackspaceBtn = document.getElementById("calcBackspaceBtn");
+    const calcEqualsBtn = document.getElementById("calcEqualsBtn");
 
     const cartBtnTitle = document.getElementById("cartBtnTitle");
     const cartBtnSub = document.getElementById("cartBtnSub");
@@ -1148,7 +1353,8 @@
           itemCounter,
           activeVendor,
           baseWeight,
-          priceInput
+          priceInput,
+          isLightTheme
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       } catch (e) {
@@ -1159,7 +1365,10 @@
     function loadStateFromStorage() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
+        if (!raw) {
+          applyTheme();
+          return;
+        }
 
         const data = JSON.parse(raw);
         if (Array.isArray(data.cart)) cart = data.cart;
@@ -1167,19 +1376,89 @@
         if (typeof data.activeVendor === "number") activeVendor = data.activeVendor;
         if (typeof data.baseWeight === "number") baseWeight = data.baseWeight;
         if (typeof data.priceInput === "string") priceInput = data.priceInput;
+        if (typeof data.isLightTheme === "boolean") isLightTheme = data.isLightTheme;
 
-        // Sync Vendor Dropdown
+        applyTheme();
+
         if (vendorSelectDropdown) {
           vendorSelectDropdown.value = activeVendor.toString();
         }
 
-        // Sync Base Weight UI
         syncBaseWeightUI();
 
       } catch (e) {
         console.error("Failed to restore state from localStorage:", e);
+        applyTheme();
       }
     }
+
+    /* THEME SWITCHER LOGIC (LONG PRESS ON '5') */
+    function applyTheme() {
+      const metaTheme = document.getElementById("metaThemeColor");
+      if (isLightTheme) {
+        document.body.classList.add("light-theme");
+        if (metaTheme) metaTheme.setAttribute("content", "#f2f2f7");
+        keyFive.textContent = "5☀︎";
+      } else {
+        document.body.classList.remove("light-theme");
+        if (metaTheme) metaTheme.setAttribute("content", "#000000");
+        keyFive.textContent = "5☼";
+      }
+    }
+
+    function toggleTheme() {
+      isLightTheme = !isLightTheme;
+      applyTheme();
+      saveStateToStorage();
+      showTemporaryMessage(`Switched to ${isLightTheme ? 'Light' : 'Dark'} Mode`);
+    }
+
+    let pressTimer = null;
+    let isLongPress = false;
+
+    function startPress() {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        toggleTheme();
+      }, 600);
+    }
+
+    function cancelPress() {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    }
+
+    keyFive.addEventListener("pointerdown", startPress);
+    keyFive.addEventListener("pointerup", cancelPress);
+    keyFive.addEventListener("pointerleave", cancelPress);
+    keyFive.addEventListener("pointercancel", cancelPress);
+
+    /* LONG PRESS LOGIC ON "CUSTOM" BUTTON TO LAUNCH CALCULATOR */
+    let customPressTimer = null;
+    let isCustomLongPress = false;
+
+    function startCustomPress() {
+      isCustomLongPress = false;
+      customPressTimer = setTimeout(() => {
+        isCustomLongPress = true;
+        openCalculatorWindow();
+      }, 600);
+    }
+
+    function cancelCustomPress() {
+      if (customPressTimer) {
+        clearTimeout(customPressTimer);
+        customPressTimer = null;
+      }
+    }
+
+    openCustomWtBtn.addEventListener("pointerdown", startCustomPress);
+    openCustomWtBtn.addEventListener("pointerup", cancelCustomPress);
+    openCustomWtBtn.addEventListener("pointerleave", cancelCustomPress);
+    openCustomWtBtn.addEventListener("pointercancel", cancelCustomPress);
 
     function syncBaseWeightUI() {
       document.querySelectorAll(".base-btn").forEach((b) => {
@@ -1224,7 +1503,6 @@
       activeVendor = parseInt(e.target.value, 10);
       vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
       
-      // Clear input state when changing vendor
       priceInput = "";
       displayCurrentItemPrice.textContent = "₹0";
       displayCurrentItemPrice.classList.remove("has-input");
@@ -1253,10 +1531,17 @@
 
     /* MAIN KEYPAD */
     homeKeypad.addEventListener("click", (e) => {
+      if (isLongPress) {
+        isLongPress = false;
+        return;
+      }
+
       const key = e.target.closest(".num-key");
       if (!key || !homeKeypad.contains(key)) return;
 
-      const val = key.textContent.trim();
+      const rawVal = key.textContent.trim();
+      const val = rawVal.charAt(0); // Extracts digits (e.g., '5' from '5☼' or '5☀︎')
+
       if (priceInput === "0" && val === "0") return;
       if (priceInput === "0" && val !== "0") {
         priceInput = val;
@@ -1384,7 +1669,11 @@
 
     /* CUSTOM WEIGHT SCREEN */
     openCustomWtBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+      if (isCustomLongPress) {
+        isCustomLongPress = false;
+        return;
+      }
+
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
         showTemporaryMessage("Enter a price first.");
@@ -1471,6 +1760,186 @@
       promptItemName();
     });
 
+    /* ISOLATED EXPRESSION-BASED CALCULATOR LOGIC */
+    let calcExpression = "";
+    let isCalculated = false;
+
+    function openCalculatorWindow() {
+      resetCalculator();
+      homeView.style.display = "none";
+      customWeightView.style.display = "none";
+      calculatorView.style.display = "grid";
+    }
+
+    closeCalcBtn.addEventListener("click", () => {
+      calculatorView.style.display = "none";
+      homeView.style.display = "grid";
+    });
+
+    function resetCalculator() {
+      calcExpression = "";
+      isCalculated = false;
+      updateCalcDisplay();
+    }
+
+    function updateCalcDisplay() {
+      calcHistoryDisplay.textContent = calcExpression;
+      
+      if (!calcExpression) {
+        calcMainDisplay.textContent = "0";
+        return;
+      }
+
+      calcHistoryDisplay.scrollLeft = calcHistoryDisplay.scrollWidth;
+
+      const tokens = calcExpression.split(/[\+\-\×\÷]/);
+      const currentToken = tokens[tokens.length - 1];
+      
+      if (currentToken === "" && calcExpression.length > 0) {
+        const lastChar = calcExpression.slice(-1);
+        calcMainDisplay.textContent = isOperators(lastChar) ? lastChar : "0";
+      } else {
+        calcMainDisplay.textContent = currentToken;
+      }
+    }
+
+    function isOperators(char) {
+      return ["+", "-", "×", "÷"].includes(char);
+    }
+
+    calcKeypad.addEventListener("click", (e) => {
+      const numKey = e.target.closest(".calc-num-key");
+      const opKey = e.target.closest(".op-key");
+
+      if (numKey) {
+        const val = numKey.textContent.trim();
+
+        if (isCalculated) {
+          calcExpression = val === "." ? "0." : (val === "00" ? "0" : val);
+          isCalculated = false;
+          updateCalcDisplay();
+          return;
+        }
+
+        const tokens = calcExpression.split(/[\+\-\×\÷]/);
+        const lastToken = tokens[tokens.length - 1];
+
+        if (val === ".") {
+          if (lastToken.includes(".")) return;
+          if (!lastToken || isOperators(calcExpression.slice(-1))) {
+            calcExpression += "0.";
+          } else {
+            calcExpression += ".";
+          }
+        } else if (val === "00") {
+          if (!lastToken || lastToken === "0" || isOperators(calcExpression.slice(-1))) return;
+          calcExpression += "00";
+        } else {
+          if (lastToken === "0") {
+            calcExpression = calcExpression.slice(0, -1) + val;
+          } else {
+            calcExpression += val;
+          }
+        }
+        updateCalcDisplay();
+        return;
+      }
+
+      if (opKey) {
+        const op = opKey.dataset.op;
+
+        if (op === "%") {
+          if (!calcExpression) return;
+
+          if (isCalculated) {
+            let val = parseFloat(calcMainDisplay.textContent);
+            if (!isNaN(val)) {
+              let res = val / 100;
+              calcMainDisplay.textContent = Math.round(res * 100000) / 100000;
+              calcExpression = calcMainDisplay.textContent;
+            }
+            return;
+          }
+
+          const lastChar = calcExpression.slice(-1);
+          if (!isOperators(lastChar) && lastChar !== "%") {
+            calcExpression += "%";
+            updateCalcDisplay();
+          }
+          return;
+        }
+
+        if (isCalculated) {
+          calcExpression = calcMainDisplay.textContent + op;
+          isCalculated = false;
+          updateCalcDisplay();
+          return;
+        }
+
+        if (!calcExpression) {
+          if (op === "-") {
+            calcExpression = "-";
+            updateCalcDisplay();
+          }
+          return;
+        }
+
+        const lastChar = calcExpression.slice(-1);
+        if (isOperators(lastChar)) {
+          calcExpression = calcExpression.slice(0, -1) + op;
+        } else {
+          calcExpression += op;
+        }
+        updateCalcDisplay();
+      }
+    });
+
+    calcBackspaceBtn.addEventListener("click", () => {
+      if (isCalculated) {
+        resetCalculator();
+        return;
+      }
+      if (calcExpression.length > 0) {
+        calcExpression = calcExpression.slice(0, -1);
+      }
+      updateCalcDisplay();
+    });
+
+    calcClearBtn.addEventListener("click", () => {
+      resetCalculator();
+    });
+
+    calcEqualsBtn.addEventListener("click", () => {
+      if (!calcExpression) return;
+
+      let expr = calcExpression;
+      while (expr.length > 0 && isOperators(expr.slice(-1))) {
+        expr = expr.slice(0, -1);
+      }
+
+      if (!expr) return;
+
+      calcExpression = expr;
+
+      try {
+        let sanitized = expr.replace(/×/g, "*").replace(/÷/g, "/");
+        sanitized = sanitized.replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
+
+        let result = Function(`'use strict'; return (${sanitized})`)();
+
+        if (typeof result === "number" && !isNaN(result) && isFinite(result)) {
+          result = Math.round(result * 100000) / 100000;
+          calcMainDisplay.textContent = result.toString();
+          calcHistoryDisplay.textContent = expr;
+          isCalculated = true;
+        } else {
+          calcMainDisplay.textContent = "Error";
+        }
+      } catch (err) {
+        calcMainDisplay.textContent = "Error";
+      }
+    });
+
     /* CART CALCULATION */
     function processAddToCart(targetWeight, customName = "") {
       const priceVal = parseFloat(priceInput);
@@ -1517,7 +1986,6 @@
       let overallPrice = 0;
       let overallWeight = 0;
 
-      // Group totals per vendor (1 through 6)
       const vendorStats = {};
       for (let v = 1; v <= 6; v++) {
         vendorStats[v] = { items: [], totalWeight: 0, totalPrice: 0 };
@@ -1531,7 +1999,6 @@
         vendorStats[item.vendorId].totalPrice += item.price;
       });
 
-      // 1. Render Dashboard Table Rows (All Vendors)
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -1546,7 +2013,6 @@
         }
       }
 
-      // Add Grand Total row to Dashboard
       if (cart.length > 0) {
         const totalRow = document.createElement("tr");
         totalRow.className = "total-row";
@@ -1559,7 +2025,6 @@
         dashboardTableBody.appendChild(totalRow);
       }
 
-      // 2. Render Itemized Tables Grouped by Vendor
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -1602,12 +2067,10 @@
         }
       }
 
-      // Update Top Header Cart Info for ACTIVE VENDOR ONLY
       const activeStats = vendorStats[activeVendor];
       cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
       cartBtnSub.textContent = `Total: ${activeStats.totalWeight.toFixed(2)} Kg`;
 
-      // Update Modal Stats
       cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
       cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
 
@@ -1655,7 +2118,7 @@
       }
     });
 
-    /* SHARE DASHBOARD FUNCTIONALITY (HIGH-RES DIRECT PNG CAPTURE) */
+    /* SHARE DASHBOARD FUNCTIONALITY */
     shareDashboardBtn.addEventListener("click", async () => {
       if (cart.length === 0) {
         showTemporaryMessage("Cart is empty.");
@@ -1667,12 +2130,15 @@
       const scrollContainer = document.querySelector(".cart-scroll-container");
       if (!scrollContainer) return;
 
-      // 1. Create off-screen container with explicit high-contrast styling
       const captureWrapper = document.createElement("div");
+      const bgColor = isLightTheme ? "#ffffff" : "#1c1c1e";
+      const textColor = isLightTheme ? "#000000" : "#ffffff";
+      const borderColor = isLightTheme ? "#e5e5ea" : "#38383a";
+
       Object.assign(captureWrapper.style, {
         padding: "20px",
-        background: "#1c1c1e",
-        color: "#ffffff",
+        background: bgColor,
+        color: textColor,
         width: "480px",
         position: "fixed",
         left: "0",
@@ -1682,7 +2148,6 @@
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       });
 
-      // 2. Add Header
       const now = new Date();
       const dateStamp = now.toLocaleString("en-IN", {
         dateStyle: "medium",
@@ -1693,29 +2158,25 @@
       headerEl.style.marginBottom = "16px";
       headerEl.style.fontSize = "18px";
       headerEl.style.fontWeight = "bold";
-      headerEl.style.color = "#bf5af2";
-      headerEl.style.borderBottom = "1px solid #38383a";
+      headerEl.style.color = isLightTheme ? "#8e24aa" : "#bf5af2";
+      headerEl.style.borderBottom = `1px solid ${borderColor}`;
       headerEl.style.paddingBottom = "8px";
       headerEl.textContent = "Purchase Summary Report";
       captureWrapper.appendChild(headerEl);
 
-      // 3. Clone cart content and prepare full-height canvas raster
       const clone = scrollContainer.cloneNode(true);
       clone.style.overflow = "visible";
       clone.style.maxHeight = "none";
       clone.style.height = "auto";
 
-      // Remove interactive "×" delete buttons
       clone.querySelectorAll(".no-pdf").forEach(el => el.remove());
 
-      // Override CSS variable inheritance with pure hex text values
       clone.querySelectorAll("th, td, div, span, h3").forEach(el => {
-        el.style.color = "#ffffff";
+        el.style.color = textColor;
       });
 
       captureWrapper.appendChild(clone);
 
-      // 4. Add Footer
       const timestampEl = document.createElement("div");
       timestampEl.style.marginTop = "20px";
       timestampEl.style.fontSize = "12px";
@@ -1727,9 +2188,8 @@
       document.body.appendChild(captureWrapper);
 
       try {
-        // 5. Render directly with html2canvas
         const canvas = await html2canvas(captureWrapper, {
-          backgroundColor: "#1c1c1e",
+          backgroundColor: bgColor,
           scale: 2,
           useCORS: true,
           logging: false
@@ -1737,7 +2197,6 @@
 
         const filename = `purchase-summary-${Date.now()}.png`;
 
-        // 6. Native Share API or direct PNG download fallback
         canvas.toBlob(async (blob) => {
           if (!blob) {
             showTemporaryMessage("Failed to generate image.");
@@ -1809,8 +2268,8 @@
           maxWidth: "calc(100vw - 32px)",
           padding: "10px 15px",
           borderRadius: "16px",
-          background: "rgba(44,44,46,0.96)",
-          color: "#fff",
+          background: "var(--surface-3)",
+          color: "var(--text)",
           fontSize: "0.88rem",
           fontWeight: "650",
           textAlign: "center",
