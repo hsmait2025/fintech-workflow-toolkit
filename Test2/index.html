@@ -2,126 +2,251 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Office Document Stitcher</title>
     <style>
-        /* Styles used when looking at the application screen */
-        @media screen {
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                background-color: #f4f6f9;
-                color: #333;
-                padding: 40px 20px;
-                margin: 0;
-            }
-            .container {
-                max-width: 700px;
-                margin: 0 auto;
-                background: #ffffff;
-                padding: 30px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            }
-            h2 { margin-top: 0; color: #1a1a1a; font-size: 22px; }
-            p { color: #666; font-size: 14px; line-height: 1.5; }
-            textarea {
-                width: 100%;
-                height: 250px;
-                padding: 12px;
-                box-sizing: border-box;
-                border: 1px solid #ccd1d9;
-                border-radius: 4px;
-                font-family: monospace;
-                font-size: 12px;
-                resize: vertical;
-                background-color: #fafbfc;
-            }
-            textarea:focus {
-                border-color: #4a90e2;
-                outline: none;
-                background-color: #fff;
-            }
-            button {
-                background-color: #007bff;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                font-size: 15px;
-                font-weight: 600;
-                border-radius: 4px;
-                cursor: pointer;
-                margin-top: 15px;
-                width: 100%;
-                transition: background 0.2s;
-            }
-            button:hover { background-color: #0056b3; }
-            #preview-area { display: none; }
+        :root {
+            --bg-color: #f4f6f9;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --text-color: #333;
+            --border-color: #ccd1d9;
         }
 
-        /* Styles used when printing or saving to PDF */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- SETUP SCREEN STYLES --- */
+        #setup-area {
+            max-width: 700px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        #setup-area h2 { margin-top: 0; color: #1a1a1a; font-size: 22px; }
+        #setup-area p { color: #666; font-size: 14px; line-height: 1.5; }
+        
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+            background-color: #fafbfc;
+        }
+        
+        textarea:focus {
+            border-color: #4a90e2;
+            outline: none;
+            background-color: #fff;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn-full { width: 100%; margin-top: 15px; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        /* --- PREVIEW SCREEN STYLES --- */
+        #preview-toolbar {
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            z-index: 1000;
+        }
+
+        .toolbar-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        #preview-container {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        /* Web Preview Page Formatting */
+        .preview-page {
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+            border-radius: 4px;
+            width: 100%;
+            max-width: 800px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview-page img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .page-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        /* --- PRINT OVERRIDES --- */
         @media print {
-            #setup-area { display: none !important; }
-            #preview-area { display: block !important; }
-            body, html { margin: 0; padding: 0; background: #fff; }
-            .page-container {
+            #setup-area, #preview-toolbar, .page-badge { 
+                display: none !important; 
+            }
+            body, #preview-area, #preview-container { 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                background: none !important;
+            }
+            .preview-page {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                max-width: 100% !important;
+                width: 100vw !important;
                 page-break-after: always;
                 break-after: page;
-                width: 100vw;
-                height: auto;
-                margin: 0;
-                padding: 0;
             }
-            img {
-                width: 100vw;
-                display: block;
+            .preview-page img {
+                width: 100% !important;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- SETUP SCREEN (Hidden during print) -->
-    <div id="setup-area" class="container">
+    <!-- SETUP SCREEN -->
+    <div id="setup-area">
         <h2>URL Document Stitcher</h2>
         <p>Paste all your image URLs below. Make sure each link is on its own separate line. No commas or quotes are necessary—just paste the raw text exactly as it looks in your Notepad file.</p>
         
-        <textarea id="url-input" placeholder="Paste your URLs here...&#10;https://google.com..."></textarea>
+        <textarea id="url-input" placeholder="Paste your URLs here...&#10;https://example.com/image1.jpg"></textarea>
         
-        <button onclick="generatePrintLayout()">Compile Images</button>
+        <button class="btn btn-full" onclick="buildPreview()">Preview Document</button>
     </div>
 
-    <!-- PRINT VIEW AREA (Hidden during setup, active during print) -->
-    <div id="preview-area"></div>
+    <!-- PREVIEW SCREEN -->
+    <div id="preview-area" class="hidden">
+        <div id="preview-toolbar">
+            <div class="toolbar-title" id="page-count-indicator">Document Preview</div>
+            <div class="toolbar-actions">
+                <button class="btn btn-secondary" onclick="returnToSetup()">Edit URLs</button>
+                <button class="btn" onclick="executePrint()">Save as PDF / Print</button>
+            </div>
+        </div>
+
+        <div id="preview-container"></div>
+    </div>
 
     <script>
-        function generatePrintLayout() {
+        function buildPreview() {
             const textarea = document.getElementById('url-input');
+            const setupArea = document.getElementById('setup-area');
             const previewArea = document.getElementById('preview-area');
+            const previewContainer = document.getElementById('preview-container');
+            const pageCountIndicator = document.getElementById('page-count-indicator');
             
-            // Split the input text into rows and clean up empty lines
+            // Extract and validate URLs
             const lines = textarea.value.split('\n');
             const urls = lines.map(line => line.trim()).filter(line => line.length > 0);
             
             if (urls.length === 0) {
-                alert("Please paste at least one URL before continuing.");
+                alert("Please paste at least one valid image URL before continuing.");
                 return;
             }
 
-            // Clear out any old images
-            previewArea.innerHTML = '';
+            // Reset container
+            previewContainer.innerHTML = '';
 
-            // Generate HTML tags for each URL
-            urls.forEach((url) => {
-                const div = document.createElement('div');
-                div.className = 'page-container';
+            // Generate page elements
+            urls.forEach((url, index) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'preview-page';
                 
+                const badge = document.createElement('span');
+                badge.className = 'page-badge';
+                badge.textContent = `Page ${index + 1} of ${urls.length}`;
+
                 const img = document.createElement('img');
                 img.src = url;
+                img.alt = `Document Page ${index + 1}`;
                 
-                div.appendChild(img);
-                previewArea.appendChild(div);
+                // Fallback handling for broken image URLs
+                img.onerror = function() {
+                    this.onerror = null;
+                    pageDiv.style.padding = "40px 20px";
+                    pageDiv.style.textAlign = "center";
+                    pageDiv.innerHTML = `<p style="color: #d9534f; font-weight: 500;">Failed to load image from URL:<br><small>${url}</small></p>`;
+                };
+                
+                pageDiv.appendChild(badge);
+                pageDiv.appendChild(img);
+                previewContainer.appendChild(pageDiv);
             });
 
-            // Trigger Chrome's built-in Print window automatically
+            // Update page count UI header
+            pageCountIndicator.textContent = `Document Preview (${urls.length} ${urls.length === 1 ? 'Page' : 'Pages'})`;
+
+            // Switch views
+            setupArea.classList.add('hidden');
+            previewArea.classList.remove('hidden');
+            
+            // Scroll back to top
+            window.scrollTo(0, 0);
+        }
+
+        function returnToSetup() {
+            document.getElementById('setup-area').classList.remove('hidden');
+            document.getElementById('preview-area').classList.add('hidden');
+        }
+
+        function executePrint() {
             window.print();
         }
     </script>
