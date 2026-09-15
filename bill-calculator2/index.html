@@ -367,6 +367,49 @@ button:active  { transform: scale(0.97); }
 .export-btn    { background: var(--teal);     color: white; }
 .paste-btn     { background: #17a2b8;         color: white; }
 
+/* ─── Receipt Line Box (NEW) ───────────────────────────────────── */
+.receipt-box {
+  margin-top: 9px;
+  background: #eef6ff;
+  border: 1px solid #b9d8ff;
+  border-radius: var(--radius);
+  padding: 7px 9px;
+}
+.receipt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 4.5px;
+}
+.receipt-label {
+  font-size: 12.1px;
+  font-weight: bold;
+  color: #1c4e80;
+}
+.copy-btn {
+  background: #1c4e80;
+  color: #ffffff;
+  padding: 4.5px 15px;
+  border-radius: 4px;
+  font-size: 12.1px;
+}
+.copy-btn:hover { background: #163d63; }
+
+/* overrides the global textarea rule (class beats element selector) */
+.receipt-text {
+  height: 46px;
+  min-height: 46px;
+  font-size: 12.8px;
+  line-height: 1.35;
+  background: #ffffff;
+  color: #14304d;
+  resize: vertical;
+  cursor: text;
+  font-family: Consolas, "Courier New", monospace;
+}
+.receipt-text:focus { border-color: #1c4e80; box-shadow: 0 0 0 2px rgba(28,78,128,0.15); }
+
 /* ─── Summary Cards ────────────────────────────────────────────── */
 .summary {
   margin-top: 9px;
@@ -618,6 +661,17 @@ th { background: #ffffff; color: black; }
     <button class="paste-btn"   onclick="toggleModal('csvModal', true)">Paste CSV Data</button>
   </div>
 
+  <!-- ─── NEW: Receipt Line (Invoice + Date) ───────────────────── -->
+  <div class="receipt-box">
+    <div class="receipt-head">
+      <span class="receipt-label">Receipt Line — Invoice &amp; Date</span>
+      <button class="copy-btn" onclick="copyReceiptString()">Copy</button>
+    </div>
+    <textarea id="receiptString" class="receipt-text" readonly
+              onclick="this.select()"
+              placeholder="Press Process (Ctrl+Enter) to generate the receipt line…"></textarea>
+  </div>
+
   <div class="summary">
     <div class="card"><h2>Total Bills</h2><p id="billCount">0</p></div>
     <div class="card"><h2>Grand Total</h2><p id="grandTotal">0</p></div>
@@ -754,6 +808,143 @@ function fmtValue(num) {
 function pluralize(count, singular) {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
+
+/* ─── NEW: Receipt-line helpers ─────────────────────────────────── */
+
+/**
+ * Tolerant date parser.
+ * Accepts DD-MM-YYYY / DD/MM/YYYY / DD.MM.YYYY  (app default: DD-MM-YYYY)
+ * and also ISO YYYY-MM-DD / YYYY/MM/DD.
+ * 2-digit years are treated as 20xx.
+ * Returns a valid Date object or null.
+ */
+function parseFlexibleDate(str) {
+  if (str === undefined || str === null) return null;
+  const s = String(str).trim();
+  if (!s || s === "-") return null;
+
+  // ISO: YYYY-MM-DD
+  let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+  if (m) {
+    const y = +m[1], mo = +m[2], d = +m[3];
+    const dt = new Date(y, mo - 1, d);
+    return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) ? dt : null;
+  }
+
+  // Day-first: DD-MM-YYYY (2 or 4 digit year)
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/);
+  if (m) {
+    let y = +m[3];
+    if (y < 100) y += 2000;
+    const d = +m[1], mo = +m[2];
+    const dt = new Date(y, mo - 1, d);
+    return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) ? dt : null;
+  }
+
+  return null;
+}
+
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/**
+ * Builds the receipt line from the Bill Details grid.
+ *
+ * Format (exact):
+ *   vide receipts A001, A002, A003 dt. 09, 10 Aug26, 11, 12 Sep26.
+ *
+ * - Invoices  : every non-empty Invoice Number, in grid order.
+ * - Dates     : all valid dates, grouped by Month-Year (first-seen order),
+ *               days de-duplicated and zero-padded, year shortened to 2 digits.
+ * - Returns "" when there is nothing to show.
+ */
+function buildReceiptString() {
+  const rows = Array.from(document.querySelectorAll(".bill-row"));
+
+  const invoices   = [];
+  const dateGroups = [];
+  const groupIndex = new Map();   // key = year*12 + month  →  group object
+
+  rows.forEach(row => {
+    const inv = row.querySelector(".invoice-input")?.value.trim();
+    if (inv) invoices.push(inv);
+
+    const d = parseFlexibleDate(row.querySelector(".date-input")?.value);
+    if (d) {
+      const key = d.getFullYear() * 12 + d.getMonth();
+      let g = groupIndex.get(key);
+      if (!g) {
+        g = { month: d.getMonth(), year: d.getFullYear(), days: [] };
+        groupIndex.set(key, g);
+        dateGroups.push(g);
+      }
+      const dayStr = String(d.getDate()).padStart(2, "0");
+      if (!g.days.includes(dayStr)) g.days.push(dayStr);
+    }
+  });
+
+  const dateText = dateGroups
+    .map(g => `${g.days.join(", ")} ${MONTH_ABBR[g.month]}${String(g.year).slice(-2)}`)
+    .join(", ");
+
+  if (!invoices.length && !dateText) return "";
+
+  let out = "vide receipts";
+  if (invoices.length) out += " " + invoices.join(", ");
+  if (dateText)        out += " dt. " + dateText;
+  out += ".";
+
+  return out;
+}
+
+/** Writes the receipt line into the read-only box and auto-grows it. */
+function updateReceiptString() {
+  const el = document.getElementById("receiptString");
+  if (!el) return "";
+  const str = buildReceiptString();
+  el.value = str;
+
+  el.style.height = "auto";
+  el.style.height = Math.min(Math.max(el.scrollHeight + 2, 46), 130) + "px";
+  return str;
+}
+
+/** Clipboard write with a legacy execCommand fallback. */
+function copyReceiptString() {
+  const ta = document.getElementById("receiptString");
+  if (!ta) return;
+
+  const text = ta.value.trim();
+  if (!text) {
+    showToast("Nothing to copy — run Process first.", "warn");
+    return;
+  }
+
+  const done = () => showToast("Receipt line copied!", "success");
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => legacyCopy(ta, done));
+  } else {
+    legacyCopy(ta, done);
+  }
+}
+
+function legacyCopy(ta, done) {
+  try {
+    ta.removeAttribute("readonly");
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    ta.setAttribute("readonly", "readonly");
+    window.getSelection()?.removeAllRanges();
+    if (ok) done();
+    else showToast("Copy failed — please copy manually.", "error");
+  } catch (e) {
+    ta.setAttribute("readonly", "readonly");
+    showToast("Copy failed — please copy manually.", "error");
+  }
+}
+
+/* ─── Grid navigation ───────────────────────────────────────────── */
 
 function handleGridInputKeydown(e) {
   if (e.key !== "Enter" && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -1033,14 +1224,9 @@ function parseCrossCheckBlocks(raw) {
   return raw.split("\n").map(l => parseFloat(l.trim())).filter(n => !isNaN(n));
 }
 
-/* ─── FIX: Cross-check is bounded by the Bill Details invoice count ──
-   Previously: totalInvoices = Math.max(amountBlocks.length, crossLines.length)
-   → extra Crosscheck lines created phantom invoices (bill 0 vs cross value),
-     inflating the mismatch count (e.g. "2 Invoices Mismatch" for 2 real bills).
-
-   Now: the invoice universe comes from the Bill Details grid (rows) / Bill
-   Amount Entry blocks ONLY. Extra Crosscheck lines are ignored for per-invoice
-   comparison but still contribute to the grand total check.                */
+/* ─── Cross-check is bounded by the Bill Details invoice count ────
+   Extra Crosscheck lines are ignored for per-invoice comparison but
+   still contribute to the grand-total check.                       */
 function checkCrossTotal() {
   const rawAmounts = document.getElementById("billAmounts").value.trim();
   const rawCross   = document.getElementById("crossCheckBox").value.trim();
@@ -1062,7 +1248,7 @@ function checkCrossTotal() {
     return;
   }
 
-  // ── Invoice universe = Bill Details grid (kept in sync with amount blocks)
+  // Invoice universe = Bill Details grid (kept in sync with amount blocks)
   const invoiceCount = Math.max(rows.length, amountBlocks.length);
 
   let mismatchCount = 0;
@@ -1270,6 +1456,10 @@ function renderVertical(billData, title, thead, tbody) {
 }
 
 function processData() {
+  // Receipt line refreshes on every Process / Ctrl+Enter,
+  // independently of the amount-data guard below.
+  updateReceiptString();
+
   const raw = document.getElementById("billAmounts").value.trim();
   if (!raw) { showToast("No amounts entered yet.", "warn"); return; }
 
@@ -1362,6 +1552,10 @@ function clearAll() {
   document.getElementById("grandTotal").textContent = "0";
   document.getElementById("textBillCounter").textContent = "0";
   document.getElementById("expenseChipsContainer").innerHTML = '<div style="color: var(--muted); font-size: 12px; font-style: italic;">No data processed yet.</div>';
+
+  // Reset the receipt line
+  const rs = document.getElementById("receiptString");
+  if (rs) { rs.value = ""; rs.style.height = ""; }
 
   const cs = document.getElementById("crosscheckStatus");
   cs.innerHTML = "Waiting for Crosscheck…";
