@@ -654,7 +654,7 @@ th { background: #ffffff; color: black; }
    ═══════════════════════════════════════════════════════════════ */
 const MAX_ROWS      = 500;
 const MAX_FIELD_LEN = 60;
-const MAX_DATE_LEN  = 20;
+const MAX_DATE_LEN  = 60;   // was 20 — one cell may now hold a list of travel dates
 const MAX_EXPR_LEN  = 120;
 const MAX_BLOCKS    = 500;
 const MAX_CSV_LINE  = 500;
@@ -1247,56 +1247,131 @@ function checkCrossTotal() {
 
 const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function parseFlexibleDate(str) {
+/* ISO order  : YYYY-MM-DD  (also / and . separators) */
+const ISO_DATE_RE = /^(\d{4})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})$/;
+
+/* Day first : DD-MM-YYYY or DD-MM-YY */
+const DAY_FIRST_DATE_RE = /^(\d{1,2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{2,4})$/;
+
+/* Compact day list sharing one month + year, e.g.
+     10/11/12-09-26   10, 11, 12-09-26   5&6&7.09.2026   10+11-09-26
+   Day-list separators : / , & +        Month / year separators : / . -   */
+const MULTI_DAY_RE = /^(\d{1,2}(?:\s*[\/,&+]\s*\d{1,2})+)\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{2}|\d{4})$/;
+
+/* Several complete dates inside one cell: "10-09-26, 12-09-26" */
+const DATE_LIST_SPLIT_RE = /\s*(?:,|;|&|\band\b)\s*/i;
+
+/** Expand a 2-digit year to 20xx (4-digit years are returned untouched). */
+function expandYearToken(token) {
+  const n = parseInt(token, 10);
+  if (!Number.isFinite(n)) return NaN;
+  return String(token).trim().length <= 2 ? (n < 100 ? n + 2000 : n) : n;
+}
+
+/** Build a Date only when the y/m/d triple is a real calendar day. */
+function buildDate(year, month, day) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(year, month - 1, day);
+  return (dt.getFullYear() === year && dt.getMonth() === month - 1 && dt.getDate() === day) ? dt : null;
+}
+
+/** Parse one complete date written as YYYY-MM-DD or DD-MM-YYYY (/YY). */
+function parseSingleDate(str) {
   if (str === undefined || str === null) return null;
   const s = String(str).trim();
   if (!s || s === "-") return null;
 
-  let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
-  if (m) {
-    const y = +m[1], mo = +m[2], d = +m[3];
-    const dt = new Date(y, mo - 1, d);
-    return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) ? dt : null;
-  }
+  let m = s.match(ISO_DATE_RE);
+  if (m) return buildDate(+m[1], +m[2], +m[3]);
 
-  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/);
-  if (m) {
-    let y = +m[3];
-    if (y < 100) y += 2000;
-    const d = +m[1], mo = +m[2];
-    const dt = new Date(y, mo - 1, d);
-    return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) ? dt : null;
-  }
+  m = s.match(DAY_FIRST_DATE_RE);
+  if (m) return buildDate(expandYearToken(m[3]), +m[2], +m[1]);
 
   return null;
 }
 
+/**
+ * Parse the whole content of one "Date" cell.
+ * Returns an array of Date objects (empty when nothing recognisable).
+ *
+ *   10-09-26              → 10 Sep 2026
+ *   2026-09-10            → 10 Sep 2026
+ *   10/11/12-09-26        → 10, 11, 12 Sep 2026   ← multi travel dates
+ *   10, 11, 12-09-26      → same
+ *   5&6&7.09.2026         → 05, 06, 07 Sep 2026
+ *   10-09-26, 12-09-26    → two separate days
+ */
+function parseDateCell(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s || s === "-") return [];
+
+  /* 1 — compact day list sharing one month & year */
+  const multi = s.match(MULTI_DAY_RE);
+  if (multi) {
+    const year  = expandYearToken(multi[3]);
+    const month = parseInt(multi[2], 10);
+    const out = [];
+    multi[1].split(/[\/,&+]/).forEach(part => {
+      const dt = buildDate(year, month, parseInt(part.trim(), 10));
+      if (dt) out.push(dt);
+    });
+    return out;
+  }
+
+  /* 2 — a single date */
+  const single = parseSingleDate(s);
+  if (single) return [single];
+
+  /* 3 — several complete dates in one cell */
+  const parts = s.split(DATE_LIST_SPLIT_RE).filter(Boolean);
+  if (parts.length > 1) {
+    const out = [];
+    parts.forEach(p => {
+      const dt = parseSingleDate(p);
+      if (dt) out.push(dt);
+    });
+    if (out.length) return out;
+  }
+
+  return [];
+}
+
 function buildReceiptString() {
   const rows = Array.from(document.querySelectorAll(".bill-row"));
-  const invoices   = [];
-  const dateGroups = [];
-  const groupIndex = new Map();
+  const invoices = [];
+  const dates    = [];
 
   rows.forEach(row => {
     const inv = row.querySelector(".invoice-input")?.value.trim();
     if (inv) invoices.push(inv);
-
-    const d = parseFlexibleDate(row.querySelector(".date-input")?.value);
-    if (d) {
-      const key = d.getFullYear() * 12 + d.getMonth();
-      let g = groupIndex.get(key);
-      if (!g) {
-        g = { month: d.getMonth(), year: d.getFullYear(), days: [] };
-        groupIndex.set(key, g);
-        dateGroups.push(g);
-      }
-      const dayStr = String(d.getDate()).padStart(2, "0");
-      if (!g.days.includes(dayStr)) g.days.push(dayStr);
-    }
+    parseDateCell(row.querySelector(".date-input")?.value).forEach(d => dates.push(d));
   });
 
-  const dateText = dateGroups
-    .map(g => `${g.days.join(", ")} ${MONTH_ABBR[g.month]}${String(g.year).slice(-2)}`)
+  /* Chronological order — earliest day first, across every invoice */
+  dates.sort((a, b) => a.getTime() - b.getTime());
+
+  /* Group by calendar month; within a month keep unique, ascending days */
+  const groups = [];
+  const groupIndex = new Map();
+  dates.forEach(d => {
+    const key = d.getFullYear() * 12 + d.getMonth();
+    let g = groupIndex.get(key);
+    if (!g) {
+      g = { year: d.getFullYear(), month: d.getMonth(), days: [] };
+      groupIndex.set(key, g);
+      groups.push(g);
+    }
+    if (!g.days.includes(d.getDate())) g.days.push(d.getDate());
+  });
+
+  const dateText = groups
+    .map(g => {
+      const days = g.days.slice().sort((a, b) => a - b)
+        .map(d => String(d).padStart(2, "0"))
+        .join(", ");
+      return `${days} ${MONTH_ABBR[g.month]}${String(g.year).slice(-2)}`;
+    })
     .join(", ");
 
   if (!invoices.length && !dateText) return "";
