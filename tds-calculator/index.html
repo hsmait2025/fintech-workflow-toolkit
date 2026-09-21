@@ -276,6 +276,16 @@
             word-break: break-all;
         }
 
+        /* Small inline breakdown hint, e.g. (₹2,23,000.00 − ₹85,000.00) */
+        .sub-note {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #616e53;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
         .words {
             font-size: 13px;
             font-style: italic;
@@ -393,18 +403,21 @@
             <!-- Right Side Results -->
             <div class="result-panel">
                 <div class="result" id="result-tally">
-                    <p class="section-header">1. Advance Payment Breakdown</p>
-                    <p><span>Advance Amount:</span> <span class="amount">₹0.00</span></p>
-                    <p><span>TDS Amount Deducted:</span> <span class="amount">₹0.00</span></p>
-                    <p><span>Amount Paid After TDS:</span> <span class="amount">₹0.00</span></p>
+                    <p class="section-header">1. On First Advance Paid</p>
+                    <p><span>Gross Advance Amount:</span> <span class="amount">₹0.00</span></p>
+                    <p><span>TDS Deducted:</span> <span class="amount">₹0.00</span></p>
+                    <p><span>Net Advance Paid to Vendor:</span> <span class="amount">₹0.00</span></p>
 
-                    <p class="section-header">2. Actual Invoice Breakdown</p>
-                    <p><span>Gross Invoice (Incl. GST):</span> <span class="amount">₹0.00</span></p>
-                    <p><span>Total TDS Deductible (on Taxable Amt):</span> <span class="amount">₹0.00</span></p>
-                    <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹0.00</span></p>
-                    <p><span>Remaining TDS:</span> <span class="amount">₹0.00</span></p>
+                    <p class="section-header">2. On the Remaining Balance Amount</p>
+                    <p><span>Remaining Gross Amount:</span> <span class="amount">₹0.00</span></p>
+                    <p><span>TDS to be Deducted Now:</span> <span class="amount">₹0.00</span></p>
+                    <p class="highlight"><span>Net Balance Payable to Vendor:</span> <span class="amount">₹0.00</span></p>
 
-                    <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹0.00</span></p>
+                    <p class="section-header">Total Summary</p>
+                    <p><span>Total Gross Invoice:</span> <span class="amount">₹0.00</span></p>
+                    <p><span>Total TDS Deposited:</span> <span class="amount">₹0.00</span></p>
+                    <p><span>Total Net Amount to Be Paid:</span> <span class="amount">₹0.00</span></p>
+
                     <p class="words">Rupees Zero Only</p>
                 </div>
 
@@ -524,18 +537,21 @@
 
     function resetTallyResultToZero() {
         document.getElementById('result-tally').innerHTML = `
-            <p class="section-header">1. Advance Payment Breakdown</p>
-            <p><span>Advance Amount:</span> <span class="amount">₹0.00</span></p>
-            <p><span>TDS Amount Deducted:</span> <span class="amount">₹0.00</span></p>
-            <p><span>Amount Paid After TDS:</span> <span class="amount">₹0.00</span></p>
+            <p class="section-header">1. On First Advance Paid</p>
+            <p><span>Gross Advance Amount:</span> <span class="amount">₹0.00</span></p>
+            <p><span>TDS Deducted:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Net Advance Paid to Vendor:</span> <span class="amount">₹0.00</span></p>
 
-            <p class="section-header">2. Actual Invoice Breakdown</p>
-            <p><span>Gross Invoice (Incl. GST):</span> <span class="amount">₹0.00</span></p>
-            <p><span>Total TDS Deductible (on Taxable Amt):</span> <span class="amount">₹0.00</span></p>
-            <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹0.00</span></p>
-            <p><span>Remaining TDS:</span> <span class="amount">₹0.00</span></p>
+            <p class="section-header">2. On the Remaining Balance Amount</p>
+            <p><span>Remaining Gross Amount:</span> <span class="amount">₹0.00</span></p>
+            <p><span>TDS to be Deducted Now:</span> <span class="amount">₹0.00</span></p>
+            <p class="highlight"><span>Net Balance Payable to Vendor:</span> <span class="amount">₹0.00</span></p>
 
-            <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹0.00</span></p>
+            <p class="section-header">Total Summary</p>
+            <p><span>Total Gross Invoice:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Total TDS Deposited:</span> <span class="amount">₹0.00</span></p>
+            <p><span>Total Net Amount to Be Paid:</span> <span class="amount">₹0.00</span></p>
+
             <p class="words">Rupees Zero Only</p>
         `;
     }
@@ -656,42 +672,59 @@
             grossBeforeGst = grossAfterGst > 0 ? (grossAfterGst / 1.18) : 0;
         }
 
-        const effectiveTotalInvoice = grossAfterGst > 0 ? grossAfterGst : grossBeforeGst;
+        // Total invoice value as entered by the user (incl. GST where applicable)
+        const totalInvoiceGross = grossAfterGst > 0 ? grossAfterGst : grossBeforeGst;
+        // TDS is always computed on the taxable (pre-GST) value
+        const tdsBase = grossBeforeGst;
 
-        // 1. Advance Stage Calculations
-        const advanceTdsAmount = (advanceAmount * tdsRate) / 100;
-        const amountPaidAfterTds = advanceAmount - advanceTdsAmount;
+        /* ---- 1. Advance stage ---- */
+        const advanceTds = (advanceAmount * tdsRate) / 100;
+        const netAdvancePaid = advanceAmount - advanceTds;
 
-        // 2. Invoice Stage Calculations (TDS applied on Before-GST Amount)
-        const totalInvoiceTds = (grossBeforeGst * tdsRate) / 100;
-        const invoiceAfterTds = effectiveTotalInvoice - totalInvoiceTds;
+        /* ---- 2. Remaining balance stage ---- */
+        const totalInvoiceTds = (tdsBase * tdsRate) / 100;
+        const remainingTds = Math.max(0, totalInvoiceTds - advanceTds);
+        const remainingGross = totalInvoiceGross - advanceAmount;
+        const netBalancePayable = remainingGross - remainingTds;
+        const roundedBalance = Math.round(netBalancePayable);
 
-        // 3. Journal & Balance Adjustments
-        const additionalJournalTds = Math.max(0, totalInvoiceTds - advanceTdsAmount);
-        const balanceAmount = invoiceAfterTds - amountPaidAfterTds;
-        const roundedBalance = Math.round(balanceAmount);
-
-        // Format Remaining TDS with calculation display (e.g. ₹2,000.00 (₹6,000.00 - ₹4,000.00))
-        let remainingTdsDisplay = "₹0.00";
-        if (additionalJournalTds > 0) {
-            remainingTdsDisplay = `₹${formatIndian(additionalJournalTds)} (₹${formatIndian(totalInvoiceTds)} - ₹${formatIndian(advanceTdsAmount)})`;
-        }
+        /* ---- Totals ---- */
+        const totalTdsDeposited = advanceTds + remainingTds;
+        const totalNetPaid = netAdvancePaid + netBalancePayable;
 
         const words = roundedBalance >= 0 ? numberToWords(roundedBalance) : "Negative Balance / Overpaid";
 
         document.getElementById('result-tally').innerHTML = `
-            <p class="section-header">1. Advance Payment Breakdown</p>
-            <p><span>Advance Amount:</span> <span class="amount">₹${formatIndian(advanceAmount)}</span></p>
-            <p><span>TDS Amount (${tdsRate}%):</span> <span class="amount">₹${formatIndian(advanceTdsAmount)}</span></p>
-            <p><span>Amount Paid After TDS:</span> <span class="amount">₹${formatIndian(amountPaidAfterTds)}</span></p>
+            <p class="section-header">1. On First Advance Paid</p>
+            <p><span>Gross Advance Amount:</span> <span class="amount">₹${formatIndian(advanceAmount)}</span></p>
+            <p><span>TDS Deducted (@ ${tdsRate}%):</span> <span class="amount">₹${formatIndian(advanceTds)}</span></p>
+            <p><span>Net Advance Paid to Vendor:</span> <span class="amount">₹${formatIndian(netAdvancePaid)}</span></p>
 
-            <p class="section-header">2. Actual Invoice Breakdown</p>
-            <p><span>Gross Invoice (Incl. GST):</span> <span class="amount">₹${formatIndian(effectiveTotalInvoice)}</span></p>
-            <p><span>Total TDS Deductible (${tdsRate}%):</span> <span class="amount">₹${formatIndian(totalInvoiceTds)}</span></p>
-            <p><span>Invoice Net Payable (Incl. GST):</span> <span class="amount">₹${formatIndian(invoiceAfterTds)}</span></p>
-            <p><span>Remaining TDS:</span> <span class="amount">${remainingTdsDisplay}</span></p>
+            <p class="section-header">2. On the Remaining Balance Amount</p>
+            <p>
+                <span>Remaining Gross Amount
+                    <span class="sub-note">(₹${formatIndian(totalInvoiceGross)} − ₹${formatIndian(advanceAmount)})</span>:
+                </span>
+                <span class="amount">₹${formatIndian(remainingGross)}</span>
+            </p>
+            <p><span>TDS to be Deducted Now (@ ${tdsRate}%):</span> <span class="amount">₹${formatIndian(remainingTds)}</span></p>
+            <p class="highlight"><span>Net Balance Payable to Vendor:</span> <span class="amount">₹${formatIndian(netBalancePayable)}</span></p>
 
-            <p class="highlight"><span>Balance Amount to Pay:</span> <span class="amount">₹${formatIndian(balanceAmount)}</span></p>
+            <p class="section-header">Total Summary</p>
+            <p><span>Total Gross Invoice:</span> <span class="amount">₹${formatIndian(totalInvoiceGross)}</span></p>
+            <p>
+                <span>Total TDS Deposited
+                    <span class="sub-note">(₹${formatIndian(advanceTds)} + ₹${formatIndian(remainingTds)})</span>:
+                </span>
+                <span class="amount">₹${formatIndian(totalTdsDeposited)}</span>
+            </p>
+            <p>
+                <span>Total Net Amount to Be Paid
+                    <span class="sub-note">(₹${formatIndian(netAdvancePaid)} + ₹${formatIndian(netBalancePayable)})</span>:
+                </span>
+                <span class="amount">₹${formatIndian(totalNetPaid)}</span>
+            </p>
+
             <p class="words">Rupees ${words} ${roundedBalance >= 0 ? 'Only' : ''}</p>
         `;
     }
