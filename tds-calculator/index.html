@@ -495,16 +495,127 @@
         }
     });
 
-    /* -------- Attach Input Event Listener to Reset Results & Auto-update Before GST -------- */
+    /* ================================================================
+       NUMBER INPUT FORMATTING  (Indian grouping, caret-safe)
+       ----------------------------------------------------------------
+       Fix: earlier the "blur" handler rewrote the field using
+       formatIndian() which ALWAYS forces 2 decimals. So if a user had
+       typed "312" (intending to continue with "31224") and then
+       alt-tabbed / switched windows to verify something, the field
+       blurred and instantly became "312.00" — corrupting the entry.
+       Now:
+         • live formatting happens on every keystroke, keeping the
+           caret exactly where the user is typing
+         • decimals are NEVER invented — whatever the user typed is
+           preserved ("312" stays "312", "312.5" stays "312.5")
+         • blur only tidies the value, and skips entirely when the
+           window itself lost focus (user switched apps/tabs)
+       ================================================================ */
+
+    /* Indian digit grouping: last 3 digits, then groups of 2 */
+    function groupIndianDigits(intDigits) {
+        if (intDigits.length <= 3) return intDigits;
+        const lastThree = intDigits.slice(-3);
+        const rest = intDigits.slice(0, -3);
+        return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+    }
+
+    /* Format a raw string WITHOUT forcing decimals or altering partial input */
+    function formatIndianInput(value) {
+        if (value === null || value === undefined) return '';
+        let raw = value.toString().trim();
+        if (raw === '') return '';
+
+        let negative = false;
+        if (raw.charAt(0) === '-') {
+            negative = true;
+            raw = raw.slice(1);
+        }
+
+        raw = raw.replace(/,/g, '');
+        const firstDot = raw.indexOf('.');
+
+        let intPart, decPart;
+        if (firstDot === -1) {
+            intPart = raw.replace(/[^0-9]/g, '');
+            decPart = null;
+        } else {
+            intPart = raw.slice(0, firstDot).replace(/[^0-9]/g, '');
+            decPart = raw.slice(firstDot + 1).replace(/[^0-9]/g, '');
+        }
+
+        // strip leading zeros, but keep a single zero when a decimal follows
+        intPart = intPart.replace(/^0+(?=\d)/, '');
+        if (intPart === '' && decPart !== null) intPart = '0';
+
+        let result = groupIndianDigits(intPart);
+        if (decPart !== null) result += '.' + decPart;
+
+        return (negative && result !== '' ? '-' : '') + result;
+    }
+
+    /* Format the field value live and restore the caret position */
+    function formatNumberFieldKeepingCaret(input) {
+        const originalValue = input.value;
+        const originalCaret = (typeof input.selectionStart === 'number') ? input.selectionStart : originalValue.length;
+        const formattedValue = formatIndianInput(originalValue);
+
+        if (formattedValue === originalValue) return;
+
+        // how many meaningful characters (digits / dot) sit before the caret
+        const beforeCaret = originalValue.slice(0, originalCaret);
+        const significantBefore = (beforeCaret.match(/[0-9.]/g) || []).length;
+
+        input.value = formattedValue;
+
+        if (typeof input.setSelectionRange === 'function') {
+            let newCaret = 0;
+            if (significantBefore > 0) {
+                let seen = 0;
+                for (let i = 0; i < formattedValue.length; i++) {
+                    if (/[0-9.]/.test(formattedValue[i])) {
+                        seen++;
+                        if (seen === significantBefore) {
+                            newCaret = i + 1;
+                            break;
+                        }
+                    }
+                }
+                if (newCaret === 0) newCaret = formattedValue.length;
+            }
+            try {
+                input.setSelectionRange(newCaret, newCaret);
+            } catch (err) { /* input type may not support selection */ }
+        }
+    }
+
+    /* Blur tidy-up: never invents decimals, never fires while user is away */
+    function tidyUpNumberInput(input) {
+        if (!input.value) return;
+
+        // If the window lost focus (user alt-tabbed / switched apps),
+        // leave the field exactly as typed — no reformatting at all.
+        if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+
+        let tidied = formatIndianInput(input.value);
+        if (tidied.endsWith('.')) tidied = tidied.slice(0, -1);   // "312." -> "312"
+        if (tidied !== input.value) input.value = tidied;
+    }
+
+    /* -------- Attach Input Event Listener: live formatting + reset results -------- */
     document.querySelectorAll('input[type="text"]').forEach(input => {
         input.addEventListener('input', (e) => {
+            // 1) Live, caret-safe formatting (never forces ".00")
+            formatNumberFieldKeepingCaret(e.target);
+
             const activeTab = document.querySelector('.tab-content.active');
-            
-            // Auto-calculate Before GST on typing After GST
+
+            // 2) Auto-calculate Before GST on typing After GST
             if (e.target.id === 'inv-after-gst-manual') {
                 updateBeforeGstDisplay();
             }
 
+            // 3) Reset displayed results until Calculate is pressed again
             if (activeTab.id === 'tab-basic') {
                 resetBasicResultToZero();
             } else {
@@ -592,8 +703,7 @@
     let basicCurrentRate = 0.1;
 
     amountInput.addEventListener('blur', () => {
-        const value = parseIndianNumber(amountInput.value);
-        if (value > 0) amountInput.value = formatIndian(value);
+        tidyUpNumberInput(amountInput);
     });
 
     function selectBasicTDS(rate, element) {
@@ -636,10 +746,7 @@
 
     tallyInputs.forEach(input => {
         input.addEventListener('blur', () => {
-            if (input.id !== 'tds-rate-input') {
-                const val = parseIndianNumber(input.value);
-                if (val > 0) input.value = formatIndian(val);
-            }
+            tidyUpNumberInput(input);   // decimals are never forced here anymore
         });
     });
 
