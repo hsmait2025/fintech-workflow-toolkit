@@ -9,6 +9,35 @@
   <!-- html2canvas CDN for High-Resolution PNG Snapshots -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+  <!--
+    ============================================================================
+    CHANGE LOG (latest first)
+    ============================================================================
+    [REQ-03] INLINE EDIT FOR WEIGHT AND QUOTE PRICE
+      • Cart items now store quotePrice and baseWeight separately (instead of a
+        single quote string). This makes editing and recalculation trivial.
+      • The Weight cell in the Purchase Dashboard is now editable. Tap it to
+        enter a new weight (e.g., "250g", "0.5", "1kg"). The item price is
+        recalculated as: (quotePrice / baseWeight) * newWeight.
+      • The Quote cell is now editable. Tap it to change only the price amount
+        (the number before the slash). The base weight remains fixed per item.
+        Price updates automatically.
+      • Backward compatibility: existing carts saved with the old 'quote' string
+        are automatically converted on load.
+      • No changes to the numpad layout or any other screen proportions.
+
+    [REQ-02] WEIGHT QUICK-BUTTON CLEANUP & FONT ENLARGEMENT
+      • Quote Base Weight row: removed "More..." dropdown (100g & 750g gone).
+        Now only 250g, 1/2kg, 1Kg quick buttons.
+      • Buying Weight row: font size increased for all quick buttons.
+      • Number pad and screen proportions untouched.
+
+    [REQ-01] WEIGHT QUICK-BUTTON SET REVISION
+      • Quote Base Weight row: added 1/2kg quick button (data-weight="0.5").
+      • Buying Weight row: removed 100g & 750g, renamed 500g to 1/2kg.
+    ============================================================================
+  -->
+
   <style>
     /* DARK THEME (DEFAULT) */
     :root {
@@ -311,10 +340,21 @@
       margin-top: 10px;
     }
 
-    .base-weight-row-updated,
-    .target-weight-row-custom {
+    /* ------------------------------------------------------------------
+       QUICK-BUTTON ROWS
+       ------------------------------------------------------------------ */
+
+    /* Quote Base Weight: 250g | 1/2kg | 1Kg */
+    .base-weight-row-updated {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    /* Buying Weight: 250g | 1/2kg | 1Kg | Custom */
+    .target-weight-row-custom {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 7px;
     }
 
@@ -331,7 +371,7 @@
       border-radius: 12px;
       background: var(--surface-2);
       color: var(--text);
-      font-size: clamp(0.82rem, 3.2vw, 0.98rem);
+      font-size: clamp(1.05rem, 4.2vw, 1.25rem);
       font-weight: 700;
       line-height: 1;
       text-align: center;
@@ -378,9 +418,12 @@
       border-color: rgba(255, 159, 10, 0.7);
       background: rgba(255, 159, 10, 0.2);
       color: var(--orange);
+      font-size: clamp(0.9rem, 3.6vw, 1.05rem);
+      padding-left: 2px;
+      padding-right: 2px;
     }
 
-    /* KEYPAD */
+    /* KEYPAD — layout intentionally unchanged */
     .bottom-numpad-40 {
       width: 100%;
       height: clamp(280px, 41dvh, 370px);
@@ -886,8 +929,10 @@
       width: 12%;
     }
 
-    /* INLINE EDITABLE ITEM NAME STYLES */
-    .editable-item-name {
+    /* INLINE EDITABLE STYLES */
+    .editable-item-name,
+    .editable-weight,
+    .editable-quote {
       display: inline-block;
       width: 100%;
       padding: 4px 6px;
@@ -900,10 +945,16 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .editable-item-name:hover {
+
+    .editable-item-name:hover,
+    .editable-weight:hover,
+    .editable-quote:hover {
       border-color: var(--blue);
     }
-    .item-name-input {
+
+    .item-name-input,
+    .item-weight-input,
+    .quote-price-input {
       width: 100%;
       padding: 4px 6px;
       font-size: inherit;
@@ -912,6 +963,19 @@
       border: 1px solid var(--blue);
       border-radius: 6px;
       outline: none;
+    }
+
+    .quote-edit-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: inherit;
+    }
+
+    .quote-price-input {
+      width: 55px;
+      text-align: center;
     }
 
     .remove-item-btn {
@@ -1004,6 +1068,11 @@
         min-height: 38px;
         padding-top: 4px;
         padding-bottom: 4px;
+        font-size: clamp(0.95rem, 3.8vw, 1.1rem);
+      }
+
+      .custom-inline-btn {
+        font-size: clamp(0.82rem, 3.2vw, 0.95rem);
       }
 
       .selector-group + .selector-group {
@@ -1067,29 +1136,24 @@
 
       <section class="selection-area">
 
+        <!-- QUOTE BASE WEIGHT -->
         <div class="selector-group">
           <div class="section-label">Quote Base Weight</div>
 
           <div class="base-weight-row-updated" id="baseWeightRow">
             <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
+            <div class="weight-btn base-btn" data-weight="0.5">1/2kg</div>
             <div class="weight-btn base-btn" data-weight="1">1Kg</div>
-            <select class="base-dropdown-select" id="baseWeightDropdown" aria-label="Select alternate base weight">
-              <option value="" disabled selected hidden>More...</option>
-              <option value="0.1">100g</option>
-              <option value="0.5">500g</option>
-              <option value="0.75">750g</option>
-            </select>
           </div>
         </div>
 
+        <!-- BUYING WEIGHT -->
         <div class="selector-group">
           <div class="section-label">Buying Weight</div>
 
           <div class="target-weight-row-custom" id="targetWeightRow">
-            <div class="weight-btn target-btn" data-weight="0.1">100g</div>
             <div class="weight-btn target-btn" data-weight="0.25">250g</div>
-            <div class="weight-btn target-btn" data-weight="0.5">500g</div>
-            <div class="weight-btn target-btn" data-weight="0.75">750g</div>
+            <div class="weight-btn target-btn" data-weight="0.5">1/2kg</div>
             <div class="weight-btn target-btn" data-weight="1">1Kg</div>
             <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom/🟰</div>
           </div>
@@ -1316,7 +1380,7 @@
     let pendingTargetWeight = null;
     let itemCounter = 1;
     let isLightTheme = false;
-    let cart = []; // Each item: { id, vendorId, name, weight, quote, price }
+    let cart = []; // Each item: { id, vendorId, name, weight, baseWeight, quotePrice, price }
 
     /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
@@ -1336,7 +1400,6 @@
 
     const openCustomWtBtn = document.getElementById("openCustomWtBtn");
     const baseWeightRow = document.getElementById("baseWeightRow");
-    const baseWeightDropdown = document.getElementById("baseWeightDropdown");
     const targetWeightRow = document.getElementById("targetWeightRow");
 
     const customDisplay = document.getElementById("customDisplay");
@@ -1399,12 +1462,44 @@
         }
 
         const data = JSON.parse(raw);
-        if (Array.isArray(data.cart)) cart = data.cart;
+        if (Array.isArray(data.cart)) {
+          // [REQ-03] Convert old cart items that used a 'quote' string
+          cart = data.cart.map(item => {
+            if (item.quotePrice === undefined && item.quote) {
+              // Parse old quote string: "₹50/250g" or "₹50/1Kg"
+              const match = item.quote.match(/₹([\d.]+)\/(.+)/);
+              if (match) {
+                const price = parseFloat(match[1]);
+                const baseLabel = match[2];
+                let baseWeight = 0.25;
+                if (baseLabel.endsWith('g') && !baseLabel.endsWith('kg')) {
+                  baseWeight = parseFloat(baseLabel) / 1000;
+                } else if (baseLabel.endsWith('Kg') || baseLabel.endsWith('kg')) {
+                  baseWeight = parseFloat(baseLabel);
+                }
+                return {
+                  ...item,
+                  quotePrice: price,
+                  baseWeight: baseWeight
+                };
+              }
+            }
+            // Ensure all items have the new fields
+            if (item.quotePrice === undefined) item.quotePrice = 0;
+            if (item.baseWeight === undefined) item.baseWeight = 0.25;
+            return item;
+          });
+        }
         if (typeof data.itemCounter === "number") itemCounter = data.itemCounter;
         if (typeof data.activeVendor === "number") activeVendor = data.activeVendor;
         if (typeof data.baseWeight === "number") baseWeight = data.baseWeight;
         if (typeof data.priceInput === "string") priceInput = data.priceInput;
         if (typeof data.isLightTheme === "boolean") isLightTheme = data.isLightTheme;
+
+        // Validate baseWeight — only 0.25, 0.5, 1 allowed
+        if (![0.25, 0.5, 1].includes(baseWeight)) {
+          baseWeight = 0.25;
+        }
 
         applyTheme();
 
@@ -1495,21 +1590,6 @@
           b.classList.add("base-selected");
         }
       });
-
-      let foundInDropdown = false;
-      Array.from(baseWeightDropdown.options).forEach((opt) => {
-        if (parseFloat(opt.value) === baseWeight) {
-          foundInDropdown = true;
-        }
-      });
-
-      if (foundInDropdown) {
-        baseWeightDropdown.value = baseWeight.toString();
-        baseWeightDropdown.classList.add("base-selected");
-      } else {
-        baseWeightDropdown.selectedIndex = 0;
-        baseWeightDropdown.classList.remove("base-selected");
-      }
     }
 
     /* DISPLAY HELPERS */
@@ -1524,6 +1604,40 @@
       return weightKg >= 1
         ? `${weightKg}Kg`
         : `${Math.round(weightKg * 1000)}g`;
+    }
+
+    /* [REQ-03] Helper to format weight for editing (e.g., "250g" or "1Kg") */
+    function formatWeightForEdit(weightKg) {
+      if (weightKg < 1) {
+        return `${Math.round(weightKg * 1000)}g`;
+      } else {
+        return `${parseFloat(weightKg.toFixed(2))}Kg`;
+      }
+    }
+
+    /* [REQ-03] Helper to parse weight input strings like "250g", "0.25", "1kg" */
+    function parseWeightInput(str) {
+      str = str.trim().toLowerCase();
+      if (!str) return null;
+
+      if (str.endsWith('g') && !str.endsWith('kg')) {
+        const num = parseFloat(str.slice(0, -1));
+        if (isNaN(num)) return null;
+        return num / 1000;
+      }
+      if (str.endsWith('kg')) {
+        const num = parseFloat(str.slice(0, -2));
+        if (isNaN(num)) return null;
+        return num;
+      }
+      // No unit: assume kg if value < 10, else grams
+      const num = parseFloat(str);
+      if (isNaN(num)) return null;
+      if (num >= 10) {
+        return num / 1000;
+      } else {
+        return num;
+      }
     }
 
     /* VENDOR SWITCHING VIA DROPDOWN */
@@ -1568,7 +1682,7 @@
       if (!key || !homeKeypad.contains(key)) return;
 
       const rawVal = key.textContent.trim();
-      const val = rawVal.charAt(0); // Extracts digits (e.g., '5' from '5☼' or '5☀︎')
+      const val = rawVal.charAt(0);
 
       if (priceInput === "0" && val === "0") return;
       if (priceInput === "0" && val !== "0") {
@@ -1608,22 +1722,8 @@
       if (!button || !baseWeightRow.contains(button)) return;
 
       document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
-      baseWeightDropdown.classList.remove("base-selected");
-      baseWeightDropdown.selectedIndex = 0;
-
       button.classList.add("base-selected");
       baseWeight = parseFloat(button.dataset.weight);
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    baseWeightDropdown.addEventListener("change", (e) => {
-      const selectedVal = parseFloat(e.target.value);
-      if (isNaN(selectedVal)) return;
-
-      document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
-      baseWeightDropdown.classList.add("base-selected");
-      baseWeight = selectedVal;
       updateHomeDisplay();
       saveStateToStorage();
     });
@@ -1985,7 +2085,8 @@
         vendorId: activeVendor,
         name: customName || `Item #${itemCounter - 1}`,
         weight: targetWeight,
-        quote: `₹${priceVal}/${baseLabel}`,
+        baseWeight: baseWeight,
+        quotePrice: priceVal,
         price: parseFloat(calculatedPrice)
       };
 
@@ -2080,12 +2181,17 @@
 
           stats.items.forEach((item) => {
             const row = tbody.insertRow();
+            // [REQ-03] Weight and Quote are now editable inline
             row.innerHTML = `
               <td>
                 <div class="editable-item-name" data-id="${item.id}" title="Tap to edit item name">${item.name || '(No Name)'}</div>
               </td>
-              <td>${formatWeight(item.weight)}</td>
-              <td>${item.quote}</td>
+              <td>
+                <div class="editable-weight" data-id="${item.id}" title="Tap to edit weight">${formatWeight(item.weight)}</div>
+              </td>
+              <td>
+                <div class="editable-quote" data-id="${item.id}" title="Tap to edit quote price">₹${item.quotePrice}/${formatBaseWeight(item.baseWeight)}</div>
+              </td>
               <td>₹${item.price.toFixed(2)}</td>
               <td class="no-pdf">
                 <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove item">×</button>
@@ -2113,14 +2219,13 @@
 
     /* INLINE EDITING & ITEM REMOVAL HANDLING WITHIN PURCHASE DASHBOARD */
     vendorCartList.addEventListener("click", (e) => {
-      // Check if item name container was tapped
+      // --- 1. EDIT ITEM NAME ---
       const editableDiv = e.target.closest(".editable-item-name");
       if (editableDiv) {
         const itemId = parseInt(editableDiv.dataset.id, 10);
         const item = cart.find(i => i.id === itemId);
         if (!item) return;
 
-        // Turn div into an input field directly inside the cell
         const currentName = item.name;
         const input = document.createElement("input");
         input.type = "text";
@@ -2147,7 +2252,83 @@
         return;
       }
 
-      // Check if delete button was tapped
+      // --- 2. EDIT WEIGHT ---
+      const weightDiv = e.target.closest(".editable-weight");
+      if (weightDiv) {
+        const itemId = parseInt(weightDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        const currentWeightStr = formatWeightForEdit(item.weight);
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "item-weight-input";
+        input.value = currentWeightStr;
+
+        weightDiv.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveWeightEdit = () => {
+          const newWeight = parseWeightInput(input.value);
+          if (newWeight !== null && newWeight > 0) {
+            item.weight = newWeight;
+            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
+            saveStateToStorage();
+            renderCart();
+          } else {
+            renderCart(); // revert
+          }
+        };
+
+        input.addEventListener("blur", saveWeightEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            input.blur();
+          }
+        });
+        return;
+      }
+
+      // --- 3. EDIT QUOTE PRICE ---
+      const quoteDiv = e.target.closest(".editable-quote");
+      if (quoteDiv) {
+        const itemId = parseInt(quoteDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        // Build a small container with an input for the price and the fixed base weight label
+        const container = document.createElement("div");
+        container.className = "quote-edit-container";
+        container.innerHTML = `₹<input type="text" class="quote-price-input" value="${item.quotePrice}" /> / ${formatBaseWeight(item.baseWeight)}`;
+
+        quoteDiv.replaceWith(container);
+        const input = container.querySelector(".quote-price-input");
+        input.focus();
+        input.select();
+
+        const saveQuoteEdit = () => {
+          const newPrice = parseFloat(input.value);
+          if (!isNaN(newPrice) && newPrice > 0) {
+            item.quotePrice = newPrice;
+            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
+            saveStateToStorage();
+            renderCart();
+          } else {
+            renderCart(); // revert
+          }
+        };
+
+        input.addEventListener("blur", saveQuoteEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            input.blur();
+          }
+        });
+        return;
+      }
+
+      // --- 4. REMOVE ITEM ---
       const button = e.target.closest(".remove-item-btn");
       if (!button) return;
 
