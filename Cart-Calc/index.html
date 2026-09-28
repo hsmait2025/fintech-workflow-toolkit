@@ -13,32 +13,32 @@
     ============================================================================
     CHANGE LOG (latest first)
     ============================================================================
-    [REQ-04] NUMPAD REAL-ESTATE REDUCTION TO EXACTLY 40% OF SCREEN
-      • The shared .bottom-numpad-40 wrapper now uses a fixed proportional
-        height of `40dvh` on every screen that contains a numpad:
+    [REQ-05] NUMPAD REAL-ESTATE REDUCED TO EXACTLY 30% OF SCREEN
+      • The shared numpad wrapper was renamed from .bottom-numpad-40 to
+        .bottom-numpad-30 and its height changed from `40dvh` to `30dvh`.
+      • Applied identically to:
           - Home screen (main POS)
           - Enter Custom Weight screen
-          - Calculator screen (inherits the same wrapper, kept consistent)
-      • Removed the old fixed `clamp(280px, 41dvh, 370px)` + `min-height: 280px`
-        combination which could push the numpad well above 40% on shorter
-        phones (e.g. a 600px-tall viewport was getting ~47% of the screen).
-      • The keypad grid rows now use `minmax(0, 1fr)` so keys scale cleanly with
-        whatever vertical space the 40dvh wrapper gives them — no more forced
-        `--key-min-height` fighting the container.
-      • Because both the Home and Custom Weight numpads share the exact same
-        wrapper + grid + row-count, their proportions are guaranteed identical.
-      • The max-height: 650px media query no longer overrides the numpad height
-        to a hard-coded 260px — 40dvh naturally scales for short screens.
-      • No changes to key shapes, colours, fonts, gaps, or any other screen.
+          - Calculator screen (shares the same wrapper for visual consistency)
+      • Because all three screens still share ONE wrapper class, the numpad
+        proportions remain byte-for-byte identical between Home and Custom
+        Weight — exactly as required.
+      • Keys still scale with `minmax(0, 1fr)` rows and no min-height floor,
+        so the 3×4 grid shrinks cleanly into the new 30dvh budget.
+      • The feedback toast was moved up to sit just above the new 30dvh
+        numpad: `bottom: calc(30dvh + 14px)`.
+      • No changes to key shapes, colours, font sizes, gaps or any other UI.
+
+    [REQ-04] NUMPAD REAL-ESTATE REDUCTION TO 40% OF SCREEN (superseded)
+      • Shared wrapper locked to 40dvh; min-height floor removed so short
+        screens no longer push the numpad past 40%.
 
     [REQ-03] INLINE EDIT FOR WEIGHT AND QUOTE PRICE
-      • Cart items now store quotePrice and baseWeight separately.
-      • Weight cell and Quote cell are editable inline in the Purchase Dashboard.
-      • Price recalculates as (quotePrice / baseWeight) * weight.
-      • Backward compatible with old 'quote' string format on load.
+      • Cart items store quotePrice and baseWeight separately; both cells
+        are editable inline in the Purchase Dashboard.
 
     [REQ-02] WEIGHT QUICK-BUTTON CLEANUP & FONT ENLARGEMENT
-      • Quote Base Weight row: removed "More..." dropdown (100g & 750g gone).
+      • Quote Base Weight row: removed "More..." dropdown (100g & 750g).
       • Buying Weight row: font size increased for all quick buttons.
 
     [REQ-01] WEIGHT QUICK-BUTTON SET REVISION
@@ -77,9 +77,7 @@
 
       --page-pad: clamp(10px, 3vw, 16px);
       --key-gap: clamp(7px, 2.2vw, 10px);
-      /* [REQ-04] --key-min-height is no longer used for grid sizing.
-         Kept defined only as a documented historical value — safe to remove
-         in a future cleanup pass. */
+      /* Kept only as a historical value — grid sizing no longer depends on it. */
       --key-min-height: 58px;
     }
 
@@ -436,18 +434,19 @@
     }
 
     /* ------------------------------------------------------------------
-       [REQ-04] SHARED NUMPAD WRAPPER — EXACTLY 40% OF VIEWPORT HEIGHT
-       Used identically on the Home screen and the Enter Custom Weight
-       screen (and the Calculator screen), so their proportions match.
+       [REQ-05] SHARED NUMPAD WRAPPER — EXACTLY 30% OF VIEWPORT HEIGHT
+       Used identically on the Home screen, the Enter Custom Weight screen,
+       and the Calculator screen, guaranteeing identical proportions
+       between Home and Custom Weight.
        ------------------------------------------------------------------ */
-    .bottom-numpad-40 {
+    .bottom-numpad-30 {
       width: 100%;
-      /* [REQ-04] Locked to exactly 40% of the viewport height. Because
+      /* [REQ-05] Locked to exactly 30% of the viewport height. Because
          `box-sizing: border-box` is global, the internal padding is
-         included inside this 40% — no overflow past the budget. */
-      height: 40dvh;
-      /* [REQ-04] No min-height floor that could push it over 40% on short
-         screens. Keys shrink gracefully instead of overflowing. */
+         included inside this 30% — no overflow past the budget. */
+      height: 30dvh;
+      /* No min-height floor that could push it over 30% on short screens.
+         Keys shrink gracefully instead of overflowing. */
       min-height: 0;
       max-height: none;
       flex-shrink: 0;
@@ -464,14 +463,14 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      /* [REQ-04] Rows scale with the 40dvh wrapper — no forced minimum. */
+      /* Rows scale with the 30dvh wrapper — no forced minimum. */
       grid-template-rows: repeat(4, minmax(0, 1fr));
       gap: var(--key-gap);
     }
 
     .key {
       min-width: 0;
-      /* [REQ-04] Removed min-height so keys stay inside the 40% budget. */
+      /* Removed min-height so keys stay inside the 30% budget. */
       min-height: 0;
       padding: 0;
       display: flex;
@@ -698,7 +697,7 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      /* 5 rows for the calculator — still proportional inside the 40dvh wrapper */
+      /* 5 rows for the calculator — still proportional inside the 30dvh wrapper */
       grid-template-rows: repeat(5, minmax(0, 1fr));
       gap: clamp(5px, 1.8vw, 8px);
     }
@@ -1064,9 +1063,9 @@
     }
 
     @media (max-height: 650px) {
-      /* [REQ-04] We intentionally do NOT override the numpad height here.
-         40dvh already scales for short screens, so the numpad stays at
-         exactly 40% of the viewport on every device. */
+      /* We intentionally do NOT override the numpad height here.
+         30dvh already scales for short screens, so the numpad stays at
+         exactly 30% of the viewport on every device. */
       .top-window-60 {
         padding-top: 6px;
         padding-bottom: 6px;
@@ -1101,7 +1100,7 @@
 
     @media (min-width: 500px) {
       .top-window-60,
-      .bottom-numpad-40,
+      .bottom-numpad-30,
       .calc-display-container {
         padding-left: max(20px, var(--page-pad));
         padding-right: max(20px, var(--page-pad));
@@ -1181,7 +1180,7 @@
       </section>
     </main>
 
-    <section class="bottom-numpad-40" aria-label="Number keypad">
+    <section class="bottom-numpad-30" aria-label="Number keypad">
       <div class="keypad-container" id="homeKeypad">
         <button class="key num-key" type="button">7</button>
         <button class="key num-key" type="button">8</button>
@@ -1221,7 +1220,7 @@
 
     </section>
 
-    <section class="bottom-numpad-40" aria-label="Custom weight keypad">
+    <section class="bottom-numpad-30" aria-label="Custom weight keypad">
       <div class="keypad-container" id="customKeypad">
         <button class="key c-num-key" type="button">7</button>
         <button class="key c-num-key" type="button">8</button>
@@ -1255,7 +1254,7 @@
       <div class="calc-main-display" id="calcMainDisplay">0</div>
     </section>
 
-    <section class="bottom-numpad-40" aria-label="Calculator keypad">
+    <section class="bottom-numpad-30" aria-label="Calculator keypad">
       <div class="calc-keypad-container" id="calcKeypad">
         <button class="key calc-action-clear" id="calcClearBtn" type="button">C</button>
         <button class="key op-key" data-op="%" type="button">%</button>
@@ -2523,7 +2522,8 @@
         Object.assign(toast.style, {
           position: "fixed",
           left: "50%",
-          bottom: "calc(40dvh + 14px)", /* [REQ-04] Toast now sits just above the 40dvh numpad */
+          /* [REQ-05] Toast now sits just above the 30dvh numpad */
+          bottom: "calc(30dvh + 14px)",
           transform: "translateX(-50%)",
           zIndex: "3000",
           maxWidth: "calc(100vw - 32px)",
