@@ -13,27 +13,36 @@
     ============================================================================
     CHANGE LOG (latest first)
     ============================================================================
+    [REQ-04] NUMPAD REAL-ESTATE REDUCTION TO EXACTLY 40% OF SCREEN
+      • The shared .bottom-numpad-40 wrapper now uses a fixed proportional
+        height of `40dvh` on every screen that contains a numpad:
+          - Home screen (main POS)
+          - Enter Custom Weight screen
+          - Calculator screen (inherits the same wrapper, kept consistent)
+      • Removed the old fixed `clamp(280px, 41dvh, 370px)` + `min-height: 280px`
+        combination which could push the numpad well above 40% on shorter
+        phones (e.g. a 600px-tall viewport was getting ~47% of the screen).
+      • The keypad grid rows now use `minmax(0, 1fr)` so keys scale cleanly with
+        whatever vertical space the 40dvh wrapper gives them — no more forced
+        `--key-min-height` fighting the container.
+      • Because both the Home and Custom Weight numpads share the exact same
+        wrapper + grid + row-count, their proportions are guaranteed identical.
+      • The max-height: 650px media query no longer overrides the numpad height
+        to a hard-coded 260px — 40dvh naturally scales for short screens.
+      • No changes to key shapes, colours, fonts, gaps, or any other screen.
+
     [REQ-03] INLINE EDIT FOR WEIGHT AND QUOTE PRICE
-      • Cart items now store quotePrice and baseWeight separately (instead of a
-        single quote string). This makes editing and recalculation trivial.
-      • The Weight cell in the Purchase Dashboard is now editable. Tap it to
-        enter a new weight (e.g., "250g", "0.5", "1kg"). The item price is
-        recalculated as: (quotePrice / baseWeight) * newWeight.
-      • The Quote cell is now editable. Tap it to change only the price amount
-        (the number before the slash). The base weight remains fixed per item.
-        Price updates automatically.
-      • Backward compatibility: existing carts saved with the old 'quote' string
-        are automatically converted on load.
-      • No changes to the numpad layout or any other screen proportions.
+      • Cart items now store quotePrice and baseWeight separately.
+      • Weight cell and Quote cell are editable inline in the Purchase Dashboard.
+      • Price recalculates as (quotePrice / baseWeight) * weight.
+      • Backward compatible with old 'quote' string format on load.
 
     [REQ-02] WEIGHT QUICK-BUTTON CLEANUP & FONT ENLARGEMENT
       • Quote Base Weight row: removed "More..." dropdown (100g & 750g gone).
-        Now only 250g, 1/2kg, 1Kg quick buttons.
       • Buying Weight row: font size increased for all quick buttons.
-      • Number pad and screen proportions untouched.
 
     [REQ-01] WEIGHT QUICK-BUTTON SET REVISION
-      • Quote Base Weight row: added 1/2kg quick button (data-weight="0.5").
+      • Quote Base Weight row: added 1/2kg quick button.
       • Buying Weight row: removed 100g & 750g, renamed 500g to 1/2kg.
     ============================================================================
   -->
@@ -68,6 +77,9 @@
 
       --page-pad: clamp(10px, 3vw, 16px);
       --key-gap: clamp(7px, 2.2vw, 10px);
+      /* [REQ-04] --key-min-height is no longer used for grid sizing.
+         Kept defined only as a documented historical value — safe to remove
+         in a future cleanup pass. */
       --key-min-height: 58px;
     }
 
@@ -423,11 +435,21 @@
       padding-right: 2px;
     }
 
-    /* KEYPAD — layout intentionally unchanged */
+    /* ------------------------------------------------------------------
+       [REQ-04] SHARED NUMPAD WRAPPER — EXACTLY 40% OF VIEWPORT HEIGHT
+       Used identically on the Home screen and the Enter Custom Weight
+       screen (and the Calculator screen), so their proportions match.
+       ------------------------------------------------------------------ */
     .bottom-numpad-40 {
       width: 100%;
-      height: clamp(280px, 41dvh, 370px);
-      min-height: 280px;
+      /* [REQ-04] Locked to exactly 40% of the viewport height. Because
+         `box-sizing: border-box` is global, the internal padding is
+         included inside this 40% — no overflow past the budget. */
+      height: 40dvh;
+      /* [REQ-04] No min-height floor that could push it over 40% on short
+         screens. Keys shrink gracefully instead of overflowing. */
+      min-height: 0;
+      max-height: none;
       flex-shrink: 0;
       padding: 8px var(--page-pad) max(10px, var(--safe-bottom));
       display: flex;
@@ -442,13 +464,15 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-template-rows: repeat(4, minmax(var(--key-min-height), 1fr));
+      /* [REQ-04] Rows scale with the 40dvh wrapper — no forced minimum. */
+      grid-template-rows: repeat(4, minmax(0, 1fr));
       gap: var(--key-gap);
     }
 
     .key {
       min-width: 0;
-      min-height: var(--key-min-height);
+      /* [REQ-04] Removed min-height so keys stay inside the 40% budget. */
+      min-height: 0;
       padding: 0;
       display: flex;
       align-items: center;
@@ -674,6 +698,7 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
+      /* 5 rows for the calculator — still proportional inside the 40dvh wrapper */
       grid-template-rows: repeat(5, minmax(0, 1fr));
       gap: clamp(5px, 1.8vw, 8px);
     }
@@ -1039,15 +1064,9 @@
     }
 
     @media (max-height: 650px) {
-      :root {
-        --key-min-height: 50px;
-      }
-
-      .bottom-numpad-40 {
-        height: 260px;
-        min-height: 260px;
-      }
-
+      /* [REQ-04] We intentionally do NOT override the numpad height here.
+         40dvh already scales for short screens, so the numpad stays at
+         exactly 40% of the viewport on every device. */
       .top-window-60 {
         padding-top: 6px;
         padding-bottom: 6px;
@@ -1466,25 +1485,23 @@
           // [REQ-03] Convert old cart items that used a 'quote' string
           cart = data.cart.map(item => {
             if (item.quotePrice === undefined && item.quote) {
-              // Parse old quote string: "₹50/250g" or "₹50/1Kg"
               const match = item.quote.match(/₹([\d.]+)\/(.+)/);
               if (match) {
                 const price = parseFloat(match[1]);
                 const baseLabel = match[2];
-                let baseWeight = 0.25;
+                let baseWeightParsed = 0.25;
                 if (baseLabel.endsWith('g') && !baseLabel.endsWith('kg')) {
-                  baseWeight = parseFloat(baseLabel) / 1000;
+                  baseWeightParsed = parseFloat(baseLabel) / 1000;
                 } else if (baseLabel.endsWith('Kg') || baseLabel.endsWith('kg')) {
-                  baseWeight = parseFloat(baseLabel);
+                  baseWeightParsed = parseFloat(baseLabel);
                 }
                 return {
                   ...item,
                   quotePrice: price,
-                  baseWeight: baseWeight
+                  baseWeight: baseWeightParsed
                 };
               }
             }
-            // Ensure all items have the new fields
             if (item.quotePrice === undefined) item.quotePrice = 0;
             if (item.baseWeight === undefined) item.baseWeight = 0.25;
             return item;
@@ -2181,7 +2198,6 @@
 
           stats.items.forEach((item) => {
             const row = tbody.insertRow();
-            // [REQ-03] Weight and Quote are now editable inline
             row.innerHTML = `
               <td>
                 <div class="editable-item-name" data-id="${item.id}" title="Tap to edit item name">${item.name || '(No Name)'}</div>
@@ -2297,7 +2313,6 @@
         const item = cart.find(i => i.id === itemId);
         if (!item) return;
 
-        // Build a small container with an input for the price and the fixed base weight label
         const container = document.createElement("div");
         container.className = "quote-edit-container";
         container.innerHTML = `₹<input type="text" class="quote-price-input" value="${item.quotePrice}" /> / ${formatBaseWeight(item.baseWeight)}`;
@@ -2508,7 +2523,7 @@
         Object.assign(toast.style, {
           position: "fixed",
           left: "50%",
-          bottom: "calc(41dvh + 14px)",
+          bottom: "calc(40dvh + 14px)", /* [REQ-04] Toast now sits just above the 40dvh numpad */
           transform: "translateX(-50%)",
           zIndex: "3000",
           maxWidth: "calc(100vw - 32px)",
