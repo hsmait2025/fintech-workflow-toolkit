@@ -9,6 +9,48 @@
   <!-- html2canvas CDN for High-Resolution PNG Snapshots -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+  <!--
+    ============================================================================
+    CHANGE LOG (latest first)
+    ============================================================================
+    [REQ-09] MAIN PRICE DISPLAY — LAST DIGIT NO LONGER CLIPPED, LARGER FONT
+      • Root cause of the "last digit cut off" bug:
+          The main amount uses `text-align: right` + `overflow: hidden` +
+          `letter-spacing: -0.055em`. In CSS, letter-spacing is applied AFTER
+          every character, including the last one. A NEGATIVE letter-spacing
+          therefore makes the text block's advance width smaller than the
+          visible glyphs, and the right-aligned block is then positioned so
+          the last glyph's right edge sits ~0.055em PAST the container's
+          right edge. `overflow: hidden` clips that strip, so on wide glyphs
+          like 3 or 0 the right sliver of the last digit disappears.
+      • Fix:
+          - Reduced letter-spacing to -0.04em (keeps the modern tight look).
+          - Added `padding-right: 0.1em` on .price-display so the last glyph
+            always ends comfortably inside the clip line (0.1em > 0.04em).
+      • Font size increase so the main amount is CLEARLY larger than the
+        vendor price shown under "Vendor X Price" in the header:
+          - Old: clamp(2.6rem, 11vw, 4.2rem) — on a phone ≈ 43px, barely
+            distinguishable from the header's ≈ 32px vendor price.
+          - New: clamp(3rem, 14vw, 5rem) — on a phone ≈ 55px, roughly 1.7×
+            the header amount. Weight bumped 500 → 600 for balance.
+      • Short-screen media query size bumped accordingly so compact phones
+        also get a visibly larger amount than the header.
+      • Applies to BOTH "Price" (grocery) and "Expense Amount" (expense) —
+        they share the same #displayCurrentItemPrice element.
+      • No layout proportion changes: numpad, grid rows, and screen splits
+        are untouched.
+
+    [REQ-08] PURCHASE DASHBOARD — FULL-SCREEN SHEET ON MOBILE
+    [REQ-07] EXPENSE TABLE PROPORTIONS & AMOUNT VISIBILITY FIX
+    [REQ-06] DAILY EXPENSE TRACKER (PARALLEL TRACK)
+    [REQ-05] NUMPAD REDUCED TO 30% OF SCREEN
+    [REQ-04] NUMPAD REDUCED TO 40% OF SCREEN (superseded)
+    [REQ-03] INLINE EDIT FOR WEIGHT AND QUOTE PRICE
+    [REQ-02] WEIGHT QUICK-BUTTON CLEANUP & FONT ENLARGEMENT
+    [REQ-01] WEIGHT QUICK-BUTTON SET REVISION
+    ============================================================================
+  -->
+
   <style>
     /* DARK THEME (DEFAULT) */
     :root {
@@ -39,7 +81,6 @@
 
       --page-pad: clamp(10px, 3vw, 16px);
       --key-gap: clamp(7px, 2.2vw, 10px);
-      --key-min-height: 58px;
     }
 
     /* LIGHT THEME OVERRIDES */
@@ -119,15 +160,20 @@
       background: var(--bg);
     }
 
-    /* VENDOR SWITCHER BAR - DROPDOWN */
+    /* VENDOR SWITCHER BAR + GROCERY|EXPENSE TOGGLE */
     .vendor-switcher-bar {
       padding: 8px var(--page-pad);
       background: var(--surface-2);
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .vendor-select-btn {
-      width: 100%;
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
       min-height: 42px;
       padding: 6px 14px;
       border-radius: 12px;
@@ -148,6 +194,43 @@
     .vendor-select-btn option {
       background: var(--surface);
       color: var(--text);
+    }
+
+    .mode-toggle {
+      display: flex;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+      min-height: 42px;
+    }
+
+    .mode-btn {
+      padding: 0 14px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 0;
+      min-height: 42px;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .mode-btn[data-mode="grocery"].mode-btn-active {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .mode-btn[data-mode="expense"].mode-btn-active {
+      background: var(--orange);
+      color: #000;
+    }
+
+    .mode-btn:not(.mode-btn-active):active {
+      background: var(--surface-2);
     }
 
     /* TOP BAR */
@@ -177,6 +260,8 @@
       text-transform: uppercase;
     }
 
+    /* Vendor price stays as-is; the main price display is now clearly
+       larger than this reference. */
     .vendor-quote-price {
       color: var(--blue-soft);
       font-size: clamp(2rem, 5vw, 2.3rem);
@@ -269,14 +354,23 @@
       text-align: right;
     }
 
+    /* ------------------------------------------------------------------
+       [REQ-09] MAIN PRICE DISPLAY — FIXED CLIPPING + LARGER SIZE
+       • padding-right covers the trailing negative letter-spacing so the
+         last glyph never touches the overflow clip line.
+       • Font size raised so the amount is visibly larger than the vendor
+         price in the header on every screen width.
+       ------------------------------------------------------------------ */
     .price-display {
       width: 100%;
       overflow: hidden;
       color: var(--text);
-      font-size: clamp(2.6rem, 11vw, 4.2rem);
-      font-weight: 500;
-      letter-spacing: -0.055em;
-      line-height: 0.98;
+      font-size: clamp(3rem, 14vw, 5rem);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      /* Safety buffer: 0.1em > |letter-spacing| = 0.04em */
+      padding-right: 0.1em;
+      line-height: 1;
       white-space: nowrap;
       text-overflow: ellipsis;
       font-variant-numeric: tabular-nums;
@@ -311,10 +405,16 @@
       margin-top: 10px;
     }
 
-    .base-weight-row-updated,
-    .target-weight-row-custom {
+    /* QUICK-BUTTON ROWS */
+    .base-weight-row-updated {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .target-weight-row-custom {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 7px;
     }
 
@@ -331,7 +431,7 @@
       border-radius: 12px;
       background: var(--surface-2);
       color: var(--text);
-      font-size: clamp(0.82rem, 3.2vw, 0.98rem);
+      font-size: clamp(1.05rem, 4.2vw, 1.25rem);
       font-weight: 700;
       line-height: 1;
       text-align: center;
@@ -378,13 +478,45 @@
       border-color: rgba(255, 159, 10, 0.7);
       background: rgba(255, 159, 10, 0.2);
       color: var(--orange);
+      font-size: clamp(0.9rem, 3.6vw, 1.05rem);
+      padding-left: 2px;
+      padding-right: 2px;
     }
 
-    /* KEYPAD */
-    .bottom-numpad-40 {
+    /* EXPENSE MODE */
+    .expense-selection-area {
+      flex: 0 0 auto;
+      padding-top: 8px;
+    }
+
+    .btn-add-expense {
       width: 100%;
-      height: clamp(280px, 41dvh, 370px);
-      min-height: 280px;
+      min-height: 64px;
+      border-radius: 14px;
+      background: var(--orange);
+      color: #000;
+      font-size: clamp(1.05rem, 4.2vw, 1.25rem);
+      font-weight: 750;
+      cursor: pointer;
+      border: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-add-expense:active {
+      transform: scale(0.98);
+      background: #ffb340;
+    }
+
+    /* SHARED NUMPAD WRAPPER — EXACTLY 30% OF VIEWPORT HEIGHT */
+    .bottom-numpad-30 {
+      width: 100%;
+      height: 30dvh;
+      min-height: 0;
+      max-height: none;
       flex-shrink: 0;
       padding: 8px var(--page-pad) max(10px, var(--safe-bottom));
       display: flex;
@@ -399,13 +531,13 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-template-rows: repeat(4, minmax(var(--key-min-height), 1fr));
+      grid-template-rows: repeat(4, minmax(0, 1fr));
       gap: var(--key-gap);
     }
 
     .key {
       min-width: 0;
-      min-height: var(--key-min-height);
+      min-height: 0;
       padding: 0;
       display: flex;
       align-items: center;
@@ -541,7 +673,7 @@
       transform: scale(0.97);
     }
 
-    /* VIEW 3: ISOLATED CALCULATOR SCREEN */
+    /* CALCULATOR SCREEN */
     #calculatorView {
       display: none;
       grid-template-rows: auto minmax(0, 1fr) auto;
@@ -697,6 +829,50 @@
       overflow-y: auto;
     }
 
+    /* PURCHASE DASHBOARD — FULL-SCREEN SHEET ON PHONES */
+    #cartModal {
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    #cartModal .modal-content {
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      border: 0;
+      box-shadow: none;
+      padding:
+        max(14px, var(--safe-top))
+        max(14px, var(--safe-right))
+        max(14px, var(--safe-bottom))
+        max(14px, var(--safe-left));
+    }
+
+    @media (min-width: 600px) {
+      #cartModal {
+        padding:
+          max(14px, var(--safe-top))
+          max(14px, var(--safe-right))
+          max(14px, var(--safe-bottom))
+          max(14px, var(--safe-left));
+        align-items: center;
+        justify-content: center;
+      }
+
+      #cartModal .modal-content {
+        width: min(100%, 560px);
+        height: auto;
+        max-height: min(90dvh, 900px);
+        border-radius: 22px;
+        border: 1px solid var(--border);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 16px;
+      }
+    }
+
     /* NAME PROMPT MODAL STYLES */
     .name-input-field {
       width: 100%;
@@ -821,7 +997,12 @@
       color: var(--green);
     }
 
-    /* CART ITEMS TABLE */
+    .dashboard-table tr.expense-row {
+      color: var(--orange);
+      font-weight: 650;
+    }
+
+    /* SECTION HEADERS */
     .vendor-section-header {
       padding: 8px 6px;
       background: var(--surface-2);
@@ -832,6 +1013,17 @@
       margin-top: 10px;
     }
 
+    .expense-section-header {
+      padding: 8px 6px;
+      background: var(--surface-2);
+      color: var(--orange);
+      font-weight: 700;
+      font-size: 0.88rem;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    /* CART ITEMS TABLE */
     .cart-table {
       width: 100%;
       border-collapse: collapse;
@@ -859,31 +1051,108 @@
       overflow-wrap: anywhere;
     }
 
-    .cart-table th:nth-child(1),
-    .cart-table td:nth-child(1) {
+    /* Grocery table column widths (5 columns) */
+    .cart-table:not(.expense-table) th:nth-child(1),
+    .cart-table:not(.expense-table) td:nth-child(1) {
       width: 25%;
       text-align: left;
       padding-left: 6px;
     }
+    .cart-table:not(.expense-table) th:nth-child(2),
+    .cart-table:not(.expense-table) td:nth-child(2) { width: 18%; }
+    .cart-table:not(.expense-table) th:nth-child(3),
+    .cart-table:not(.expense-table) td:nth-child(3) { width: 23%; }
+    .cart-table:not(.expense-table) th:nth-child(4),
+    .cart-table:not(.expense-table) td:nth-child(4) { width: 22%; }
+    .cart-table:not(.expense-table) th:nth-child(5),
+    .cart-table:not(.expense-table) td:nth-child(5) { width: 12%; }
 
-    .cart-table th:nth-child(2),
-    .cart-table td:nth-child(2) {
-      width: 18%;
+    /* Expense table: Item 55% | Amount 30% | Remove 15% */
+    .cart-table.expense-table {
+      table-layout: fixed;
     }
 
-    .cart-table th:nth-child(3),
-    .cart-table td:nth-child(3) {
-      width: 23%;
+    .cart-table.expense-table th:nth-child(1),
+    .cart-table.expense-table td:nth-child(1) {
+      width: 55%;
+      text-align: left;
+      padding-left: 6px;
+      overflow: hidden;
     }
 
-    .cart-table th:nth-child(4),
-    .cart-table td:nth-child(4) {
-      width: 22%;
+    .cart-table.expense-table th:nth-child(2),
+    .cart-table.expense-table td:nth-child(2) {
+      width: 30%;
+      text-align: center;
+      padding: 10px 2px;
     }
 
-    .cart-table th:nth-child(5),
-    .cart-table td:nth-child(5) {
-      width: 12%;
+    .cart-table.expense-table th:nth-child(3),
+    .cart-table.expense-table td:nth-child(3) {
+      width: 15%;
+      text-align: center;
+    }
+
+    /* INLINE EDITABLE STYLES */
+    .editable-item-name,
+    .editable-weight,
+    .editable-quote,
+    .editable-amount {
+      display: inline-block;
+      width: 100%;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px dashed var(--border);
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .editable-item-name:hover,
+    .editable-weight:hover,
+    .editable-quote:hover,
+    .editable-amount:hover {
+      border-color: var(--blue);
+    }
+
+    .editable-amount {
+      text-align: center;
+      text-overflow: clip;
+    }
+
+    .item-name-input,
+    .item-weight-input,
+    .quote-price-input,
+    .item-amount-input {
+      width: 100%;
+      min-width: 0;
+      padding: 4px 6px;
+      font-size: inherit;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .item-amount-input {
+      text-align: center;
+    }
+
+    .quote-edit-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: inherit;
+    }
+
+    .quote-price-input {
+      width: 55px;
+      text-align: center;
     }
 
     .remove-item-btn {
@@ -947,45 +1216,30 @@
     }
 
     @media (max-height: 650px) {
-      :root {
-        --key-min-height: 50px;
-      }
-
-      .bottom-numpad-40 {
-        height: 260px;
-        min-height: 260px;
-      }
-
       .top-window-60 {
         padding-top: 6px;
         padding-bottom: 6px;
         gap: 6px;
       }
-
-      .display-section {
-        min-height: 75px;
-      }
-
-      .price-display {
-        font-size: clamp(2.4rem, 10vw, 3.6rem);
-      }
-
+      .display-section { min-height: 75px; }
+      /* [REQ-09] Still larger than the header's vendor price, just tuned
+         for compact heights. */
+      .price-display { font-size: clamp(2.6rem, 12vw, 4rem); }
       .weight-btn,
       .base-dropdown-select,
       .chip-dropdown-select {
         min-height: 38px;
         padding-top: 4px;
         padding-bottom: 4px;
+        font-size: clamp(0.95rem, 3.8vw, 1.1rem);
       }
-
-      .selector-group + .selector-group {
-        margin-top: 4px;
-      }
+      .custom-inline-btn { font-size: clamp(0.82rem, 3.2vw, 0.95rem); }
+      .selector-group + .selector-group { margin-top: 4px; }
     }
 
     @media (min-width: 500px) {
       .top-window-60,
-      .bottom-numpad-40,
+      .bottom-numpad-30,
       .calc-display-container {
         padding-left: max(20px, var(--page-pad));
         padding-right: max(20px, var(--page-pad));
@@ -999,7 +1253,6 @@
   <!-- VIEW 1: HOME MAIN POS SCREEN -->
   <div class="view-container" id="homeView">
 
-    <!-- VENDOR SWITCHER DROPDOWN BAR -->
     <nav class="vendor-switcher-bar">
       <select class="vendor-select-btn" id="vendorSelectDropdown" aria-label="Select Vendor">
         <option value="1" selected>Vendor 1</option>
@@ -1009,6 +1262,11 @@
         <option value="5">Vendor 5</option>
         <option value="6">Vendor 6</option>
       </select>
+
+      <div class="mode-toggle" role="group" aria-label="Entry mode">
+        <button class="mode-btn mode-btn-active" data-mode="grocery" id="groceryModeBtn" type="button">Grocery</button>
+        <button class="mode-btn" data-mode="expense" id="expenseModeBtn" type="button">Expense</button>
+      </div>
     </nav>
 
     <header class="top-cart-bar" id="topHeader">
@@ -1017,7 +1275,7 @@
         <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
       </div>
 
-      <button class="view-cart-btn" id="openCartBtn" type="button" aria-label="Open shopping cart">
+      <button class="view-cart-btn" id="openCartBtn" type="button" aria-label="Open purchase dashboard">
         <span class="cart-btn-title" id="cartBtnTitle">Vendor 1 (0) · ₹0.00</span>
         <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
       </button>
@@ -1026,7 +1284,7 @@
     <main class="top-window-60" id="homeDisplayContainer">
 
       <section class="display-section">
-        <div class="section-label">Price</div>
+        <div class="section-label" id="displaySectionLabel">Price</div>
 
         <div class="main-display">
           <div class="price-display" id="displayCurrentItemPrice">₹0</div>
@@ -1037,20 +1295,15 @@
         </div>
       </section>
 
-      <section class="selection-area">
+      <section class="selection-area" id="grocerySelectionArea">
 
         <div class="selector-group">
           <div class="section-label">Quote Base Weight</div>
 
           <div class="base-weight-row-updated" id="baseWeightRow">
             <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
+            <div class="weight-btn base-btn" data-weight="0.5">1/2kg</div>
             <div class="weight-btn base-btn" data-weight="1">1Kg</div>
-            <select class="base-dropdown-select" id="baseWeightDropdown" aria-label="Select alternate base weight">
-              <option value="" disabled selected hidden>More...</option>
-              <option value="0.1">100g</option>
-              <option value="0.5">500g</option>
-              <option value="0.75">750g</option>
-            </select>
           </div>
         </div>
 
@@ -1058,19 +1311,22 @@
           <div class="section-label">Buying Weight</div>
 
           <div class="target-weight-row-custom" id="targetWeightRow">
-            <div class="weight-btn target-btn" data-weight="0.1">100g</div>
             <div class="weight-btn target-btn" data-weight="0.25">250g</div>
-            <div class="weight-btn target-btn" data-weight="0.5">500g</div>
-            <div class="weight-btn target-btn" data-weight="0.75">750g</div>
+            <div class="weight-btn target-btn" data-weight="0.5">1/2kg</div>
             <div class="weight-btn target-btn" data-weight="1">1Kg</div>
             <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom/🟰</div>
           </div>
         </div>
 
       </section>
+
+      <section class="expense-selection-area" id="expenseSelectionArea" style="display: none;">
+        <button class="btn-add-expense" id="addExpenseBtn" type="button">+ Add Expense</button>
+      </section>
+
     </main>
 
-    <section class="bottom-numpad-40" aria-label="Number keypad">
+    <section class="bottom-numpad-30" aria-label="Number keypad">
       <div class="keypad-container" id="homeKeypad">
         <button class="key num-key" type="button">7</button>
         <button class="key num-key" type="button">8</button>
@@ -1110,7 +1366,7 @@
 
     </section>
 
-    <section class="bottom-numpad-40" aria-label="Custom weight keypad">
+    <section class="bottom-numpad-30" aria-label="Custom weight keypad">
       <div class="keypad-container" id="customKeypad">
         <button class="key c-num-key" type="button">7</button>
         <button class="key c-num-key" type="button">8</button>
@@ -1144,7 +1400,7 @@
       <div class="calc-main-display" id="calcMainDisplay">0</div>
     </section>
 
-    <section class="bottom-numpad-40" aria-label="Calculator keypad">
+    <section class="bottom-numpad-30" aria-label="Calculator keypad">
       <div class="calc-keypad-container" id="calcKeypad">
         <button class="key calc-action-clear" id="calcClearBtn" type="button">C</button>
         <button class="key op-key" data-op="%" type="button">%</button>
@@ -1175,7 +1431,7 @@
   </div>
 
 
-  <!-- QUICK-NAME PROMPT MODAL -->
+  <!-- QUICK-NAME PROMPT MODAL (dual chip sets) -->
   <div class="modal" id="itemNameModal" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="cart-title">Item Name (Optional)</div>
@@ -1219,6 +1475,24 @@
         </select>
       </div>
 
+      <div class="quick-chips-row" id="expenseChipsContainer" style="display: none;">
+        <button class="chip-btn" type="button" data-name="Cab">Cab</button>
+        <button class="chip-btn" type="button" data-name="Auto">Auto</button>
+        <button class="chip-btn" type="button" data-name="Food">Food</button>
+
+        <select class="chip-dropdown-select" id="moreExpenseDropdown" aria-label="More expense categories">
+          <option value="" disabled selected hidden>More...</option>
+          <option value="Stationery">Stationery</option>
+          <option value="Cosmetics">Cosmetics</option>
+          <option value="Medicine">Medicine</option>
+          <option value="Snacks">Snacks</option>
+          <option value="Tea/Coffee">Tea/Coffee</option>
+          <option value="Parking">Parking</option>
+          <option value="Toll">Toll</option>
+          <option value="Misc">Misc</option>
+        </select>
+      </div>
+
       <div class="modal-action-row">
         <button class="btn-cancel" id="skipItemNameBtn" type="button">Skip</button>
         <button class="btn-add-cart" id="confirmItemNameBtn" type="button">Add</button>
@@ -1238,7 +1512,6 @@
 
       <div class="cart-scroll-container">
 
-        <!-- DASHBOARD SUMMARY TABLE -->
         <div class="dashboard-container">
           <div class="dashboard-title">Vendor Summary Dashboard</div>
           <table class="dashboard-table">
@@ -1256,10 +1529,8 @@
           </table>
         </div>
 
-        <!-- ITEMIZED LIST TABLE GROUPED BY VENDOR -->
-        <div id="vendorCartList">
-          <!-- Dynamically populated -->
-        </div>
+        <div id="vendorCartList"></div>
+        <div id="expenseListContainer"></div>
 
         <div class="cart-empty" id="cartEmptyMessage">
           Your cart is empty.
@@ -1281,14 +1552,16 @@
     const STORAGE_KEY = "grocery_calc_pos_data_v1";
 
     /* CORE STATE */
+    let appMode = "grocery";
     let activeVendor = 1;
     let priceInput = "";
     let customWeightInput = "";
     let baseWeight = 0.25;
     let pendingTargetWeight = null;
+    let pendingExpenseAmount = null;
     let itemCounter = 1;
     let isLightTheme = false;
-    let cart = []; // Each item: { id, vendorId, name, weight, quote, price }
+    let cart = [];
 
     /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
@@ -1297,9 +1570,16 @@
 
     const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
     const displayMathFormula = document.getElementById("displayMathFormula");
+    const displaySectionLabel = document.getElementById("displaySectionLabel");
     const headerVendorQuote = document.getElementById("headerVendorQuote");
     const vendorQuoteLabel = document.getElementById("vendorQuoteLabel");
     const vendorSelectDropdown = document.getElementById("vendorSelectDropdown");
+
+    const groceryModeBtn = document.getElementById("groceryModeBtn");
+    const expenseModeBtn = document.getElementById("expenseModeBtn");
+    const grocerySelectionArea = document.getElementById("grocerySelectionArea");
+    const expenseSelectionArea = document.getElementById("expenseSelectionArea");
+    const addExpenseBtn = document.getElementById("addExpenseBtn");
 
     const homeKeypad = document.getElementById("homeKeypad");
     const keyFive = document.getElementById("keyFive");
@@ -1308,7 +1588,6 @@
 
     const openCustomWtBtn = document.getElementById("openCustomWtBtn");
     const baseWeightRow = document.getElementById("baseWeightRow");
-    const baseWeightDropdown = document.getElementById("baseWeightDropdown");
     const targetWeightRow = document.getElementById("targetWeightRow");
 
     const customDisplay = document.getElementById("customDisplay");
@@ -1337,11 +1616,14 @@
     const cartEmptyMessage = document.getElementById("cartEmptyMessage");
     const dashboardTableBody = document.getElementById("dashboardTableBody");
     const vendorCartList = document.getElementById("vendorCartList");
+    const expenseListContainer = document.getElementById("expenseListContainer");
 
     const itemNameModal = document.getElementById("itemNameModal");
     const itemNameInput = document.getElementById("itemNameInput");
     const quickChipsContainer = document.getElementById("quickChipsContainer");
+    const expenseChipsContainer = document.getElementById("expenseChipsContainer");
     const moreItemsDropdown = document.getElementById("moreItemsDropdown");
+    const moreExpenseDropdown = document.getElementById("moreExpenseDropdown");
     const skipItemNameBtn = document.getElementById("skipItemNameBtn");
     const confirmItemNameBtn = document.getElementById("confirmItemNameBtn");
 
@@ -1371,12 +1653,38 @@
         }
 
         const data = JSON.parse(raw);
-        if (Array.isArray(data.cart)) cart = data.cart;
+        if (Array.isArray(data.cart)) {
+          cart = data.cart.map(item => {
+            if (item.isExpense) return item;
+
+            if (item.quotePrice === undefined && item.quote) {
+              const match = item.quote.match(/₹([\d.]+)\/(.+)/);
+              if (match) {
+                const price = parseFloat(match[1]);
+                const baseLabel = match[2];
+                let baseWeightParsed = 0.25;
+                if (baseLabel.endsWith('g') && !baseLabel.endsWith('kg')) {
+                  baseWeightParsed = parseFloat(baseLabel) / 1000;
+                } else if (baseLabel.endsWith('Kg') || baseLabel.endsWith('kg')) {
+                  baseWeightParsed = parseFloat(baseLabel);
+                }
+                return { ...item, quotePrice: price, baseWeight: baseWeightParsed };
+              }
+            }
+            if (item.quotePrice === undefined) item.quotePrice = 0;
+            if (item.baseWeight === undefined) item.baseWeight = 0.25;
+            return item;
+          });
+        }
         if (typeof data.itemCounter === "number") itemCounter = data.itemCounter;
         if (typeof data.activeVendor === "number") activeVendor = data.activeVendor;
         if (typeof data.baseWeight === "number") baseWeight = data.baseWeight;
         if (typeof data.priceInput === "string") priceInput = data.priceInput;
         if (typeof data.isLightTheme === "boolean") isLightTheme = data.isLightTheme;
+
+        if (![0.25, 0.5, 1].includes(baseWeight)) {
+          baseWeight = 0.25;
+        }
 
         applyTheme();
 
@@ -1436,7 +1744,7 @@
     keyFive.addEventListener("pointerleave", cancelPress);
     keyFive.addEventListener("pointercancel", cancelPress);
 
-    /* LONG PRESS LOGIC ON "CUSTOM" BUTTON TO LAUNCH CALCULATOR */
+    /* LONG PRESS ON CUSTOM BUTTON → CALCULATOR */
     let customPressTimer = null;
     let isCustomLongPress = false;
 
@@ -1467,38 +1775,68 @@
           b.classList.add("base-selected");
         }
       });
-
-      let foundInDropdown = false;
-      Array.from(baseWeightDropdown.options).forEach((opt) => {
-        if (parseFloat(opt.value) === baseWeight) {
-          foundInDropdown = true;
-        }
-      });
-
-      if (foundInDropdown) {
-        baseWeightDropdown.value = baseWeight.toString();
-        baseWeightDropdown.classList.add("base-selected");
-      } else {
-        baseWeightDropdown.selectedIndex = 0;
-        baseWeightDropdown.classList.remove("base-selected");
-      }
     }
 
     /* DISPLAY HELPERS */
     function formatWeight(weightKg) {
-      if (weightKg < 1) {
-        return `${Math.round(weightKg * 1000)}g`;
-      }
+      if (weightKg < 1) return `${Math.round(weightKg * 1000)}g`;
       return `${weightKg.toFixed(2)}Kg`;
     }
 
     function formatBaseWeight(weightKg) {
-      return weightKg >= 1
-        ? `${weightKg}Kg`
-        : `${Math.round(weightKg * 1000)}g`;
+      return weightKg >= 1 ? `${weightKg}Kg` : `${Math.round(weightKg * 1000)}g`;
     }
 
-    /* VENDOR SWITCHING VIA DROPDOWN */
+    function formatWeightForEdit(weightKg) {
+      if (weightKg < 1) return `${Math.round(weightKg * 1000)}g`;
+      return `${parseFloat(weightKg.toFixed(2))}Kg`;
+    }
+
+    function parseWeightInput(str) {
+      str = str.trim().toLowerCase();
+      if (!str) return null;
+
+      if (str.endsWith('g') && !str.endsWith('kg')) {
+        const num = parseFloat(str.slice(0, -1));
+        if (isNaN(num)) return null;
+        return num / 1000;
+      }
+      if (str.endsWith('kg')) {
+        const num = parseFloat(str.slice(0, -2));
+        if (isNaN(num)) return null;
+        return num;
+      }
+      const num = parseFloat(str);
+      if (isNaN(num)) return null;
+      return num >= 10 ? num / 1000 : num;
+    }
+
+    /* MODE TOGGLE */
+    function setAppMode(mode) {
+      appMode = mode;
+
+      if (mode === "grocery") {
+        groceryModeBtn.classList.add("mode-btn-active");
+        expenseModeBtn.classList.remove("mode-btn-active");
+        grocerySelectionArea.style.display = "";
+        expenseSelectionArea.style.display = "none";
+        displaySectionLabel.textContent = "Price";
+      } else {
+        expenseModeBtn.classList.add("mode-btn-active");
+        groceryModeBtn.classList.remove("mode-btn-active");
+        grocerySelectionArea.style.display = "none";
+        expenseSelectionArea.style.display = "";
+        displaySectionLabel.textContent = "Expense Amount";
+      }
+
+      updateHomeDisplay();
+      renderCart();
+    }
+
+    groceryModeBtn.addEventListener("click", () => setAppMode("grocery"));
+    expenseModeBtn.addEventListener("click", () => setAppMode("expense"));
+
+    /* VENDOR SWITCH */
     vendorSelectDropdown.addEventListener("change", (e) => {
       activeVendor = parseInt(e.target.value, 10);
       vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
@@ -1515,17 +1853,30 @@
     });
 
     function updateHomeDisplay() {
-      vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
-      headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
+      if (appMode === "grocery") {
+        vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
+        headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
 
-      if (priceInput && parseFloat(priceInput) > 0) {
-        const val = parseFloat(priceInput);
-        const bLabel = formatBaseWeight(baseWeight);
-        displayCurrentItemPrice.textContent = `₹${val}`;
-        displayCurrentItemPrice.classList.add("has-input");
-        displayMathFormula.textContent = `(₹${val} ÷ ${bLabel}) × Target Wt`;
-      } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
-        displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
+        if (priceInput && parseFloat(priceInput) > 0) {
+          const val = parseFloat(priceInput);
+          const bLabel = formatBaseWeight(baseWeight);
+          displayCurrentItemPrice.textContent = `₹${val}`;
+          displayCurrentItemPrice.classList.add("has-input");
+          displayMathFormula.textContent = `(₹${val} ÷ ${bLabel}) × Target Wt`;
+        } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
+          displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
+        }
+      } else {
+        vendorQuoteLabel.textContent = `Daily Expense Amount`;
+        headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
+
+        if (priceInput && parseFloat(priceInput) > 0) {
+          displayCurrentItemPrice.textContent = `₹${priceInput}`;
+          displayCurrentItemPrice.classList.add("has-input");
+          displayMathFormula.textContent = `Tap "+ Add Expense" to record`;
+        } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
+          displayMathFormula.textContent = `Enter amount, then tap "+ Add Expense"`;
+        }
       }
     }
 
@@ -1540,7 +1891,7 @@
       if (!key || !homeKeypad.contains(key)) return;
 
       const rawVal = key.textContent.trim();
-      const val = rawVal.charAt(0); // Extracts digits (e.g., '5' from '5☼' or '5☀︎')
+      const val = rawVal.charAt(0);
 
       if (priceInput === "0" && val === "0") return;
       if (priceInput === "0" && val !== "0") {
@@ -1580,27 +1931,13 @@
       if (!button || !baseWeightRow.contains(button)) return;
 
       document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
-      baseWeightDropdown.classList.remove("base-selected");
-      baseWeightDropdown.selectedIndex = 0;
-
       button.classList.add("base-selected");
       baseWeight = parseFloat(button.dataset.weight);
       updateHomeDisplay();
       saveStateToStorage();
     });
 
-    baseWeightDropdown.addEventListener("change", (e) => {
-      const selectedVal = parseFloat(e.target.value);
-      if (isNaN(selectedVal)) return;
-
-      document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
-      baseWeightDropdown.classList.add("base-selected");
-      baseWeight = selectedVal;
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    /* TARGET WEIGHT & PROMPT INTERCEPT */
+    /* GROCERY TARGET WEIGHT */
     targetWeightRow.addEventListener("click", (e) => {
       const button = e.target.closest(".target-btn");
       if (!button || !targetWeightRow.contains(button)) return;
@@ -1615,11 +1952,33 @@
       promptItemName();
     });
 
-    /* NAME PROMPT MODAL LOGIC */
+    /* ADD EXPENSE */
+    addExpenseBtn.addEventListener("click", () => {
+      const amountVal = parseFloat(priceInput);
+      if (isNaN(amountVal) || amountVal <= 0) {
+        showTemporaryMessage("Enter an amount first.");
+        return;
+      }
+
+      pendingExpenseAmount = amountVal;
+      promptItemName();
+    });
+
+    /* NAME PROMPT MODAL */
     function promptItemName() {
       itemNameInput.value = "";
       itemNameInput.readOnly = true;
-      moreItemsDropdown.selectedIndex = 0;
+
+      if (appMode === "grocery") {
+        quickChipsContainer.style.display = "grid";
+        expenseChipsContainer.style.display = "none";
+        moreItemsDropdown.selectedIndex = 0;
+      } else {
+        quickChipsContainer.style.display = "none";
+        expenseChipsContainer.style.display = "grid";
+        moreExpenseDropdown.selectedIndex = 0;
+      }
+
       itemNameModal.style.display = "flex";
     }
 
@@ -1638,6 +1997,13 @@
       itemNameInput.value = chip.dataset.name;
     });
 
+    expenseChipsContainer.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip-btn");
+      if (!chip) return;
+      itemNameInput.readOnly = true;
+      itemNameInput.value = chip.dataset.name;
+    });
+
     moreItemsDropdown.addEventListener("change", (e) => {
       if (e.target.value) {
         itemNameInput.readOnly = true;
@@ -1645,25 +2011,29 @@
       }
     });
 
-    skipItemNameBtn.addEventListener("click", () => {
-      finalizeAddToCart("");
+    moreExpenseDropdown.addEventListener("change", (e) => {
+      if (e.target.value) {
+        itemNameInput.readOnly = true;
+        itemNameInput.value = e.target.value;
+      }
     });
 
-    confirmItemNameBtn.addEventListener("click", () => {
-      finalizeAddToCart(itemNameInput.value.trim());
-    });
+    skipItemNameBtn.addEventListener("click", () => finalizeAddToCart(""));
+    confirmItemNameBtn.addEventListener("click", () => finalizeAddToCart(itemNameInput.value.trim()));
 
     itemNameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        finalizeAddToCart(itemNameInput.value.trim());
-      }
+      if (e.key === "Enter") finalizeAddToCart(itemNameInput.value.trim());
     });
 
     function finalizeAddToCart(nameVal) {
       itemNameModal.style.display = "none";
+
       if (pendingTargetWeight !== null) {
         processAddToCart(pendingTargetWeight, nameVal);
         pendingTargetWeight = null;
+      } else if (pendingExpenseAmount !== null) {
+        processAddExpense(pendingExpenseAmount, nameVal);
+        pendingExpenseAmount = null;
       }
     }
 
@@ -1710,7 +2080,6 @@
         updateCustomDisplay();
         return;
       }
-
       if (customWeightInput.length >= 6) return;
 
       customWeightInput += val;
@@ -1728,21 +2097,17 @@
         customSubDisplay.textContent = "Equivalent: 0g";
         return;
       }
-
       if (customWeightInput === ".") {
         customDisplay.textContent = "0. Kg";
         customSubDisplay.textContent = "Equivalent: 0g";
         return;
       }
-
       customDisplay.textContent = `${customWeightInput} Kg`;
       const numericVal = parseFloat(customWeightInput);
-
       if (isNaN(numericVal)) {
         customSubDisplay.textContent = "Equivalent: 0g";
         return;
       }
-
       const calculatedGrams = Math.round(numericVal * 1000);
       customSubDisplay.textContent = `Equivalent: ${calculatedGrams}g`;
     }
@@ -1753,14 +2118,13 @@
         showTemporaryMessage("Type a valid weight.");
         return;
       }
-
       pendingTargetWeight = finalWeightInKg;
       customWeightView.style.display = "none";
       homeView.style.display = "grid";
       promptItemName();
     });
 
-    /* ISOLATED EXPRESSION-BASED CALCULATOR LOGIC */
+    /* CALCULATOR */
     let calcExpression = "";
     let isCalculated = false;
 
@@ -1784,17 +2148,15 @@
 
     function updateCalcDisplay() {
       calcHistoryDisplay.textContent = calcExpression;
-      
       if (!calcExpression) {
         calcMainDisplay.textContent = "0";
         return;
       }
-
       calcHistoryDisplay.scrollLeft = calcHistoryDisplay.scrollWidth;
 
       const tokens = calcExpression.split(/[\+\-\×\÷]/);
       const currentToken = tokens[tokens.length - 1];
-      
+
       if (currentToken === "" && calcExpression.length > 0) {
         const lastChar = calcExpression.slice(-1);
         calcMainDisplay.textContent = isOperators(lastChar) ? lastChar : "0";
@@ -1850,7 +2212,6 @@
 
         if (op === "%") {
           if (!calcExpression) return;
-
           if (isCalculated) {
             let val = parseFloat(calcMainDisplay.textContent);
             if (!isNaN(val)) {
@@ -1860,7 +2221,6 @@
             }
             return;
           }
-
           const lastChar = calcExpression.slice(-1);
           if (!isOperators(lastChar) && lastChar !== "%") {
             calcExpression += "%";
@@ -1905,9 +2265,7 @@
       updateCalcDisplay();
     });
 
-    calcClearBtn.addEventListener("click", () => {
-      resetCalculator();
-    });
+    calcClearBtn.addEventListener("click", resetCalculator);
 
     calcEqualsBtn.addEventListener("click", () => {
       if (!calcExpression) return;
@@ -1916,9 +2274,7 @@
       while (expr.length > 0 && isOperators(expr.slice(-1))) {
         expr = expr.slice(0, -1);
       }
-
       if (!expr) return;
-
       calcExpression = expr;
 
       try {
@@ -1940,7 +2296,7 @@
       }
     });
 
-    /* CART CALCULATION */
+    /* GROCERY ADD TO CART */
     function processAddToCart(targetWeight, customName = "") {
       const priceVal = parseFloat(priceInput);
       if (isNaN(priceVal) || priceVal <= 0) {
@@ -1957,7 +2313,8 @@
         vendorId: activeVendor,
         name: customName || `Item #${itemCounter - 1}`,
         weight: targetWeight,
-        quote: `₹${priceVal}/${baseLabel}`,
+        baseWeight: baseWeight,
+        quotePrice: priceVal,
         price: parseFloat(calculatedPrice)
       };
 
@@ -1978,27 +2335,72 @@
       return true;
     }
 
+    /* EXPENSE ADD TO CART */
+    function processAddExpense(amount, customName = "") {
+      if (isNaN(amount) || amount <= 0) {
+        showTemporaryMessage("Enter a valid amount.");
+        return false;
+      }
+
+      const newItem = {
+        id: itemCounter++,
+        isExpense: true,
+        name: customName || `Expense #${itemCounter - 1}`,
+        amount: parseFloat(amount.toFixed(2))
+      };
+
+      cart.push(newItem);
+
+      displayCurrentItemPrice.textContent = `₹${newItem.amount.toFixed(2)}`;
+      displayCurrentItemPrice.classList.add("has-input");
+      displayMathFormula.textContent = `Recorded: ${newItem.name} — ₹${newItem.amount.toFixed(2)}`;
+
+      renderCart();
+
+      priceInput = "";
+      headerVendorQuote.textContent = "₹0";
+
+      saveStateToStorage();
+      return true;
+    }
+
     /* CART & DASHBOARD RENDERING */
     function renderCart() {
       dashboardTableBody.innerHTML = "";
       vendorCartList.innerHTML = "";
+      expenseListContainer.innerHTML = "";
 
-      let overallPrice = 0;
-      let overallWeight = 0;
+      let groceryTotal = 0;
+      let groceryWeight = 0;
+      let expenseTotal = 0;
+      let groceryCount = 0;
+      let expenseCount = 0;
 
       const vendorStats = {};
       for (let v = 1; v <= 6; v++) {
         vendorStats[v] = { items: [], totalWeight: 0, totalPrice: 0 };
       }
 
+      const expenseItems = [];
+
       cart.forEach((item) => {
-        overallPrice += item.price;
-        overallWeight += item.weight;
-        vendorStats[item.vendorId].items.push(item);
-        vendorStats[item.vendorId].totalWeight += item.weight;
-        vendorStats[item.vendorId].totalPrice += item.price;
+        if (item.isExpense) {
+          expenseTotal += item.amount;
+          expenseCount++;
+          expenseItems.push(item);
+        } else {
+          groceryTotal += item.price;
+          groceryWeight += item.weight;
+          groceryCount++;
+          vendorStats[item.vendorId].items.push(item);
+          vendorStats[item.vendorId].totalWeight += item.weight;
+          vendorStats[item.vendorId].totalPrice += item.price;
+        }
       });
 
+      const grandTotal = groceryTotal + expenseTotal;
+
+      /* Dashboard summary rows */
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -2013,18 +2415,31 @@
         }
       }
 
+      if (expenseCount > 0) {
+        const row = document.createElement("tr");
+        row.className = "expense-row";
+        row.innerHTML = `
+          <td>Daily Expenses</td>
+          <td style="text-align: center;">${expenseCount}</td>
+          <td style="text-align: center;">—</td>
+          <td style="text-align: right;">₹${expenseTotal.toFixed(2)}</td>
+        `;
+        dashboardTableBody.appendChild(row);
+      }
+
       if (cart.length > 0) {
         const totalRow = document.createElement("tr");
         totalRow.className = "total-row";
         totalRow.innerHTML = `
           <td>TOTAL</td>
           <td style="text-align: center;">${cart.length}</td>
-          <td style="text-align: center;">${overallWeight.toFixed(2)} Kg</td>
-          <td style="text-align: right;">₹${overallPrice.toFixed(2)}</td>
+          <td style="text-align: center;">${groceryWeight.toFixed(2)} Kg</td>
+          <td style="text-align: right;">₹${grandTotal.toFixed(2)}</td>
         `;
         dashboardTableBody.appendChild(totalRow);
       }
 
+      /* Itemized grocery list grouped by vendor */
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -2053,9 +2468,15 @@
           stats.items.forEach((item) => {
             const row = tbody.insertRow();
             row.innerHTML = `
-              <td>${item.name}</td>
-              <td>${formatWeight(item.weight)}</td>
-              <td>${item.quote}</td>
+              <td>
+                <div class="editable-item-name" data-id="${item.id}" title="Tap to edit item name">${item.name || '(No Name)'}</div>
+              </td>
+              <td>
+                <div class="editable-weight" data-id="${item.id}" title="Tap to edit weight">${formatWeight(item.weight)}</div>
+              </td>
+              <td>
+                <div class="editable-quote" data-id="${item.id}" title="Tap to edit quote price">₹${item.quotePrice}/${formatBaseWeight(item.baseWeight)}</div>
+              </td>
               <td>₹${item.price.toFixed(2)}</td>
               <td class="no-pdf">
                 <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove item">×</button>
@@ -2067,9 +2488,55 @@
         }
       }
 
-      const activeStats = vendorStats[activeVendor];
-      cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
-      cartBtnSub.textContent = `Total: ${activeStats.totalWeight.toFixed(2)} Kg`;
+      /* Itemized Daily Expenses list */
+      if (expenseItems.length > 0) {
+        const sectionHeader = document.createElement("div");
+        sectionHeader.className = "expense-section-header";
+        sectionHeader.textContent = `Daily Expenses (${expenseItems.length} items · ₹${expenseTotal.toFixed(2)})`;
+        expenseListContainer.appendChild(sectionHeader);
+
+        const table = document.createElement("table");
+        table.className = "cart-table expense-table";
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Amount</th>
+              <th class="no-pdf"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector("tbody");
+
+        expenseItems.forEach((item) => {
+          const row = tbody.insertRow();
+          row.innerHTML = `
+            <td>
+              <div class="editable-item-name" data-id="${item.id}" title="Tap to edit name">${item.name || '(No Name)'}</div>
+            </td>
+            <td>
+              <div class="editable-amount" data-id="${item.id}" title="Tap to edit amount">₹${item.amount.toFixed(2)}</div>
+            </td>
+            <td class="no-pdf">
+              <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove expense">×</button>
+            </td>
+          `;
+        });
+
+        expenseListContainer.appendChild(table);
+      }
+
+      /* Cart button label per mode */
+      if (appMode === "grocery") {
+        const activeStats = vendorStats[activeVendor];
+        cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
+        cartBtnSub.textContent = `Total: ${activeStats.totalWeight.toFixed(2)} Kg`;
+      } else {
+        cartBtnTitle.textContent = `Expenses (${expenseCount}) · ₹${expenseTotal.toFixed(2)}`;
+        cartBtnSub.textContent = `Daily: ₹${expenseTotal.toFixed(2)}`;
+      }
 
       cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
       cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
@@ -2081,28 +2548,152 @@
       }
     }
 
-    /* CART ITEM DELETION */
-    vendorCartList.addEventListener("click", (e) => {
+    /* INLINE EDITING & REMOVAL */
+    function handleListClick(e) {
+      // --- 1. EDIT NAME ---
+      const editableDiv = e.target.closest(".editable-item-name");
+      if (editableDiv) {
+        const itemId = parseInt(editableDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "item-name-input";
+        input.value = item.name;
+
+        editableDiv.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveInlineEdit = () => {
+          const newName = input.value.trim();
+          item.name = newName || `Item #${item.id}`;
+          saveStateToStorage();
+          renderCart();
+        };
+        input.addEventListener("blur", saveInlineEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+        });
+        return;
+      }
+
+      // --- 2. EDIT GROCERY WEIGHT ---
+      const weightDiv = e.target.closest(".editable-weight");
+      if (weightDiv) {
+        const itemId = parseInt(weightDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "item-weight-input";
+        input.value = formatWeightForEdit(item.weight);
+
+        weightDiv.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveWeightEdit = () => {
+          const newWeight = parseWeightInput(input.value);
+          if (newWeight !== null && newWeight > 0) {
+            item.weight = newWeight;
+            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
+            saveStateToStorage();
+          }
+          renderCart();
+        };
+        input.addEventListener("blur", saveWeightEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+        });
+        return;
+      }
+
+      // --- 3. EDIT GROCERY QUOTE ---
+      const quoteDiv = e.target.closest(".editable-quote");
+      if (quoteDiv) {
+        const itemId = parseInt(quoteDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        const container = document.createElement("div");
+        container.className = "quote-edit-container";
+        container.innerHTML = `₹<input type="text" class="quote-price-input" value="${item.quotePrice}" /> / ${formatBaseWeight(item.baseWeight)}`;
+
+        quoteDiv.replaceWith(container);
+        const input = container.querySelector(".quote-price-input");
+        input.focus();
+        input.select();
+
+        const saveQuoteEdit = () => {
+          const newPrice = parseFloat(input.value);
+          if (!isNaN(newPrice) && newPrice > 0) {
+            item.quotePrice = newPrice;
+            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
+            saveStateToStorage();
+          }
+          renderCart();
+        };
+        input.addEventListener("blur", saveQuoteEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+        });
+        return;
+      }
+
+      // --- 4. EDIT EXPENSE AMOUNT ---
+      const amountDiv = e.target.closest(".editable-amount");
+      if (amountDiv) {
+        const itemId = parseInt(amountDiv.dataset.id, 10);
+        const item = cart.find(i => i.id === itemId);
+        if (!item) return;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "item-amount-input";
+        input.value = item.amount;
+
+        amountDiv.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveAmountEdit = () => {
+          const newAmount = parseFloat(input.value);
+          if (!isNaN(newAmount) && newAmount > 0) {
+            item.amount = parseFloat(newAmount.toFixed(2));
+            saveStateToStorage();
+          }
+          renderCart();
+        };
+        input.addEventListener("blur", saveAmountEdit);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+        });
+        return;
+      }
+
+      // --- 5. REMOVE ITEM ---
       const button = e.target.closest(".remove-item-btn");
       if (!button) return;
 
       const itemId = parseInt(button.dataset.id, 10);
       if (Number.isNaN(itemId)) return;
 
-      removeItemById(itemId);
-    });
-
-    function removeItemById(id) {
-      cart = cart.filter(item => item.id !== id);
+      cart = cart.filter(item => item.id !== itemId);
       renderCart();
       saveStateToStorage();
     }
+
+    vendorCartList.addEventListener("click", handleListClick);
+    expenseListContainer.addEventListener("click", handleListClick);
 
     /* CLEAR CART */
     clearAllCartBtn.addEventListener("click", () => {
       if (cart.length === 0) return;
 
-      if (window.confirm("Clear all items across all vendors?")) {
+      if (window.confirm("Clear all items (grocery + expenses)?")) {
         cart = [];
         itemCounter = 1;
         priceInput = "";
@@ -2118,7 +2709,7 @@
       }
     });
 
-    /* SHARE DASHBOARD FUNCTIONALITY */
+    /* SHARE DASHBOARD */
     shareDashboardBtn.addEventListener("click", async () => {
       if (cart.length === 0) {
         showTemporaryMessage("Cart is empty.");
@@ -2250,7 +2841,7 @@
       if (e.target === cartModal) cartModal.style.display = "none";
     });
 
-    /* NON-BLOCKING FEEDBACK TOAST */
+    /* TOAST */
     let messageTimer = null;
     function showTemporaryMessage(message) {
       let toast = document.getElementById("appToast");
@@ -2262,7 +2853,7 @@
         Object.assign(toast.style, {
           position: "fixed",
           left: "50%",
-          bottom: "calc(41dvh + 14px)",
+          bottom: "calc(30dvh + 14px)",
           transform: "translateX(-50%)",
           zIndex: "3000",
           maxWidth: "calc(100vw - 32px)",
@@ -2294,6 +2885,7 @@
 
     /* INITIALIZATION */
     loadStateFromStorage();
+    setAppMode("grocery");
     updateHomeDisplay();
     renderCart();
   </script>
