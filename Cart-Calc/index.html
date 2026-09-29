@@ -13,31 +13,30 @@
     ============================================================================
     CHANGE LOG (latest first)
     ============================================================================
-    [REQ-07] EXPENSE TABLE PROPORTIONS & AMOUNT VISIBILITY FIX
-      • The Daily Expenses table column split was 70/20/10, which left the
-        Amount cell too narrow. The editable amount uses
-        `overflow: hidden; text-overflow: ellipsis;` (inherited from the
-        generic editable style), so on phones a value like "₹1500.00" was
-        getting clipped — appearing to the user as a "collapsed amount box".
+    [REQ-08] PURCHASE DASHBOARD — FULL-SCREEN SHEET ON MOBILE
+      • The cart modal previously floated as a centered card
+        (`width: min(100%, 460px)` inside a padded wrapper), which left
+        visible gutters around it on phones and squeezed the item tables.
       • Fix:
-          - New column split: Item 55% | Amount 30% | Remove 15%.
-          - The amount cell is now explicitly centered and clips nothing
-            (`text-overflow: clip`). The amount is always fully readable.
-          - `min-width: 0` added to all inline-edit inputs so their intrinsic
-            minimum width can never push the column wider while typing.
-          - `overflow: hidden` on the Item cell so a long name / active input
-            cannot visually spill into the Amount column.
-          - `table-layout: fixed` re-declared on the expense table for
-            deterministic column sizing.
-      • This change is CSS-only. No JS, no layout proportions outside the
-        expense table were touched.
+          - On phones (<600px) the modal is now a full-height, full-width
+            sheet: `padding: 0` on the wrapper, `height: 100%` on the
+            content, no border-radius, no border, no shadow.
+          - The content itself carries the safe-area padding, so the sheet
+            respects notches and home indicators while using every pixel
+            of usable width.
+          - On tablets / wide screens (≥600px) the original centred card
+            look is preserved via a media query.
+      • The item-name prompt modal is intentionally left as a small
+        centred card — it only holds a short input and chips.
+      • No JS, no data model, and no other screen was touched.
+
+    [REQ-07] EXPENSE TABLE PROPORTIONS & AMOUNT VISIBILITY FIX
+      • Expense table column split now Item 55% | Amount 30% | Remove 15%.
+      • Amount is centered and never ellipsized. All inputs get min-width: 0.
+      • table-layout: fixed on the expense table for deterministic sizing.
 
     [REQ-06] DAILY EXPENSE TRACKER (PARALLEL TRACK)
-      • Grocery | Expense mode toggle in the vendor switcher bar.
-      • Expense mode reuses the numpad and swaps weight rows for one
-        "+ Add Expense" button. Expenses live in their own bucket.
-      • Purchase Dashboard shows a Daily Expenses row + separate itemized
-        section, and a combined TOTAL row.
+      • Grocery | Expense mode toggle, own expense bucket, combined total.
 
     [REQ-05] NUMPAD REDUCED TO 30% OF SCREEN
     [REQ-04] NUMPAD REDUCED TO 40% OF SCREEN (superseded)
@@ -468,7 +467,7 @@
       padding-right: 2px;
     }
 
-    /* EXPENSE MODE — replaces weight rows with one big button */
+    /* EXPENSE MODE */
     .expense-selection-area {
       flex: 0 0 auto;
       padding-top: 8px;
@@ -814,6 +813,58 @@
       overflow-y: auto;
     }
 
+    /* ------------------------------------------------------------------
+       [REQ-08] PURCHASE DASHBOARD — FULL-SCREEN SHEET ON PHONES
+       The cart modal breaks out of the generic centred-card pattern and
+       uses the whole viewport on phones. On tablets / wide screens a
+       media query restores the centred card look.
+       ------------------------------------------------------------------ */
+    #cartModal {
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    #cartModal .modal-content {
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      border: 0;
+      box-shadow: none;
+      /* Safe-area padding lives on the content now that the wrapper has none */
+      padding:
+        max(14px, var(--safe-top))
+        max(14px, var(--safe-right))
+        max(14px, var(--safe-bottom))
+        max(14px, var(--safe-left));
+    }
+
+    /* On tablets and larger screens, fall back to the centred card */
+    @media (min-width: 600px) {
+      #cartModal {
+        padding:
+          max(14px, var(--safe-top))
+          max(14px, var(--safe-right))
+          max(14px, var(--safe-bottom))
+          max(14px, var(--safe-left));
+        align-items: center;
+        justify-content: center;
+      }
+
+      #cartModal .modal-content {
+        width: min(100%, 560px);
+        height: auto;
+        max-height: min(90dvh, 900px);
+        border-radius: 22px;
+        border: 1px solid var(--border);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 16px;
+      }
+    }
+
+    /* NAME PROMPT MODAL STYLES */
     .name-input-field {
       width: 100%;
       height: 48px;
@@ -1007,13 +1058,7 @@
     .cart-table:not(.expense-table) th:nth-child(5),
     .cart-table:not(.expense-table) td:nth-child(5) { width: 12%; }
 
-    /* ------------------------------------------------------------------
-       [REQ-07] EXPENSE TABLE — PROPORTIONAL COLUMNS, VISIBLE AMOUNT
-       Old split was 70/20/10, which squeezed the Amount cell so tightly
-       that the ellipsis rule (inherited from the generic .editable-* style)
-       clipped values like "₹1500.00". New split gives Amount a comfortable
-       30%, centers it, and disables ellipsis so the number is never cut.
-       ------------------------------------------------------------------ */
+    /* [REQ-07] Expense table: Item 55% | Amount 30% | Remove 15% */
     .cart-table.expense-table {
       table-layout: fixed;
     }
@@ -1023,7 +1068,6 @@
       width: 55%;
       text-align: left;
       padding-left: 6px;
-      /* Long names or the active input cannot visually spill into Amount */
       overflow: hidden;
     }
 
@@ -1065,7 +1109,7 @@
       border-color: var(--blue);
     }
 
-    /* [REQ-07] Amount display is centered and never ellipsized */
+    /* [REQ-07] Amount display centered, never ellipsized */
     .editable-amount {
       text-align: center;
       text-overflow: clip;
@@ -1076,7 +1120,6 @@
     .quote-price-input,
     .item-amount-input {
       width: 100%;
-      /* [REQ-07] Prevents intrinsic input min-width from widening its column */
       min-width: 0;
       padding: 4px 6px;
       font-size: inherit;
@@ -1087,7 +1130,6 @@
       outline: none;
     }
 
-    /* [REQ-07] Amount input is centered to match its display counterpart */
     .item-amount-input {
       text-align: center;
     }
@@ -2508,7 +2550,7 @@
 
     /* INLINE EDITING & REMOVAL */
     function handleListClick(e) {
-      // --- 1. EDIT NAME (grocery or expense) ---
+      // --- 1. EDIT NAME ---
       const editableDiv = e.target.closest(".editable-item-name");
       if (editableDiv) {
         const itemId = parseInt(editableDiv.dataset.id, 10);
