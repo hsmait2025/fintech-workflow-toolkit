@@ -13,28 +13,31 @@
     ============================================================================
     CHANGE LOG (latest first)
     ============================================================================
+    [REQ-07] EXPENSE TABLE PROPORTIONS & AMOUNT VISIBILITY FIX
+      • The Daily Expenses table column split was 70/20/10, which left the
+        Amount cell too narrow. The editable amount uses
+        `overflow: hidden; text-overflow: ellipsis;` (inherited from the
+        generic editable style), so on phones a value like "₹1500.00" was
+        getting clipped — appearing to the user as a "collapsed amount box".
+      • Fix:
+          - New column split: Item 55% | Amount 30% | Remove 15%.
+          - The amount cell is now explicitly centered and clips nothing
+            (`text-overflow: clip`). The amount is always fully readable.
+          - `min-width: 0` added to all inline-edit inputs so their intrinsic
+            minimum width can never push the column wider while typing.
+          - `overflow: hidden` on the Item cell so a long name / active input
+            cannot visually spill into the Amount column.
+          - `table-layout: fixed` re-declared on the expense table for
+            deterministic column sizing.
+      • This change is CSS-only. No JS, no layout proportions outside the
+        expense table were touched.
+
     [REQ-06] DAILY EXPENSE TRACKER (PARALLEL TRACK)
-      • Added a Grocery | Expense mode toggle in the vendor switcher bar.
-        The app ALWAYS loads in Grocery mode (mode is intentionally NOT
-        persisted — primary state stays the default).
-      • In Expense mode:
-          - Section label switches from "Price" to "Expense Amount".
-          - Header mini-card shows "Daily Expense Amount" instead of
-            "Vendor X Price".
-          - Quote Base Weight + Buying Weight rows are HIDDEN and replaced by
-            one prominent "+ Add Expense" button.
-          - The SAME numpad is reused — no new keypad, no layout change.
-          - The item-name modal now shows EXPENSE chips (Cab, Auto, Food,
-            More…) instead of grocery chips.
-      • Expense items live in their OWN bucket. They are never attributed to
-        any vendor. Data shape: { id, isExpense: true, name, amount }.
-      • Purchase Dashboard:
-          - Vendor Summary table now shows a "Daily Expenses" row plus a
-            combined TOTAL row (grocery + expenses).
-          - A separate "Daily Expenses" itemized section appears below the
-            vendor sections, with inline editing for name and amount.
-      • Backward compatibility: old carts without isExpense are treated as
-        grocery items unchanged. Mode is always reset to Grocery on load.
+      • Grocery | Expense mode toggle in the vendor switcher bar.
+      • Expense mode reuses the numpad and swaps weight rows for one
+        "+ Add Expense" button. Expenses live in their own bucket.
+      • Purchase Dashboard shows a Daily Expenses row + separate itemized
+        section, and a combined TOTAL row.
 
     [REQ-05] NUMPAD REDUCED TO 30% OF SCREEN
     [REQ-04] NUMPAD REDUCED TO 40% OF SCREEN (superseded)
@@ -153,7 +156,7 @@
       background: var(--bg);
     }
 
-    /* [REQ-06] VENDOR SWITCHER BAR now hosts the Grocery|Expense toggle */
+    /* VENDOR SWITCHER BAR + GROCERY|EXPENSE TOGGLE */
     .vendor-switcher-bar {
       padding: 8px var(--page-pad);
       background: var(--surface-2);
@@ -189,7 +192,6 @@
       color: var(--text);
     }
 
-    /* [REQ-06] Grocery | Expense toggle */
     .mode-toggle {
       display: flex;
       flex-shrink: 0;
@@ -466,7 +468,7 @@
       padding-right: 2px;
     }
 
-    /* [REQ-06] EXPENSE MODE — replaces the weight rows with one big button */
+    /* EXPENSE MODE — replaces weight rows with one big button */
     .expense-selection-area {
       flex: 0 0 auto;
       padding-top: 8px;
@@ -935,7 +937,6 @@
       color: var(--green);
     }
 
-    /* [REQ-06] Highlight the Daily Expenses row in the dashboard summary */
     .dashboard-table tr.expense-row {
       color: var(--orange);
       font-weight: 650;
@@ -952,7 +953,6 @@
       margin-top: 10px;
     }
 
-    /* [REQ-06] Expense section header uses the orange accent */
     .expense-section-header {
       padding: 8px 6px;
       background: var(--surface-2);
@@ -963,7 +963,7 @@
       margin-top: 10px;
     }
 
-    /* CART ITEMS TABLE */
+    /* CART ITEMS TABLE (base + grocery) */
     .cart-table {
       width: 100%;
       border-collapse: collapse;
@@ -991,36 +991,53 @@
       overflow-wrap: anywhere;
     }
 
-    .cart-table th:nth-child(1),
-    .cart-table td:nth-child(1) {
+    /* Grocery table column widths (5 columns) */
+    .cart-table:not(.expense-table) th:nth-child(1),
+    .cart-table:not(.expense-table) td:nth-child(1) {
       width: 25%;
       text-align: left;
       padding-left: 6px;
     }
+    .cart-table:not(.expense-table) th:nth-child(2),
+    .cart-table:not(.expense-table) td:nth-child(2) { width: 18%; }
+    .cart-table:not(.expense-table) th:nth-child(3),
+    .cart-table:not(.expense-table) td:nth-child(3) { width: 23%; }
+    .cart-table:not(.expense-table) th:nth-child(4),
+    .cart-table:not(.expense-table) td:nth-child(4) { width: 22%; }
+    .cart-table:not(.expense-table) th:nth-child(5),
+    .cart-table:not(.expense-table) td:nth-child(5) { width: 12%; }
 
-    .cart-table th:nth-child(2),
-    .cart-table td:nth-child(2) { width: 18%; }
-    .cart-table th:nth-child(3),
-    .cart-table td:nth-child(3) { width: 23%; }
-    .cart-table th:nth-child(4),
-    .cart-table td:nth-child(4) { width: 22%; }
-    .cart-table th:nth-child(5),
-    .cart-table td:nth-child(5) { width: 12%; }
+    /* ------------------------------------------------------------------
+       [REQ-07] EXPENSE TABLE — PROPORTIONAL COLUMNS, VISIBLE AMOUNT
+       Old split was 70/20/10, which squeezed the Amount cell so tightly
+       that the ellipsis rule (inherited from the generic .editable-* style)
+       clipped values like "₹1500.00". New split gives Amount a comfortable
+       30%, centers it, and disables ellipsis so the number is never cut.
+       ------------------------------------------------------------------ */
+    .cart-table.expense-table {
+      table-layout: fixed;
+    }
 
-    /* [REQ-06] Expense table uses a wider Item column (no Weight/Quote) */
     .cart-table.expense-table th:nth-child(1),
     .cart-table.expense-table td:nth-child(1) {
-      width: 70%;
+      width: 55%;
       text-align: left;
       padding-left: 6px;
+      /* Long names or the active input cannot visually spill into Amount */
+      overflow: hidden;
     }
+
     .cart-table.expense-table th:nth-child(2),
     .cart-table.expense-table td:nth-child(2) {
-      width: 20%;
+      width: 30%;
+      text-align: center;
+      padding: 10px 2px;
     }
+
     .cart-table.expense-table th:nth-child(3),
     .cart-table.expense-table td:nth-child(3) {
-      width: 10%;
+      width: 15%;
+      text-align: center;
     }
 
     /* INLINE EDITABLE STYLES */
@@ -1048,11 +1065,19 @@
       border-color: var(--blue);
     }
 
+    /* [REQ-07] Amount display is centered and never ellipsized */
+    .editable-amount {
+      text-align: center;
+      text-overflow: clip;
+    }
+
     .item-name-input,
     .item-weight-input,
     .quote-price-input,
     .item-amount-input {
       width: 100%;
+      /* [REQ-07] Prevents intrinsic input min-width from widening its column */
+      min-width: 0;
       padding: 4px 6px;
       font-size: inherit;
       background: var(--surface);
@@ -1060,6 +1085,11 @@
       border: 1px solid var(--blue);
       border-radius: 6px;
       outline: none;
+    }
+
+    /* [REQ-07] Amount input is centered to match its display counterpart */
+    .item-amount-input {
+      text-align: center;
     }
 
     .quote-edit-container {
@@ -1203,7 +1233,6 @@
     <main class="top-window-60" id="homeDisplayContainer">
 
       <section class="display-section">
-        <!-- Label switches between "Price" (grocery) and "Expense Amount" (expense) -->
         <div class="section-label" id="displaySectionLabel">Price</div>
 
         <div class="main-display">
@@ -1215,7 +1244,7 @@
         </div>
       </section>
 
-      <!-- [REQ-06] GROCERY-ONLY selection area -->
+      <!-- GROCERY-ONLY selection area -->
       <section class="selection-area" id="grocerySelectionArea">
 
         <div class="selector-group">
@@ -1241,7 +1270,7 @@
 
       </section>
 
-      <!-- [REQ-06] EXPENSE-ONLY action area (hidden by default) -->
+      <!-- EXPENSE-ONLY action area (hidden by default) -->
       <section class="expense-selection-area" id="expenseSelectionArea" style="display: none;">
         <button class="btn-add-expense" id="addExpenseBtn" type="button">+ Add Expense</button>
       </section>
@@ -1398,7 +1427,7 @@
         </select>
       </div>
 
-      <!-- [REQ-06] Expense chips (shown in Expense mode) -->
+      <!-- Expense chips (shown in Expense mode) -->
       <div class="quick-chips-row" id="expenseChipsContainer" style="display: none;">
         <button class="chip-btn" type="button" data-name="Cab">Cab</button>
         <button class="chip-btn" type="button" data-name="Auto">Auto</button>
@@ -1457,7 +1486,7 @@
         <!-- ITEMIZED GROCERY LIST GROUPED BY VENDOR -->
         <div id="vendorCartList"></div>
 
-        <!-- [REQ-06] ITEMIZED DAILY EXPENSES LIST (own bucket) -->
+        <!-- ITEMIZED DAILY EXPENSES LIST (own bucket) -->
         <div id="expenseListContainer"></div>
 
         <div class="cart-empty" id="cartEmptyMessage">
@@ -1480,17 +1509,17 @@
     const STORAGE_KEY = "grocery_calc_pos_data_v1";
 
     /* CORE STATE */
-    let appMode = "grocery";          // [REQ-06] "grocery" | "expense" — NOT persisted, always resets on load
+    let appMode = "grocery";          // NOT persisted — always resets on load
     let activeVendor = 1;
     let priceInput = "";
     let customWeightInput = "";
     let baseWeight = 0.25;
     let pendingTargetWeight = null;   // grocery pending state
-    let pendingExpenseAmount = null;  // [REQ-06] expense pending state
+    let pendingExpenseAmount = null;  // expense pending state
     let itemCounter = 1;
     let isLightTheme = false;
     let cart = []; // Grocery: { id, vendorId, name, weight, baseWeight, quotePrice, price }
-                   // [REQ-06] Expense: { id, isExpense: true, name, amount }
+                   // Expense: { id, isExpense: true, name, amount }
 
     /* DOM REFERENCES */
     const homeView = document.getElementById("homeView");
@@ -1566,7 +1595,6 @@
           baseWeight,
           priceInput,
           isLightTheme
-          /* appMode is intentionally NOT saved — always resets to grocery */
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       } catch (e) {
@@ -1584,9 +1612,7 @@
 
         const data = JSON.parse(raw);
         if (Array.isArray(data.cart)) {
-          // [REQ-03] Convert old cart items that used a 'quote' string
           cart = data.cart.map(item => {
-            // [REQ-06] Expense items pass through untouched
             if (item.isExpense) return item;
 
             if (item.quotePrice === undefined && item.quote) {
@@ -1614,7 +1640,6 @@
         if (typeof data.priceInput === "string") priceInput = data.priceInput;
         if (typeof data.isLightTheme === "boolean") isLightTheme = data.isLightTheme;
 
-        // Validate baseWeight — only 0.25, 0.5, 1 allowed
         if (![0.25, 0.5, 1].includes(baseWeight)) {
           baseWeight = 0.25;
         }
@@ -1744,7 +1769,7 @@
       return num >= 10 ? num / 1000 : num;
     }
 
-    /* [REQ-06] MODE TOGGLE */
+    /* MODE TOGGLE */
     function setAppMode(mode) {
       appMode = mode;
 
@@ -1800,7 +1825,6 @@
           displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
         }
       } else {
-        /* [REQ-06] Expense mode display */
         vendorQuoteLabel.textContent = `Daily Expense Amount`;
         headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
 
@@ -1859,7 +1883,7 @@
       saveStateToStorage();
     });
 
-    /* BASE WEIGHT SELECTOR (grocery only) */
+    /* BASE WEIGHT SELECTOR */
     baseWeightRow.addEventListener("click", (e) => {
       const button = e.target.closest(".base-btn");
       if (!button || !baseWeightRow.contains(button)) return;
@@ -1886,7 +1910,7 @@
       promptItemName();
     });
 
-    /* [REQ-06] ADD EXPENSE */
+    /* ADD EXPENSE */
     addExpenseBtn.addEventListener("click", () => {
       const amountVal = parseFloat(priceInput);
       if (isNaN(amountVal) || amountVal <= 0) {
@@ -1898,7 +1922,7 @@
       promptItemName();
     });
 
-    /* NAME PROMPT MODAL — shows correct chip set based on mode */
+    /* NAME PROMPT MODAL */
     function promptItemName() {
       itemNameInput.value = "";
       itemNameInput.readOnly = true;
@@ -1959,7 +1983,6 @@
       if (e.key === "Enter") finalizeAddToCart(itemNameInput.value.trim());
     });
 
-    /* [REQ-06] finalizeAddToCart now dispatches to grocery OR expense handler */
     function finalizeAddToCart(nameVal) {
       itemNameModal.style.display = "none";
 
@@ -1972,7 +1995,7 @@
       }
     }
 
-    /* CUSTOM WEIGHT SCREEN (grocery only) */
+    /* CUSTOM WEIGHT SCREEN */
     openCustomWtBtn.addEventListener("click", (e) => {
       if (isCustomLongPress) {
         isCustomLongPress = false;
@@ -2270,7 +2293,7 @@
       return true;
     }
 
-    /* [REQ-06] EXPENSE ADD TO CART — own bucket, no vendor, no weight math */
+    /* EXPENSE ADD TO CART */
     function processAddExpense(amount, customName = "") {
       if (isNaN(amount) || amount <= 0) {
         showTemporaryMessage("Enter a valid amount.");
@@ -2305,7 +2328,6 @@
       vendorCartList.innerHTML = "";
       expenseListContainer.innerHTML = "";
 
-      /* --- Compute totals, separating grocery from expenses --- */
       let groceryTotal = 0;
       let groceryWeight = 0;
       let expenseTotal = 0;
@@ -2336,7 +2358,7 @@
 
       const grandTotal = groceryTotal + expenseTotal;
 
-      /* --- Dashboard summary rows --- */
+      /* Dashboard summary rows */
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -2351,7 +2373,6 @@
         }
       }
 
-      /* [REQ-06] Daily Expenses row (its own bucket, never mixed with vendors) */
       if (expenseCount > 0) {
         const row = document.createElement("tr");
         row.className = "expense-row";
@@ -2364,7 +2385,6 @@
         dashboardTableBody.appendChild(row);
       }
 
-      /* TOTAL row (grocery + expenses) */
       if (cart.length > 0) {
         const totalRow = document.createElement("tr");
         totalRow.className = "total-row";
@@ -2377,7 +2397,7 @@
         dashboardTableBody.appendChild(totalRow);
       }
 
-      /* --- Itemized grocery list, grouped by vendor --- */
+      /* Itemized grocery list grouped by vendor */
       for (let v = 1; v <= 6; v++) {
         const stats = vendorStats[v];
         if (stats.items.length > 0) {
@@ -2426,7 +2446,7 @@
         }
       }
 
-      /* --- [REQ-06] Daily Expenses itemized list (own bucket) --- */
+      /* Itemized Daily Expenses list (own bucket) */
       if (expenseItems.length > 0) {
         const sectionHeader = document.createElement("div");
         sectionHeader.className = "expense-section-header";
@@ -2466,7 +2486,7 @@
         expenseListContainer.appendChild(table);
       }
 
-      /* --- Cart button label per mode --- */
+      /* Cart button label per mode */
       if (appMode === "grocery") {
         const activeStats = vendorStats[activeVendor];
         cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
@@ -2479,7 +2499,6 @@
       cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
       cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
 
-      /* Reset the big display only if nothing is being typed */
       if (cart.length === 0 && !priceInput) {
         displayCurrentItemPrice.textContent = "₹0";
         displayCurrentItemPrice.classList.remove("has-input");
@@ -2582,7 +2601,7 @@
         return;
       }
 
-      // --- 4. [REQ-06] EDIT EXPENSE AMOUNT ---
+      // --- 4. EDIT EXPENSE AMOUNT ---
       const amountDiv = e.target.closest(".editable-amount");
       if (amountDiv) {
         const itemId = parseInt(amountDiv.dataset.id, 10);
@@ -2824,7 +2843,7 @@
 
     /* INITIALIZATION */
     loadStateFromStorage();
-    setAppMode("grocery");  /* [REQ-06] Always open in Grocery mode */
+    setAppMode("grocery");
     updateHomeDisplay();
     renderCart();
   </script>
