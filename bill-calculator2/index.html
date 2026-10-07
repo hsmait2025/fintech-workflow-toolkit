@@ -63,6 +63,103 @@ body {
 
 h1 { text-align: center; margin: 0 0 7px; font-size: 20px; color: var(--text); }
 
+/* ─── Tab strip (Chrome-like) ─────────────────────────────────── */
+.tab-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.tab-list {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 34px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 0;
+}
+.tab-list::-webkit-scrollbar { height: 5px; }
+.tab-list::-webkit-scrollbar-thumb { background: #c3cbd4; border-radius: 3px; }
+.tab-list::-webkit-scrollbar-track { background: transparent; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 112px;
+  max-width: 200px;
+  min-height: 30px;
+  padding: 6px 6px 6px 12px;
+  background: #dfe3e8;
+  border: 1px solid #c9d0d8;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 12.4px;
+  font-weight: bold;
+  color: #3a4550;
+  white-space: nowrap;
+  user-select: none;
+  position: relative;
+  top: 2px;
+  transition: background .15s, color .15s;
+}
+.tab:hover { background: #ced6de; }
+.tab:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  z-index: 2;
+}
+.tab-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-close {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  color: inherit;
+  opacity: .6;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+}
+.tab-close:hover { background: rgba(0,0,0,.22); opacity: 1; }
+.tab.active .tab-close:hover { background: rgba(255,255,255,.32); }
+
+.tab-add {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin: 0 2px 4px 2px;
+  padding: 0;
+  border-radius: 50%;
+  background: #dfe3e8;
+  color: #3a4550;
+  font-size: 17px;
+  font-weight: bold;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tab-add:hover { background: var(--accent); color: #ffffff; opacity: 1; }
+
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -497,6 +594,10 @@ th { background: #ffffff; color: black; }
       <div class="shortcut-item"><kbd>?</kbd> : Open Shortcuts Legend</div>
       <div class="shortcut-item"><kbd>Enter</kbd> : Next Invoice Field</div>
       <div class="shortcut-item"><kbd>↑</kbd> / <kbd>↓</kbd> : Navigate Grid Inputs</div>
+      <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>T</kbd> : New Tab</div>
+      <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>W</kbd> : Close Current Tab</div>
+      <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgDn</kbd> : Next Tab</div>
+      <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgUp</kbd> : Previous Tab</div>
     </div>
     <div class="modal-actions">
       <button class="process-btn" id="closeShortcutModalBtn" type="button">Close</button>
@@ -520,6 +621,12 @@ th { background: #ffffff; color: black; }
 <div class="container">
 
   <h1>Bill Entry Tool</h1>
+
+  <!-- ─── Chrome-style tab strip ─────────────────────────────────── -->
+  <div class="tab-strip no-print">
+    <div class="tab-list" id="tabList" role="tablist" aria-label="Calculation tabs"></div>
+    <button class="tab-add" id="newTabBtn" type="button" title="New tab (Alt+T)" aria-label="New tab">+</button>
+  </div>
 
   <div class="instructions">
     <div>
@@ -654,7 +761,7 @@ th { background: #ffffff; color: black; }
    ═══════════════════════════════════════════════════════════════ */
 const MAX_ROWS      = 500;
 const MAX_FIELD_LEN = 60;
-const MAX_DATE_LEN  = 60;   // was 20 — one cell may now hold a list of travel dates
+const MAX_DATE_LEN  = 60;   // one cell may hold a list of travel dates
 const MAX_EXPR_LEN  = 120;
 const MAX_BLOCKS    = 500;
 const MAX_CSV_LINE  = 500;
@@ -664,7 +771,8 @@ const LS_KEYS = {
   crosscheck: "bet_crosscheck",
   title:      "bet_title",
   bills:      "bet_bills",
-  expToggle:  "bet_exp_toggle"
+  expToggle:  "bet_exp_toggle",
+  tabs:       "bet_tabs"          // ← primary storage since the tab feature
 };
 
 const state = {
@@ -673,6 +781,11 @@ const state = {
   autofit: true,
   showExpenseHead: false
 };
+
+/* ─── Tab workspace state ──────────────────────────────────────── */
+const tabsState = { tabs: [], activeId: null };
+let tabIdCounter = 1;          // ← ID generator ONLY (never displayed)
+let currentProcessed = null;   // { title, billData } for the active tab
 
 let storageWarned = false;
 let debounceTimer = null;
@@ -824,34 +937,344 @@ function safeFilename(name) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TAB WORKSPACES
+   ═══════════════════════════════════════════════════════════════ */
+
+function getActiveTab() {
+  return tabsState.tabs.find(t => t.id === tabsState.activeId) || null;
+}
+
+function makeTabObject() {
+  const uid = "tab_" + tabIdCounter++;
+  return {
+    id: uid,
+    name: "Tab",               // ← placeholder; real number set by renumberTabs()
+    mode: "horizontal",
+    showExpenseHead: false,
+    tableTitle: "",
+    billAmounts: "",
+    crossCheck: "",
+    seriesDate: "",
+    bills: [{ invoice: "", expense: "", date: "" }],
+    processed: null,
+    receipt: ""
+  };
+}
+
+/**
+ * Renumber every tab so its displayed number matches its current
+ * position in the strip. Closing Tab 2 of 5 → the remaining four
+ * become Tab 1, Tab 2, Tab 3, Tab 4. Tab IDs never change here —
+ * only the human-readable `.name` field.
+ */
+function renumberTabs() {
+  tabsState.tabs.forEach((t, i) => { t.name = "Tab " + (i + 1); });
+}
+
+/** Read the live DOM into a plain, serialisable workspace snapshot. */
+function captureWorkspace() {
+  const rows = document.querySelectorAll(".bill-row");
+  const bills = Array.from(rows).map(row => ({
+    invoice: row.querySelector(".invoice-input")?.value || "",
+    expense: row.querySelector(".expense-input")?.value || "",
+    date:    row.querySelector(".date-input")?.value    || ""
+  }));
+
+  return {
+    mode: state.mode,
+    showExpenseHead: state.showExpenseHead,
+    tableTitle: document.getElementById("tableTitle").value,
+    billAmounts: document.getElementById("billAmounts").value,
+    crossCheck: document.getElementById("crossCheckBox").value,
+    seriesDate: document.getElementById("seriesDate").value,
+    bills: bills.length ? bills : [{ invoice: "", expense: "", date: "" }],
+    processed: currentProcessed,
+    receipt: document.getElementById("receiptString").value
+  };
+}
+
+/** Push a workspace snapshot back into the live DOM. */
+function applyWorkspace(ws) {
+  if (!ws) return;
+
+  /* layout mode */
+  state.mode = ws.mode === "vertical" ? "vertical" : "horizontal";
+  document.getElementById("horizontalBtn").classList.toggle("active", state.mode === "horizontal");
+  document.getElementById("verticalBtn").classList.toggle("active",   state.mode === "vertical");
+
+  /* expense-head toggle */
+  state.showExpenseHead = !!ws.showExpenseHead;
+  document.getElementById("toggleExpenseHead").checked = state.showExpenseHead;
+
+  /* text fields */
+  document.getElementById("tableTitle").value    = ws.tableTitle  || "";
+  document.getElementById("billAmounts").value   = ws.billAmounts || "";
+  document.getElementById("crossCheckBox").value = ws.crossCheck  || "";
+  document.getElementById("seriesDate").value    = ws.seriesDate  || "";
+
+  /* bill grid */
+  const grid = document.getElementById("billEntryGrid");
+  grid.querySelectorAll(".bill-row").forEach(r => r.remove());
+  const bills = Array.isArray(ws.bills) && ws.bills.length ? ws.bills : [{}];
+  bills.slice(0, MAX_ROWS).forEach(b => createBillRow(
+    typeof b?.invoice === "string" ? b.invoice : "",
+    typeof b?.expense === "string" ? b.expense : "",
+    typeof b?.date    === "string" ? b.date    : "",
+    true
+  ));
+  updateSNos();
+  grid.scrollTop = 0;
+
+  /* rendered preview */
+  if (ws.processed && Array.isArray(ws.processed.billData) && ws.processed.billData.length) {
+    renderResults(ws.processed.billData, ws.processed.title || "Summary");
+  } else {
+    currentProcessed = null;
+    clearPreview();
+  }
+
+  /* receipt line */
+  const rs = document.getElementById("receiptString");
+  rs.value = ws.receipt || "";
+  autoSizeReceipt();
+
+  /* derived counters */
+  updateTextBillCounter();
+  updateBillAmountSums(false);
+  checkCrossTotal();
+}
+
+function tabHasData(t) {
+  if (!t) return false;
+  return Boolean(
+    (t.tableTitle  || "").trim() ||
+    (t.billAmounts || "").trim() ||
+    (t.crossCheck  || "").trim() ||
+    (t.bills || []).some(b => b && (b.invoice || b.expense || b.date)) ||
+    t.processed
+  );
+}
+
+function normalizeTab(raw) {
+  const t = (raw && typeof raw === "object") ? raw : {};
+
+  const bills = Array.isArray(t.bills) && t.bills.length
+    ? t.bills.slice(0, MAX_ROWS).map(b => ({
+        invoice: typeof b?.invoice === "string" ? b.invoice : "",
+        expense: typeof b?.expense === "string" ? b.expense : "",
+        date:    typeof b?.date    === "string" ? b.date    : ""
+      }))
+    : [{ invoice: "", expense: "", date: "" }];
+
+  let processed = null;
+  if (t.processed && Array.isArray(t.processed.billData) && t.processed.billData.length) {
+    processed = {
+      title: typeof t.processed.title === "string" ? t.processed.title : "Summary",
+      billData: t.processed.billData.map(b => ({
+        billNo:  typeof b?.billNo  === "string" ? b.billNo  : "-",
+        expense: typeof b?.expense === "string" ? b.expense : "Unassigned",
+        date:    typeof b?.date    === "string" ? b.date    : "-",
+        amounts: Array.isArray(b?.amounts)
+          ? b.amounts.filter(n => typeof n === "number" && isFinite(n))
+          : [],
+        total: (typeof b?.total === "number" && isFinite(b.total)) ? b.total : 0
+      }))
+    };
+  }
+
+  return {
+    id: typeof t.id === "string" && t.id ? t.id : "tab_" + (tabIdCounter++),
+    name: "Tab",                 // ← always recalculated after load
+    mode: t.mode === "vertical" ? "vertical" : "horizontal",
+    showExpenseHead: !!t.showExpenseHead,
+    tableTitle: typeof t.tableTitle === "string" ? t.tableTitle : "",
+    billAmounts: typeof t.billAmounts === "string" ? t.billAmounts : "",
+    crossCheck: typeof t.crossCheck === "string" ? t.crossCheck : "",
+    seriesDate: typeof t.seriesDate === "string" ? t.seriesDate : "",
+    bills,
+    processed,
+    receipt: typeof t.receipt === "string" ? t.receipt : ""
+  };
+}
+
+/* ─── Tab strip rendering ─────────────────────────────────────── */
+
+function renderTabs() {
+  const list = document.getElementById("tabList");
+  if (!list) return;
+  list.replaceChildren();
+
+  tabsState.tabs.forEach(tab => {
+    const isActive = tab.id === tabsState.activeId;
+    const label = (tab.tableTitle || "").trim() || tab.name;
+
+    const titleSpan = el("span", { class: "tab-title", text: label });
+    const closeBtn  = el("span", {
+      class: "tab-close", role: "button", tabindex: "-1",
+      "aria-label": "Close tab", text: "✕"
+    });
+    const tabEl = el("div", {
+      class: "tab" + (isActive ? " active" : ""),
+      role: "tab",
+      tabindex: isActive ? "0" : "-1",
+      "aria-selected": isActive ? "true" : "false",
+      title: label
+    }, [titleSpan, closeBtn]);
+
+    tabEl.addEventListener("click", (e) => {
+      if (e.target === closeBtn) return;
+      switchTab(tab.id);
+    });
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    tabEl.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });
+    tabEl.addEventListener("auxclick", (e) => {
+      if (e.button === 1) { e.preventDefault(); closeTab(tab.id); }
+    });
+    tabEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchTab(tab.id); }
+    });
+
+    list.appendChild(tabEl);
+  });
+}
+
+function scrollActiveTabIntoView() {
+  const activeEl = document.querySelector(".tab.active");
+  if (activeEl) activeEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function refreshActiveTabLabel() {
+  const tabEl = document.querySelector(".tab.active");
+  const t = getActiveTab();
+  if (!tabEl || !t) return;
+  const label = document.getElementById("tableTitle").value.trim() || t.name;
+  const span = tabEl.querySelector(".tab-title");
+  if (span) span.textContent = label;
+  tabEl.title = label;
+}
+
+/* ─── Tab operations ──────────────────────────────────────────── */
+
+function switchTab(id) {
+  if (id === tabsState.activeId) return;
+  const target = tabsState.tabs.find(t => t.id === id);
+  if (!target) return;
+
+  const active = getActiveTab();
+  if (active) Object.assign(active, captureWorkspace());
+
+  tabsState.activeId = id;
+  applyWorkspace(target);
+  renderTabs();
+  scrollActiveTabIntoView();
+  saveToStorage();
+}
+
+function newTab() {
+  const active = getActiveTab();
+  if (active) Object.assign(active, captureWorkspace());
+
+  const tab = makeTabObject();
+  tabsState.tabs.push(tab);
+  renumberTabs();              // ← keeps 1..N contiguous
+  tabsState.activeId = tab.id;
+
+  applyWorkspace(tab);
+  renderTabs();
+  scrollActiveTabIntoView();
+  saveToStorage();
+  showToast(`Opened ${tab.name}.`, "success");
+}
+
+function closeTab(id) {
+  const idx = tabsState.tabs.findIndex(t => t.id === id);
+  if (idx === -1) return;
+
+  /* capture live DOM first so the active tab is never lost */
+  const active = getActiveTab();
+  if (active) Object.assign(active, captureWorkspace());
+
+  const closingTab = tabsState.tabs[idx];
+  const dataTab = (closingTab.id === tabsState.activeId) ? active : closingTab;
+
+  if (tabHasData(dataTab)) {
+    const label = (closingTab.tableTitle || "").trim() || closingTab.name;
+    if (!confirm(`Close "${label}"?\nEverything entered in this tab will be lost.`)) return;
+  }
+
+  tabsState.tabs.splice(idx, 1);
+
+  if (tabsState.tabs.length === 0) {
+    const fresh = makeTabObject();
+    tabsState.tabs.push(fresh);
+    tabsState.activeId = fresh.id;
+    applyWorkspace(fresh);
+  } else if (closingTab.id === tabsState.activeId) {
+    const next = tabsState.tabs[Math.min(idx, tabsState.tabs.length - 1)];
+    tabsState.activeId = next.id;
+    applyWorkspace(next);
+  }
+
+  renumberTabs();              // ← 1..N re-flow after the splice
+  renderTabs();
+  scrollActiveTabIntoView();
+  saveToStorage();
+}
+
+function cycleTab(dir) {
+  if (tabsState.tabs.length < 2) return;
+  const idx = tabsState.tabs.findIndex(t => t.id === tabsState.activeId);
+  if (idx === -1) return;
+  const next = (idx + dir + tabsState.tabs.length) % tabsState.tabs.length;
+  switchTab(tabsState.tabs[next].id);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    PERSISTENCE
    ═══════════════════════════════════════════════════════════════ */
 
 function saveToStorage() {
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    try {
-      const rows = document.querySelectorAll(".bill-row");
-      const bills = Array.from(rows).map(row => ({
-        invoice: row.querySelector(".invoice-input")?.value || "",
-        expense: row.querySelector(".expense-input")?.value || "",
-        date:    row.querySelector(".date-input")?.value    || "",
-      }));
-      localStorage.setItem(LS_KEYS.amounts,    document.getElementById("billAmounts").value);
-      localStorage.setItem(LS_KEYS.crosscheck, document.getElementById("crossCheckBox").value);
-      localStorage.setItem(LS_KEYS.title,      document.getElementById("tableTitle").value);
-      localStorage.setItem(LS_KEYS.expToggle,  document.getElementById("toggleExpenseHead").checked ? "1" : "0");
-      localStorage.setItem(LS_KEYS.bills,      JSON.stringify(bills));
-    } catch (err) {
-      if (!storageWarned) {
-        storageWarned = true;
-        showToast("Local save unavailable — your data will not persist after reload.", "warn");
-        console.warn("saveToStorage failed:", err);
-      }
-    }
-  }, 300);
+  debounceTimer = setTimeout(persistTabs, 300);
 }
 
+function persistTabs() {
+  try {
+    const active = getActiveTab();
+    if (active) Object.assign(active, captureWorkspace());
+
+    const snapshot = tabsState.tabs.map(t => ({ ...t }));
+    /* "seq" is intentionally NOT persisted — tab numbers are always
+       derived from the live array length via renumberTabs().        */
+    const payload  = { activeId: tabsState.activeId, tabs: snapshot };
+
+    try {
+      localStorage.setItem(LS_KEYS.tabs, JSON.stringify(payload));
+    } catch (quotaErr) {
+      /* Quota exceeded — drop the heavy preview payloads and retry once. */
+      const light = {
+        activeId: tabsState.activeId,
+        tabs: snapshot.map(t => ({ ...t, processed: null }))
+      };
+      localStorage.setItem(LS_KEYS.tabs, JSON.stringify(light));
+      if (!storageWarned) {
+        storageWarned = true;
+        showToast("Storage nearly full — preview tables won't be restored next time.", "warn");
+      }
+    }
+  } catch (err) {
+    if (!storageWarned) {
+      storageWarned = true;
+      showToast("Local save unavailable — your data will not persist after reload.", "warn");
+      console.warn("persistTabs failed:", err);
+    }
+  }
+}
+
+/** Legacy single-workspace restore — used only to migrate old sessions. */
 function restoreFromStorage() {
   let amounts = null, crosscheck = null, title = null, billsRaw = null, expToggle = null;
   try {
@@ -863,9 +1286,9 @@ function restoreFromStorage() {
   } catch (err) { console.warn("localStorage read failed:", err); }
 
   try {
-    if (amounts    !== null) document.getElementById("billAmounts").value    = amounts;
-    if (crosscheck !== null) document.getElementById("crossCheckBox").value  = crosscheck;
-    if (title      !== null) document.getElementById("tableTitle").value     = title;
+    if (amounts    !== null) document.getElementById("billAmounts").value   = amounts;
+    if (crosscheck !== null) document.getElementById("crossCheckBox").value = crosscheck;
+    if (title      !== null) document.getElementById("tableTitle").value    = title;
 
     if (expToggle !== null) {
       const on = (expToggle === "1");
@@ -886,7 +1309,8 @@ function restoreFromStorage() {
               createBillRow(
                 typeof b.invoice === "string" ? b.invoice : "",
                 typeof b.expense === "string" ? b.expense : "",
-                typeof b.date    === "string" ? b.date    : ""
+                typeof b.date    === "string" ? b.date    : "",
+                true
               );
             }
           });
@@ -894,18 +1318,61 @@ function restoreFromStorage() {
         }
       } catch (parseErr) {
         console.warn("Corrupted saved bills:", parseErr);
-        showToast("Saved data was corrupted and has been reset.", "warn");
       }
     }
-    if (!restored) createBillRow();
+    if (!restored) createBillRow("", "", "", true);
 
-    if (amounts || crosscheck) checkCrossTotal();
+    updateSNos();
     updateTextBillCounter();
     updateBillAmountSums(false);
+    checkCrossTotal();
   } catch (err) {
     console.error("restoreFromStorage failed:", err);
-    showToast("Could not restore previous session.", "warn");
   }
+}
+
+/** Boot the tab system — restore saved tabs, or migrate an old session. */
+function bootTabs() {
+  let payload = null;
+  try {
+    const raw = localStorage.getItem(LS_KEYS.tabs);
+    if (raw) payload = JSON.parse(raw);
+  } catch (err) {
+    console.warn("Saved tabs could not be read:", err);
+  }
+
+  if (payload && Array.isArray(payload.tabs) && payload.tabs.length) {
+    tabsState.tabs = payload.tabs.map(normalizeTab);
+
+    /* guarantee unique ids */
+    const seen = new Set();
+    tabsState.tabs.forEach(t => {
+      while (seen.has(t.id)) t.id = "tab_" + (tabIdCounter++);
+      seen.add(t.id);
+    });
+
+    tabsState.activeId = tabsState.tabs.some(t => t.id === payload.activeId)
+      ? payload.activeId
+      : tabsState.tabs[0].id;
+
+    renumberTabs();            // ← numbers restart at 1 after every reload
+    renderTabs();
+    applyWorkspace(getActiveTab());
+    scrollActiveTabIntoView();
+    return;
+  }
+
+  /* First run (or upgrade from the pre-tab version) */
+  restoreFromStorage();
+
+  const first = makeTabObject();
+  Object.assign(first, captureWorkspace());
+  tabsState.tabs = [first];
+  tabsState.activeId = first.id;
+
+  renumberTabs();              // ← Tab 1
+  renderTabs();
+  persistTabs();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -923,10 +1390,10 @@ function toggleModal(id, show) {
    BILL ENTRY GRID
    ═══════════════════════════════════════════════════════════════ */
 
-function createBillRow(invoice = "", expense = "", date = "") {
+function createBillRow(invoice = "", expense = "", date = "", silent = false) {
   const grid = document.getElementById("billEntryGrid");
   if (grid.querySelectorAll(".bill-row").length >= MAX_ROWS) {
-    showToast(`Row limit reached (${MAX_ROWS}).`, "warn");
+    if (!silent) showToast(`Row limit reached (${MAX_ROWS}).`, "warn");
     return;
   }
 
@@ -949,9 +1416,12 @@ function createBillRow(invoice = "", expense = "", date = "") {
 
   grid.appendChild(row);
   attachInputListeners(row);
-  updateSNos();
-  updateBillAmountSums(false);
-  row.scrollIntoView({ block: "end", behavior: "smooth" });
+
+  if (!silent) {
+    updateSNos();
+    updateBillAmountSums(false);
+    row.scrollIntoView({ block: "end", behavior: "smooth" });
+  }
 }
 
 function deleteRow(btn) {
@@ -1383,13 +1853,19 @@ function buildReceiptString() {
   return out;
 }
 
+function autoSizeReceipt() {
+  const elm = document.getElementById("receiptString");
+  if (!elm) return;
+  elm.style.height = "auto";
+  elm.style.height = Math.min(Math.max(elm.scrollHeight + 2, 46), 130) + "px";
+}
+
 function updateReceiptString() {
   const elm = document.getElementById("receiptString");
   if (!elm) return "";
   const str = buildReceiptString();
   elm.value = str;
-  elm.style.height = "auto";
-  elm.style.height = Math.min(Math.max(elm.scrollHeight + 2, 46), 130) + "px";
+  autoSizeReceipt();
   return str;
 }
 
@@ -1427,16 +1903,18 @@ function legacyCopy(ta, done) {
    ═══════════════════════════════════════════════════════════════ */
 
 function setMode(mode) {
+  if (state.mode === mode) return;
   state.mode = mode;
   document.getElementById("horizontalBtn").classList.toggle("active", mode === "horizontal");
   document.getElementById("verticalBtn").classList.toggle("active",   mode === "vertical");
-  if (document.getElementById("previewTable").rows.length > 0) processData();
+  if (document.getElementById("previewTable").rows.length > 0) processData(true);
+  saveToStorage();
 }
 
 function handleExpenseToggle() {
   state.showExpenseHead = document.getElementById("toggleExpenseHead").checked;
+  if (document.getElementById("previewTable").rows.length > 0) processData(true);
   saveToStorage();
-  if (document.getElementById("previewTable").rows.length > 0) processData();
 }
 
 function updateTableStyle() {
@@ -1581,30 +2059,31 @@ function renderVertical(billData, title, thead, tbody) {
   tbody.appendChild(gRow);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   PROCESS
-   ═══════════════════════════════════════════════════════════════ */
+/** Blank the preview table, summary cards and expense chips. */
+function clearPreview() {
+  document.getElementById("tableHead").replaceChildren();
+  document.getElementById("tableBody").replaceChildren();
+  document.getElementById("billCount").textContent  = "0";
+  document.getElementById("grandTotal").textContent = "0";
 
-function processData() {
-  updateReceiptString();
-  const raw = document.getElementById("billAmounts").value.trim();
-  if (!raw) { showToast("No amounts entered yet.", "warn"); return; }
+  const chipsContainer = document.getElementById("expenseChipsContainer");
+  chipsContainer.replaceChildren();
+  const emptyMsg = document.createElement("div");
+  emptyMsg.className = "expense-empty-msg";
+  emptyMsg.textContent = "No data processed yet.";
+  chipsContainer.appendChild(emptyMsg);
+}
 
-  const title = document.getElementById("tableTitle").value.trim().slice(0, 100) || "Summary";
-  const refs   = getReferences();
-  const blocks = parseAmountBlocks(raw);
-  const thead  = document.getElementById("tableHead");
-  const tbody  = document.getElementById("tableBody");
+/**
+ * Render a fully-built billData array into the preview table,
+ * summary cards, expense subtotal chips and cross-check banner.
+ * Shared by Process and by tab restoration.
+ */
+function renderResults(billData, title) {
+  const thead = document.getElementById("tableHead");
+  const tbody = document.getElementById("tableBody");
   thead.replaceChildren();
   tbody.replaceChildren();
-
-  const billData = blocks.map((block, i) => ({
-    billNo:  refs[i]?.invoice || "-",
-    expense: refs[i]?.expense || "Unassigned",
-    date:    refs[i]?.date    ?? "-",
-    amounts: block.amounts,
-    total:   block.total,
-  }));
 
   if (state.mode === "horizontal") renderHorizontal(billData, title, thead, tbody);
   else                             renderVertical(billData, title, thead, tbody);
@@ -1634,9 +2113,41 @@ function processData() {
   });
 
   checkCrossTotal();
+  currentProcessed = { title, billData };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROCESS
+   ═══════════════════════════════════════════════════════════════ */
+
+function processData(silent = false) {
+  updateReceiptString();
+
+  const raw = document.getElementById("billAmounts").value.trim();
+  if (!raw) {
+    if (!silent) showToast("No amounts entered yet.", "warn");
+    return;
+  }
+
+  const title  = document.getElementById("tableTitle").value.trim().slice(0, 100) || "Summary";
+  const refs   = getReferences();
+  const blocks = parseAmountBlocks(raw);
+
+  const billData = blocks.map((block, i) => ({
+    billNo:  refs[i]?.invoice || "-",
+    expense: refs[i]?.expense || "Unassigned",
+    date:    refs[i]?.date    ?? "-",
+    amounts: block.amounts,
+    total:   block.total,
+  }));
+
+  renderResults(billData, title);
+
   updateTextBillCounter();
   updateBillAmountSums(false);
-  showToast("Table generated successfully!", "success");
+  saveToStorage();
+
+  if (!silent) showToast("Table generated successfully!", "success");
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1655,56 +2166,53 @@ function processCSVImport() {
     if (!line || line.length > MAX_CSV_LINE) return;
     const parts = line.split(",").map(p => p.trim().slice(0, MAX_FIELD_LEN));
     if (parts.some(p => p)) {
-      createBillRow(parts[0] || "", parts[1] || "", parts[2] || "");
+      createBillRow(parts[0] || "", parts[1] || "", parts[2] || "", true);
       imported++;
     }
   });
 
   if (imported === 0) {
-    createBillRow();
+    createBillRow("", "", "", true);
     showToast("No valid rows found in CSV input.", "warn");
   } else {
     showToast(`Imported ${pluralize(imported, "row")}.`, "success");
   }
 
+  updateSNos();
+  updateBillAmountSums(false);
   toggleModal("csvModal", false);
   document.getElementById("csvInput").value = "";
   saveToStorage();
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   CLEAR ALL
+   CLEAR — current tab only
    ═══════════════════════════════════════════════════════════════ */
 
 function clearAll() {
-  if (!confirm("Clear everything? This cannot be undone.")) return;
+  if (!confirm("Clear everything in this tab? This cannot be undone.")) return;
+
   ["tableTitle", "billAmounts", "crossCheckBox", "seriesDate"].forEach(id => {
     document.getElementById(id).value = "";
   });
 
   const grid = document.getElementById("billEntryGrid");
   grid.querySelectorAll(".bill-row").forEach(r => r.remove());
-  createBillRow();
+  createBillRow("", "", "", true);
+  updateSNos();
 
-  document.getElementById("tableHead").replaceChildren();
-  document.getElementById("tableBody").replaceChildren();
-  document.getElementById("billCount").textContent      = "0";
-  document.getElementById("grandTotal").textContent     = "0";
-  document.getElementById("textBillCounter").textContent = "0";
-
-  const chipsContainer = document.getElementById("expenseChipsContainer");
-  chipsContainer.replaceChildren();
-  const emptyMsg = document.createElement("div");
-  emptyMsg.className = "expense-empty-msg";
-  emptyMsg.textContent = "No data processed yet.";
-  chipsContainer.appendChild(emptyMsg);
+  currentProcessed = null;
+  clearPreview();
+  setCrosscheckStatus([{ text: "Waiting for Crosscheck…" }], "");
 
   const rs = document.getElementById("receiptString");
   if (rs) { rs.value = ""; rs.style.height = ""; }
 
-  setCrosscheckStatus([{ text: "Waiting for Crosscheck…" }], "");
-  Object.values(LS_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
-  showToast("Cleared.", "success");
+  document.getElementById("textBillCounter").textContent = "0";
+
+  refreshActiveTabLabel();
+  saveToStorage();
+  showToast("Tab cleared.", "success");
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1882,6 +2390,9 @@ function exportCSV() {
    ═══════════════════════════════════════════════════════════════ */
 
 function wireEventListeners() {
+  /* ── tabs ── */
+  document.getElementById("newTabBtn").addEventListener("click", newTab);
+
   document.getElementById("openShortcutsBtn").addEventListener("click", () => toggleModal("shortcutModal", true));
   document.getElementById("closeShortcutModalBtn").addEventListener("click", () => toggleModal("shortcutModal", false));
   document.getElementById("openCsvBtn").addEventListener("click", () => toggleModal("csvModal", true));
@@ -1904,7 +2415,7 @@ function wireEventListeners() {
   document.getElementById("rowHeight").addEventListener("change", updateTableStyle);
   document.getElementById("cellPadding").addEventListener("change", updateTableStyle);
 
-  document.getElementById("processBtn").addEventListener("click", processData);
+  document.getElementById("processBtn").addEventListener("click", () => processData(false));
   document.getElementById("clearBtn").addEventListener("click", clearAll);
   document.getElementById("printBtn").addEventListener("click", () => window.print());
   document.getElementById("fontPlusBtn").addEventListener("click", () => changeFont(1));
@@ -1917,7 +2428,12 @@ function wireEventListeners() {
   receipt.addEventListener("click", function () { this.select(); });
   receipt.addEventListener("focus", function () { this.select(); });
 
-  document.getElementById("tableTitle").addEventListener("input", saveToStorage);
+  document.getElementById("tableTitle").addEventListener("input", function () {
+    refreshActiveTabLabel();
+    saveToStorage();
+  });
+
+  document.getElementById("seriesDate").addEventListener("change", saveToStorage);
 
   ["billAmounts", "crossCheckBox"].forEach(id => {
     const node = document.getElementById(id);
@@ -1941,18 +2457,41 @@ function wireEventListeners() {
   });
 
   window.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); processData(); }
-    if (e.key === "Escape") document.querySelectorAll(".modal-overlay.open").forEach(m => m.classList.remove("open"));
-    if (e.key === "?" && !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) {
+    const tag = document.activeElement?.tagName;
+    const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); processData(false); return; }
+
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal-overlay.open").forEach(m => m.classList.remove("open"));
+      return;
+    }
+
+    /* Alt-based tab shortcuts */
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === "t") { e.preventDefault(); newTab(); return; }
+      if (k === "w") { e.preventDefault(); closeTab(tabsState.activeId); return; }
+      if (e.key === "PageDown") { e.preventDefault(); cycleTab(1);  return; }
+      if (e.key === "PageUp")   { e.preventDefault(); cycleTab(-1); return; }
+    }
+
+    if (e.key === "?" && !typing) {
       e.preventDefault();
       toggleModal("shortcutModal", true);
     }
+  });
+
+  /* flush pending saves before the page goes away */
+  window.addEventListener("beforeunload", () => {
+    clearTimeout(debounceTimer);
+    persistTabs();
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   wireEventListeners();
-  restoreFromStorage();
+  bootTabs();
 });
 </script>
 </body>
