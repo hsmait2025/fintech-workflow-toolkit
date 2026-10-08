@@ -198,7 +198,7 @@
             letter-spacing: 0.5px;
         }
         
-        select, input[type="number"] {
+        select, input[type="number"], input[type="text"] {
             width: 100%;
             padding: 10px 12px;
             border-radius: 6px;
@@ -206,6 +206,21 @@
             background: white;
             font-size: 14px;
             outline: none;
+            font-family: inherit;
+        }
+        select:focus, input[type="number"]:focus, input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 38px;
+            padding: 3px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
         }
 
         .mode-tabs, .history-tabs { 
@@ -340,6 +355,16 @@
             z-index: 2;
         }
 
+        /* Live watermark preview overlay — sits exactly on top of the compressed
+           image, inherits the pan/zoom transform and mirrors the slider clip. */
+        #watermark-preview-canvas {
+            position: absolute;
+            z-index: 3;
+            display: none;
+            pointer-events: none;
+            will-change: clip-path;
+        }
+
         .slider-handle {
             position: absolute;
             top: 0; bottom: 0; left: 50%; width: 4px;
@@ -454,6 +479,13 @@
         #magnifier-crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
         #magnifier-crosshair::after { left: 5px; top: 0; width: 2px; height: 12px; }
 
+        /* Watermark settings panel divider */
+        #watermark-block {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border);
+        }
+
         @media (min-width: 992px) {
             .workspace { grid-template-columns: 360px 1fr; }
             .comparison-window { height: 650px; }
@@ -466,7 +498,7 @@
     <div class="app-header">
         <div>
             <h1>Enterprise Intelligent Document Scanner</h1>
-            <p>Real-time local filter rendering, automated sheet boundary scanning, history stack tracking, and continuous PDF generation loop.</p>
+            <p>Real-time local filter rendering, automated sheet boundary scanning, history stack tracking, continuous PDF generation loop.</p>
         </div>
         <button class="btn-clear-all" onclick="clearAllDataAndRestart()">Reset / Clear All</button>
     </div>
@@ -548,6 +580,56 @@
                     <label for="sharpen-range">Text Sharpness: <span id="sharpen-lbl">Off</span></label>
                     <input type="range" id="sharpen-range" min="0" max="100" value="0">
                 </div>
+
+                <!-- ==================== WATERMARK CONTROLS ==================== -->
+                <div id="watermark-block">
+                    <div class="control-group">
+                        <label>Watermark</label>
+                        <div class="mode-tabs">
+                            <button class="tab-btn active" id="wm-off" onclick="setWatermarkEnabled(false)">Off</button>
+                            <button class="tab-btn" id="wm-on" onclick="setWatermarkEnabled(true)">On</button>
+                        </div>
+                    </div>
+
+                    <div id="watermark-settings" style="display:none;">
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-text">Watermark Text</label>
+                            <input type="text" id="wm-text" value="CONFIDENTIAL" maxlength="60" placeholder="e.g. CONFIDENTIAL / COPY">
+                        </div>
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-layout">Placement Style</label>
+                            <select id="wm-layout">
+                                <option value="diagonal">Diagonal Center</option>
+                                <option value="tiled">Tiled / Repeating</option>
+                                <option value="center">Centered Horizontal</option>
+                                <option value="footer">Bottom-Right Corner</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-size">Scale: <span id="wm-size-lbl">8%</span></label>
+                            <input type="range" id="wm-size" min="2" max="25" value="8">
+                        </div>
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-opacity">Opacity: <span id="wm-opacity-lbl">35%</span></label>
+                            <input type="range" id="wm-opacity" min="5" max="100" value="35">
+                        </div>
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-rotation">Rotation: <span id="wm-rotation-lbl">-30°</span></label>
+                            <input type="range" id="wm-rotation" min="-90" max="90" value="-30">
+                        </div>
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label for="wm-color">Ink Color</label>
+                            <input type="color" id="wm-color" value="#808080">
+                        </div>
+                    </div>
+                </div>
+                <!-- ================== /WATERMARK CONTROLS =================== -->
+
             </div>
 
             <div class="stats-box">
@@ -587,6 +669,10 @@
             <div class="slider-wrapper" id="view-bounds" style="position: absolute; width: 100%; height: 100%; left: 0; top: 0; display: flex; align-items: center; justify-content: center;">
                 <img id="view-original" src="" alt="Original Document" style="max-width: 100%; max-height: 100%; width: auto; height: auto; display: block;">
                 <img id="view-compressed" class="compressed-layer" src="" alt="Compressed Output" style="max-width: 100%; max-height: 100%; width: auto; height: auto; display: block;">
+
+                <!-- Live watermark overlay (only visible on the compressed side of the slider) -->
+                <canvas id="watermark-preview-canvas"></canvas>
+
                 <div class="slider-handle" id="ui-handle"></div>
 
                 <svg id="crop-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto;">
@@ -615,9 +701,90 @@
 </div>
 
 <script>
+    /* =========================================================================
+       WATERMARK RENDERER  (shared by main thread + worker)
+       -------------------------------------------------------------------------
+       This single function is serialized via .toString() and injected straight
+       into the Web Worker, so the on-screen preview and the final baked-in
+       pixels are guaranteed to be pixel-for-pixel identical.
+       It must therefore stay completely self-contained (no external refs).
+       ========================================================================= */
+    function drawWatermarkOnContext(ctx, w, h, cfg) {
+        if (!cfg || !cfg.enabled || !cfg.text) return;
+
+        const text = String(cfg.text);
+        const sizePct = (cfg.size == null) ? 8 : cfg.size;
+        const opacityPct = (cfg.opacity == null) ? 35 : cfg.opacity;
+        const rotationDeg = (cfg.rotation == null) ? -30 : cfg.rotation;
+
+        const basePx = Math.max(10, w * (sizePct / 100));
+        const alpha = Math.max(0.02, Math.min(1, opacityPct / 100));
+        const rad = (rotationDeg * Math.PI) / 180;
+
+        const PRE = 'bold ';
+        const POST = 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = cfg.color || '#808080';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (cfg.layout === 'tiled') {
+            ctx.font = PRE + basePx + POST;
+            const m = ctx.measureText(text);
+            const stepX = Math.max(basePx * 3, m.width + basePx * 2.5);
+            const stepY = basePx * 5;
+            const diag = Math.sqrt(w * w + h * h);
+            const cols = Math.ceil(diag / stepX) + 1;
+            const rows = Math.ceil(diag / stepY) + 1;
+
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(rad);
+            for (let r = -rows; r <= rows; r++) {
+                const offset = (r % 2 === 0) ? 0 : stepX / 2;
+                for (let c = -cols; c <= cols; c++) {
+                    ctx.fillText(text, c * stepX + offset, r * stepY);
+                }
+            }
+        } else if (cfg.layout === 'footer') {
+            const px = Math.max(8, basePx * 0.55);
+            ctx.font = PRE + px + POST;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(text, w - px, h - px);
+        } else {
+            // 'diagonal' or 'center'
+            const maxW = w * 0.92;
+            let px = basePx;
+            ctx.font = PRE + px + POST;
+            const m = ctx.measureText(text);
+            if (m.width > maxW && m.width > 0) {
+                px = Math.max(6, px * (maxW / m.width));
+                ctx.font = PRE + px + POST;
+            }
+            ctx.translate(w / 2, h / 2);
+            if (cfg.layout === 'diagonal') ctx.rotate(rad);
+            ctx.fillText(text, 0, 0);
+        }
+
+        ctx.restore();
+    }
+
+    /* =========================================================================
+       WEB WORKER (compression pipeline + baked-in watermark)
+       -------------------------------------------------------------------------
+       Sharpness fix: the watermark is now rasterised on a FRESH copy of the
+       canvas that is about to be encoded — at the exact output resolution
+       (whether full-size or downscaled by the auto-target search). Previously
+       the watermark was baked onto the master canvas and then the whole thing
+       was resampled, which softened every glyph edge.
+       ========================================================================= */
     const workerCode = `
+        ${drawWatermarkOnContext.toString()}
+
         self.onmessage = async function(e) {
-            const { pageIndex, bitmap, mode, targetSize, quality, filterMode, thresholdValue, grayscaleValue, sharpenValue } = e.data;
+            const { pageIndex, bitmap, mode, targetSize, quality, filterMode, thresholdValue, grayscaleValue, sharpenValue, watermark } = e.data;
             const w = bitmap.width; const h = bitmap.height;
             const canvas = new OffscreenCanvas(w, h);
             const ctx = canvas.getContext('2d');
@@ -655,18 +822,36 @@
             }
 
             ctx.putImageData(imgData, 0, 0);
+
+            // ---- Encode helper: watermark is ALWAYS rasterised on a fresh copy
+            //      of the canvas that is about to be JPEG-encoded, at its native
+            //      output resolution. This keeps glyph edges crisp.
+            const makeWatermarkedBlob = async (srcCanvas, q) => {
+                if (!watermark || !watermark.enabled || !watermark.text) {
+                    return srcCanvas.convertToBlob({ type: 'image/jpeg', quality: q });
+                }
+                const sw = srcCanvas.width, sh = srcCanvas.height;
+                const tmp = new OffscreenCanvas(sw, sh);
+                const tctx = tmp.getContext('2d');
+                tctx.imageSmoothingEnabled = true;
+                tctx.imageSmoothingQuality = 'high';
+                tctx.drawImage(srcCanvas, 0, 0);
+                drawWatermarkOnContext(tctx, sw, sh, watermark);
+                return tmp.convertToBlob({ type: 'image/jpeg', quality: q });
+            };
+
             let blob; const maxSizeBytes = targetSize * 1024;
 
             if (mode === 'manual') {
-                blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: quality / 100 });
+                blob = await makeWatermarkedBlob(canvas, quality / 100);
             } else {
                 let minQ = 0.01, maxQ = 0.98;
                 for (let i = 0; i < 8; i++) {
                     const midQ = (minQ + maxQ) / 2;
-                    let testBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: midQ });
+                    let testBlob = await makeWatermarkedBlob(canvas, midQ);
                     if (testBlob.size <= maxSizeBytes) minQ = midQ; else maxQ = midQ;
                 }
-                blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: minQ });
+                blob = await makeWatermarkedBlob(canvas, minQ);
 
                 if (blob.size > maxSizeBytes) {
                     let scale = 0.9;
@@ -674,8 +859,11 @@
                         const sW = Math.floor(w * scale); const sH = Math.floor(h * scale);
                         const sCanvas = new OffscreenCanvas(sW, sH);
                         const sCtx = sCanvas.getContext('2d');
+                        sCtx.imageSmoothingEnabled = true;
+                        sCtx.imageSmoothingQuality = 'high';
                         sCtx.drawImage(canvas, 0, 0, sW, sH);
-                        let testBlob = await sCanvas.convertToBlob({ type: 'image/jpeg', quality: 0.60 });
+                        // Watermark is drawn at the SCALED resolution → sharp
+                        let testBlob = await makeWatermarkedBlob(sCanvas, 0.60);
                         if (testBlob.size <= maxSizeBytes) { blob = testBlob; break; }
                         scale -= 0.1;
                     }
@@ -692,6 +880,7 @@
     let documentPages = []; 
     let activePageIndex = null;
     let debounceTimer = null;
+    let watermarkDebounceTimer = null;
     let draggedIndex = null;
     
     let globalAutoMode = 'auto';
@@ -732,6 +921,21 @@
     const loupeCanvas = document.getElementById('magnifier-canvas');
     const loupeCtx = loupeCanvas.getContext('2d');
 
+    // --- Watermark DOM handles ---
+    const wmOffBtn = document.getElementById('wm-off');
+    const wmOnBtn = document.getElementById('wm-on');
+    const wmSettingsGroup = document.getElementById('watermark-settings');
+    const wmTextInput = document.getElementById('wm-text');
+    const wmLayoutSelect = document.getElementById('wm-layout');
+    const wmSizeRange = document.getElementById('wm-size');
+    const wmSizeLbl = document.getElementById('wm-size-lbl');
+    const wmOpacityRange = document.getElementById('wm-opacity');
+    const wmOpacityLbl = document.getElementById('wm-opacity-lbl');
+    const wmRotationRange = document.getElementById('wm-rotation');
+    const wmRotationLbl = document.getElementById('wm-rotation-lbl');
+    const wmColorInput = document.getElementById('wm-color');
+    const wmPreviewCanvas = document.getElementById('watermark-preview-canvas');
+
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -756,8 +960,25 @@
         globalAutoTargetSize = 200;
         setMode('auto');
         targetSizeInput.value = 200;
+
+        resetWatermarkControlsToDefault();
+        wmPreviewCanvas.style.display = 'none';
         
         renderBatchGallery();
+    }
+
+    function resetWatermarkControlsToDefault() {
+        isBatchUpdating = true;
+        wmOffBtn.classList.add('active');
+        wmOnBtn.classList.remove('active');
+        wmSettingsGroup.style.display = 'none';
+        wmTextInput.value = 'CONFIDENTIAL';
+        wmLayoutSelect.value = 'diagonal';
+        wmSizeRange.value = 8;      wmSizeLbl.textContent = '8%';
+        wmOpacityRange.value = 35;  wmOpacityLbl.textContent = '35%';
+        wmRotationRange.value = -30; wmRotationLbl.textContent = '-30°';
+        wmColorInput.value = '#808080';
+        isBatchUpdating = false;
     }
 
     function createDefaultPageSettings() {
@@ -768,7 +989,15 @@
             filterMode: 'none',
             grayscaleValue: 0,
             thresholdValue: 127,
-            sharpenValue: 0
+            sharpenValue: 0,
+            // ---- Watermark defaults ----
+            watermarkEnabled: false,
+            watermarkText: 'CONFIDENTIAL',
+            watermarkLayout: 'diagonal',
+            watermarkSize: 8,
+            watermarkOpacity: 35,
+            watermarkRotation: -30,
+            watermarkColor: '#808080'
         };
     }
 
@@ -984,6 +1213,7 @@
 
         updateUndoRedoUI();
         resetZoomAndPan();
+        refreshWatermarkPreview();
     }
 
     function syncControlsFromPageSettings(s) {
@@ -1009,6 +1239,21 @@
         
         sharpenRange.value = s.sharpenValue;
         sharpenLbl.textContent = s.sharpenValue === 0 ? 'Off' : `+${s.sharpenValue}% Edge Power`;
+
+        // ---- Watermark sync ----
+        wmOffBtn.classList.toggle('active', !s.watermarkEnabled);
+        wmOnBtn.classList.toggle('active', !!s.watermarkEnabled);
+        wmSettingsGroup.style.display = s.watermarkEnabled ? 'block' : 'none';
+        wmTextInput.value = s.watermarkText;
+        wmLayoutSelect.value = s.watermarkLayout;
+        wmSizeRange.value = s.watermarkSize;
+        wmSizeLbl.textContent = s.watermarkSize + '%';
+        wmOpacityRange.value = s.watermarkOpacity;
+        wmOpacityLbl.textContent = s.watermarkOpacity + '%';
+        wmRotationRange.value = s.watermarkRotation;
+        wmRotationLbl.textContent = s.watermarkRotation + '°';
+        wmColorInput.value = s.watermarkColor;
+
         isBatchUpdating = false;
     }
 
@@ -1023,6 +1268,15 @@
         page.settings.grayscaleValue = parseInt(grayscaleRange.value);
         page.settings.thresholdValue = parseInt(thresholdRange.value);
         page.settings.sharpenValue = parseInt(sharpenRange.value);
+
+        // ---- Watermark ----
+        page.settings.watermarkEnabled = wmOnBtn.classList.contains('active');
+        page.settings.watermarkText = wmTextInput.value;
+        page.settings.watermarkLayout = wmLayoutSelect.value;
+        page.settings.watermarkSize = parseInt(wmSizeRange.value);
+        page.settings.watermarkOpacity = parseInt(wmOpacityRange.value);
+        page.settings.watermarkRotation = parseInt(wmRotationRange.value);
+        page.settings.watermarkColor = wmColorInput.value;
     }
 
     function applyZeroLatencyHardwareFilterPreview() {
@@ -1089,6 +1343,173 @@
     });
     targetSizeInput.addEventListener('change', () => applyZeroLatencyHardwareFilterPreview());
 
+    /* =========================================================================
+       WATERMARK — UI WIRING
+       ========================================================================= */
+
+    function setWatermarkEnabled(enabled) {
+        if (activePageIndex === null) return;
+        wmOffBtn.classList.toggle('active', !enabled);
+        wmOnBtn.classList.toggle('active', enabled);
+        wmSettingsGroup.style.display = enabled ? 'block' : 'none';
+        handleWatermarkChange();
+        captureHistorySnapshot(documentPages[activePageIndex]);
+    }
+
+    function readWatermarkConfigFromControls() {
+        return {
+            enabled: wmOnBtn.classList.contains('active'),
+            text: wmTextInput.value,
+            layout: wmLayoutSelect.value,
+            size: parseInt(wmSizeRange.value, 10),
+            opacity: parseInt(wmOpacityRange.value, 10),
+            rotation: parseInt(wmRotationRange.value, 10),
+            color: wmColorInput.value
+        };
+    }
+
+    function handleWatermarkChange() {
+        if (isBatchUpdating || activePageIndex === null) return;
+
+        // Live label refresh
+        wmSizeLbl.textContent = wmSizeRange.value + '%';
+        wmOpacityLbl.textContent = wmOpacityRange.value + '%';
+        wmRotationLbl.textContent = wmRotationRange.value + '°';
+
+        const cfg = readWatermarkConfigFromControls();
+
+        // Watermarks are a document-wide property — push to every page.
+        documentPages.forEach(p => {
+            p.settings.watermarkEnabled = cfg.enabled;
+            p.settings.watermarkText = cfg.text;
+            p.settings.watermarkLayout = cfg.layout;
+            p.settings.watermarkSize = cfg.size;
+            p.settings.watermarkOpacity = cfg.opacity;
+            p.settings.watermarkRotation = cfg.rotation;
+            p.settings.watermarkColor = cfg.color;
+        });
+
+        // Instant visual feedback via the canvas overlay
+        refreshWatermarkPreview();
+
+        // Debounced re-bake of every page through the worker
+        clearTimeout(watermarkDebounceTimer);
+        watermarkDebounceTimer = setTimeout(() => {
+            processAllQueuePages();
+        }, 400);
+    }
+
+    ['input', 'change'].forEach(evtName => {
+        wmTextInput.addEventListener(evtName, handleWatermarkChange);
+        wmLayoutSelect.addEventListener(evtName, handleWatermarkChange);
+        wmSizeRange.addEventListener(evtName, handleWatermarkChange);
+        wmOpacityRange.addEventListener(evtName, handleWatermarkChange);
+        wmRotationRange.addEventListener(evtName, handleWatermarkChange);
+        wmColorInput.addEventListener(evtName, handleWatermarkChange);
+    });
+
+    // Push a history frame once the user commits a value (slider release / blur)
+    ['change'].forEach(evtName => {
+        wmTextInput.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+        wmLayoutSelect.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+        wmSizeRange.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+        wmOpacityRange.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+        wmRotationRange.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+        wmColorInput.addEventListener(evtName, () => {
+            if (activePageIndex !== null) captureHistorySnapshot(documentPages[activePageIndex]);
+        });
+    });
+
+    /* =========================================================================
+       WATERMARK — LIVE OVERLAY PREVIEW  (supersampled for sharpness)
+       -------------------------------------------------------------------------
+       The overlay canvas is a sibling of the two <img> layers inside the same
+       transformed flex container, so it pans & zooms perfectly in sync. Its
+       clip-path mirrors the slider so the watermark is only ever visible on
+       the "compressed" half of the comparison.
+
+       The internal buffer is rendered at 3× the CSS display size and then
+       scaled back down by the browser's compositor — this produces visibly
+       crisper glyph edges than a 1× draw, and stays sharp when zoomed in.
+       ========================================================================= */
+
+    const WATERMARK_PREVIEW_SUPERSAMPLE = 3;
+
+    function refreshWatermarkPreview() {
+        if (isCropModeActive || activePageIndex === null) {
+            wmPreviewCanvas.style.display = 'none';
+            return;
+        }
+        renderWatermarkPreview();
+    }
+
+    function renderWatermarkPreview() {
+        if (activePageIndex === null) {
+            wmPreviewCanvas.style.display = 'none';
+            return;
+        }
+        const page = documentPages[activePageIndex];
+        const s = page.settings;
+
+        const dispW = viewOriginal.offsetWidth;
+        const dispH = viewOriginal.offsetHeight;
+
+        if (!s.watermarkEnabled || !s.watermarkText || !dispW || !dispH) {
+            wmPreviewCanvas.style.display = 'none';
+            return;
+        }
+
+        const cfg = {
+            enabled: true,
+            text: s.watermarkText,
+            layout: s.watermarkLayout,
+            size: s.watermarkSize,
+            opacity: s.watermarkOpacity,
+            rotation: s.watermarkRotation,
+            color: s.watermarkColor
+        };
+
+        // ---- Supersample at 3× for razor-sharp text. The canvas is then
+        //      CSS-scaled back to the display size, letting the compositor
+        //      perform a high-quality downsample (much sharper than 1× draw).
+        const SS = WATERMARK_PREVIEW_SUPERSAMPLE;
+        const renderW = Math.max(1, Math.round(dispW * SS));
+        const renderH = Math.max(1, Math.round(dispH * SS));
+
+        wmPreviewCanvas.width  = renderW;
+        wmPreviewCanvas.height = renderH;
+        wmPreviewCanvas.style.width  = dispW + 'px';
+        wmPreviewCanvas.style.height = dispH + 'px';
+        wmPreviewCanvas.style.left = viewOriginal.offsetLeft + 'px';
+        wmPreviewCanvas.style.top  = viewOriginal.offsetTop  + 'px';
+        wmPreviewCanvas.style.display = 'block';
+
+        const ctx = wmPreviewCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.clearRect(0, 0, renderW, renderH);
+        drawWatermarkOnContext(ctx, renderW, renderH, cfg);
+
+        updateWatermarkClip();
+    }
+
+    function updateWatermarkClip() {
+        if (wmPreviewCanvas.style.display === 'none') return;
+        const dispW = parseFloat(wmPreviewCanvas.style.width) || 0;
+        const clipX = (clipPercent / 100) * dispW;
+        wmPreviewCanvas.style.clipPath = `inset(0px 0px 0px ${clipX}px)`;
+    }
+
     function captureHistorySnapshot(pageObj) {
         if (!pageObj) return;
         if (pageObj.historyPointer < pageObj.historyStack.length - 1) {
@@ -1136,6 +1557,7 @@
         updateUndoRedoUI();
         dispatchCompressionPipelineForPage(activePageIndex);
         renderBatchGallery();
+        refreshWatermarkPreview();
         
         if (isCropModeActive) {
             renderCropOverlaySVG();
@@ -1179,6 +1601,7 @@
         const clipX = (clipPercent / 100) * w;
         viewCompressed.style.clipPath = `inset(0px 0px 0px ${clipX}px)`;
         
+        updateWatermarkClip();
         renderCropOverlaySVG();
     }
 
@@ -1216,7 +1639,12 @@
 
     viewOriginal.onload = () => {
         applyTransformations();
+        refreshWatermarkPreview();
     };
+
+    viewCompressed.addEventListener('load', () => {
+        refreshWatermarkPreview();
+    });
 
     function enterCropMode(isEditingExisting = false) {
         if (activePageIndex === null) return;
@@ -1226,6 +1654,7 @@
         cropOverlay.style.display = 'block';
         uiHandle.style.display = 'none';
         viewCompressed.style.display = 'none';
+        wmPreviewCanvas.style.display = 'none';
         document.getElementById('lbl-orig').style.display = 'none';
         document.getElementById('lbl-comp').style.display = 'none';
         document.getElementById('toolbar-rotate').style.display = 'none';
@@ -1273,7 +1702,11 @@
             viewOriginal.src = page.masterUrl;
         }
 
-        setTimeout(() => { resetZoomAndPan(); applyTransformations(); }, 40);
+        setTimeout(() => {
+            resetZoomAndPan();
+            applyTransformations();
+            refreshWatermarkPreview();
+        }, 40);
     }
 
     function commitCropSelection() {
@@ -1526,7 +1959,17 @@
                 filterMode: targetPage.settings.filterMode,
                 thresholdValue: targetPage.settings.thresholdValue, 
                 grayscaleValue: targetPage.settings.grayscaleValue,
-                sharpenValue: targetPage.settings.sharpenValue
+                sharpenValue: targetPage.settings.sharpenValue,
+                // ---- Watermark payload ----
+                watermark: {
+                    enabled: targetPage.settings.watermarkEnabled,
+                    text: targetPage.settings.watermarkText,
+                    layout: targetPage.settings.watermarkLayout,
+                    size: targetPage.settings.watermarkSize,
+                    opacity: targetPage.settings.watermarkOpacity,
+                    rotation: targetPage.settings.watermarkRotation,
+                    color: targetPage.settings.watermarkColor
+                }
             }, [bitmap]);
         };
     }
@@ -1549,6 +1992,7 @@
             document.getElementById('stat-delta').textContent = savings > 0 ? `Reduced by ${savings}%` : `Size Unchanged`;
             
             applyTransformations();
+            refreshWatermarkPreview();
         }
 
         workerLoader.style.display = 'none'; 
