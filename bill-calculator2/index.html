@@ -598,7 +598,7 @@ th { background: #ffffff; color: black; }
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>W</kbd> : Close Current Tab</div>
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgDn</kbd> : Next Tab</div>
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgUp</kbd> : Previous Tab</div>
-      <div class="shortcut-item"><kbd>Backspace</kbd> : Bring the equation back (amount boxes)</div>
+      <div class="shortcut-item"><kbd>Double-click</kbd> : Bring the equation back (amount boxes)</div>
       <div class="shortcut-item"><kbd>Esc</kbd> : Keep the total, drop the equation (amount boxes)</div>
     </div>
     <div class="modal-actions">
@@ -634,7 +634,7 @@ th { background: #ffffff; color: black; }
     <div>
       <strong>Bill Amount Format:</strong> Amounts line by line &nbsp;|&nbsp; Blank line = next bill &nbsp;|&nbsp;
       Supports calculations like <strong>120+45+10</strong> &nbsp;|&nbsp;
-      Hit <strong>Backspace</strong> on a total to bring the original equation back for editing
+      <strong>Double-click</strong> on a computed total to bring the original equation back
     </div>
     <button class="auto-btn" id="openShortcutsBtn" type="button">Shortcuts (?)</button>
   </div>
@@ -943,16 +943,28 @@ function safeFilename(name) {
    EXPRESSION MEMORY — "edit the equation, not the answer"
    ───────────────────────────────────────────────────────────────
    When a line such as  200+100  is evaluated to  300 , the pair
-   (result → expression) is remembered for that tab. The moment the
-   caret lands on a line that still holds a remembered result — by
-   click, by arrow key, or by pressing Backspace to nibble at it —
-   the ORIGINAL EXPRESSION is put back on screen so it can be
-   corrected (200+150) instead of being retyped from scratch.
+   (result → expression) is remembered for that tab. The ORIGINAL
+   EQUATION is brought back on demand, but ONLY by ONE gesture:
+
+       • a DOUBLE-CLICK on a computed total.
+
+   Everything else is left completely alone:
+       • single clicks  → normal caret placement / word selection
+       • Backspace      → deletes the digit under the caret
+       • Delete         → deletes the character under the caret
+       • arrow keys     → caret movement only
+       • Home / End     → caret movement only
+       • PageUp / PageDn→ caret movement only
+       • focus / blur   → focus is focus; blur still collapses any
+                          formula that is left un-collapsed.
+
+   The point of this discipline is that the amount box behaves like
+   a normal text field at all times, EXCEPT when the user explicitly
+   asks the tool to open its formula history.
    ═══════════════════════════════════════════════════════════════ */
 
 const EXPR_MEMORY_LIMIT = 300;
 const PURE_NUMBER_RE = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
-const NAV_KEYS = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"]);
 
 /**
  * Evaluate one amount line: either a plain number (commas tolerated)
@@ -1048,17 +1060,17 @@ function replaceLine(ta, start, end, newText) {
 /* ── restoring the original equation ──────────────────────────── */
 
 /**
- * If the caret sits on a line that still holds a remembered RESULT,
- * return everything needed to swap it back to the ORIGINAL EQUATION.
- * Returns null when there is nothing to restore.
+ * Return everything needed to swap a remembered RESULT back to its
+ * ORIGINAL EQUATION, based on whatever line the caret anchor sits on.
  *
- * The returned `contentStart` / `contentEnd` delimit the trimmed
- * number itself, which lets the Backspace handler tell "a digit is
- * about to be eaten" apart from "the indent/newline is about to be
- * eaten" — only the former must be intercepted.
+ * The selection is deliberately NOT required to be collapsed — a
+ * double-click first selects a word, and we still want the swap to
+ * fire in that state.
+ *
+ * Returns null when there is nothing to restore.
  */
-function findRestorableAtCaret(ta) {
-  if (!ta || ta.selectionStart !== ta.selectionEnd) return null;
+function findRestorableLine(ta) {
+  if (!ta) return null;
 
   const value = ta.value;
   const pos   = ta.selectionStart;
@@ -1074,54 +1086,19 @@ function findRestorableAtCaret(ta) {
   const expr = findExpression(lineIndex, trimmed);
   if (!expr || expr === trimmed) return null;
 
-  const lead  = raw.length - raw.trimStart().length;
-  const trail = raw.length - raw.trimEnd().length;
-
-  return {
-    start, end, expr,
-    result: trimmed,
-    contentStart: start + lead,
-    contentEnd:   end - trail
-  };
+  return { start, end, expr, result: trimmed };
 }
 
 /**
- * Put the original equation back under the caret — used by focus,
- * click and arrow-key navigation. Purely cosmetic: nothing is
- * prevented or consumed.
- */
-function restoreExpressionAtCaret(ta) {
-  const hit = findRestorableAtCaret(ta);
-  if (!hit) return false;
-  replaceLine(ta, hit.start, hit.end, hit.expr);
-  return true;
-}
-
-/**
- * Backspace / Delete landed on a computed total. A total that came
- * out of a formula is never edited digit by digit, so the equation
- * is restored INSTEAD of deleting the character, and the keypress
- * is swallowed. The caret parks at the end of the equation so the
- * wrong operand can be fixed straight away.
+ * Swap the current line back to the original equation.
+ * The caret parks at the end so the wrong operand can be fixed
+ * straight away.
  *
- *   "300"  (from 200+100)  +  Backspace   →   "200+100"   caret at end
- *
- * The `forward` flag distinguishes Delete from Backspace so that
- * pressing them right at the line indent / trailing edge still
- * joins or splits lines the normal way.
+ * Triggered by exactly ONE gesture: a double-click on the total.
  */
-function restoreExpressionOnBackspace(ta, forward) {
-  if (!ta || ta.selectionStart !== ta.selectionEnd) return false;
-
-  const hit = findRestorableAtCaret(ta);
+function restoreExpressionLine(ta) {
+  const hit = findRestorableLine(ta);
   if (!hit) return false;
-
-  const pos = ta.selectionStart;
-  const wouldEatADigit = forward
-    ? (pos >= hit.contentStart && pos <  hit.contentEnd)   // Delete
-    : (pos >  hit.contentStart && pos <= hit.contentEnd);  // Backspace
-  if (!wouldEatADigit) return false;
-
   replaceLine(ta, hit.start, hit.end, hit.expr);
   return true;
 }
@@ -1170,14 +1147,21 @@ function evaluateAllExpressions(ta) {
   return true;
 }
 
-/** Wire the caret-aware behaviour onto one amount textarea. */
+/**
+ * Wire the caret-aware behaviour onto one amount textarea.
+ *
+ * The ONLY restore trigger is a double-click. Single clicks, focus,
+ * blur, and every arrow / navigation key are left completely alone:
+ * the textarea behaves like a normal text field.
+ *
+ * Blur still collapses any formula that is left un-collapsed, so the
+ * box always leaves focus holding its computed total.
+ */
 function attachExpressionMemory(ta) {
   if (!ta) return;
 
-  ta.addEventListener("focus", () => restoreExpressionAtCaret(ta));
-  ta.addEventListener("click", () => restoreExpressionAtCaret(ta));
-  ta.addEventListener("keyup", (e) => {
-    if (NAV_KEYS.has(e.key)) restoreExpressionAtCaret(ta);
+  ta.addEventListener("dblclick", () => {
+    restoreExpressionLine(ta);
   });
 
   ta.addEventListener("blur", () => {
@@ -1893,12 +1877,17 @@ function updateBillAmountSums(autoCreate = true) {
 /**
  * Amount-box keyboard contract:
  *
- *   Backspace / Delete → if a digit of a computed total is about to be
- *                        removed, the ORIGINAL EQUATION is restored
- *                        instead and the keypress is swallowed.
- *   Esc                → collapse a restored equation back to its total.
- *   Enter              → evaluate the current line, remember the formula,
- *                        and open a fresh line below.
+ *   Enter  → evaluate the current line, remember the formula,
+ *            and open a fresh line below.
+ *   Esc    → collapse a restored equation back to its total.
+ *
+ *   Backspace / Delete / arrow keys / Home / End / PageUp / PageDown
+ *          → untouched. They are native editing and caret movement
+ *            and must NEVER rewrite the line under the caret.
+ *
+ * The only gesture that brings back a remembered equation is a
+ * DOUBLE-CLICK on the computed total, wired up in
+ * attachExpressionMemory().
  */
 function enableCalculation(id) {
   const node = document.getElementById(id);
@@ -1906,15 +1895,6 @@ function enableCalculation(id) {
 
   node.addEventListener("keydown", function (e) {
     const ta = this;
-
-    /* ── Backspace / Delete : never nibble at a computed total ─── */
-    if (e.key === "Backspace" || e.key === "Delete") {
-      if (restoreExpressionOnBackspace(ta, e.key === "Delete")) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      return;
-    }
 
     /* ── Esc : keep the computed total, drop the restored formula ── */
     if (e.key === "Escape") {
@@ -2691,8 +2671,10 @@ function wireEventListeners() {
     });
   });
 
-  /* Amount boxes: evaluate on Enter, remember the formula, restore it on
-     click / arrow / Backspace, and collapse it back with Esc. */
+  /* Amount boxes: evaluate on Enter, remember the formula, and bring it
+     back on a DOUBLE-CLICK only. Esc collapses it again. Every other
+     key — Backspace, Delete, arrows, Home, End, PageUp, PageDown —
+     behaves like a normal text field. */
   ["billAmounts", "crossCheckBox"].forEach(id => {
     enableCalculation(id);
     attachExpressionMemory(document.getElementById(id));
