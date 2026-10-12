@@ -598,6 +598,8 @@ th { background: #ffffff; color: black; }
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>W</kbd> : Close Current Tab</div>
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgDn</kbd> : Next Tab</div>
       <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>PgUp</kbd> : Previous Tab</div>
+      <div class="shortcut-item"><kbd>Backspace</kbd> : Bring the equation back (amount boxes)</div>
+      <div class="shortcut-item"><kbd>Esc</kbd> : Keep the total, drop the equation (amount boxes)</div>
     </div>
     <div class="modal-actions">
       <button class="process-btn" id="closeShortcutModalBtn" type="button">Close</button>
@@ -631,7 +633,8 @@ th { background: #ffffff; color: black; }
   <div class="instructions">
     <div>
       <strong>Bill Amount Format:</strong> Amounts line by line &nbsp;|&nbsp; Blank line = next bill &nbsp;|&nbsp;
-      Supports calculations like <strong>120+45+10</strong>
+      Supports calculations like <strong>120+45+10</strong> &nbsp;|&nbsp;
+      Hit <strong>Backspace</strong> on a total to bring the original equation back for editing
     </div>
     <button class="auto-btn" id="openShortcutsBtn" type="button">Shortcuts (?)</button>
   </div>
@@ -937,6 +940,258 @@ function safeFilename(name) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   EXPRESSION MEMORY — "edit the equation, not the answer"
+   ───────────────────────────────────────────────────────────────
+   When a line such as  200+100  is evaluated to  300 , the pair
+   (result → expression) is remembered for that tab. The moment the
+   caret lands on a line that still holds a remembered result — by
+   click, by arrow key, or by pressing Backspace to nibble at it —
+   the ORIGINAL EXPRESSION is put back on screen so it can be
+   corrected (200+150) instead of being retyped from scratch.
+   ═══════════════════════════════════════════════════════════════ */
+
+const EXPR_MEMORY_LIMIT = 300;
+const PURE_NUMBER_RE = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
+const NAV_KEYS = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"]);
+
+/**
+ * Evaluate one amount line: either a plain number (commas tolerated)
+ * or a safe arithmetic expression. This is what parseAmountBlocks()
+ * and parseCrossCheckBlocks() now use, so a formula that is still
+ * sitting un-collapsed in the box is never mis-read as its first
+ * operand (the old parseFloat("200+100") === 200 defect).
+ */
+function evalAmountLine(rawLine) {
+  const s = String(rawLine ?? "").trim();
+  if (!s) return NaN;
+  const normalized = s.replace(/,/g, "");
+  if (PURE_NUMBER_RE.test(normalized)) {
+    const n = parseFloat(normalized);
+    return isFinite(n) ? n : NaN;
+  }
+  const computed = safeCalc(normalized);
+  if (isFinite(computed)) return computed;
+  const fallback = parseFloat(normalized);
+  return isFinite(fallback) ? fallback : NaN;
+}
+
+/** Format an evaluated value exactly the way the Enter key does. */
+function formatEvaluated(result) {
+  return result % 1 === 0 ? String(result) : String(Number(result.toFixed(2)));
+}
+
+/* ── per-tab memory store (survives tab switches + reloads) ───── */
+
+function memoryOf() {
+  const tab = getActiveTab();
+  if (!tab) return null;
+  if (!Array.isArray(tab.exprMemory)) tab.exprMemory = [];
+  return tab.exprMemory;
+}
+
+function rememberExpression(lineIndex, expr, resultText) {
+  const mem = memoryOf();
+  if (!mem) return;
+
+  const expression = String(expr).slice(0, MAX_EXPR_LEN);
+  const result     = String(resultText).slice(0, 40);
+
+  /* Re-evaluating the same line over and over must not flood the log. */
+  const tail = mem[mem.length - 1];
+  if (tail && tail.expr === expression && tail.result === result && tail.line === lineIndex) return;
+
+  mem.push({ expr: expression, result, line: lineIndex });
+  if (mem.length > EXPR_MEMORY_LIMIT) mem.splice(0, mem.length - EXPR_MEMORY_LIMIT);
+}
+
+function findExpression(lineIndex, resultText) {
+  const mem = memoryOf();
+  if (!mem || !mem.length) return null;
+
+  const key = String(resultText).trim();
+  if (!key) return null;
+
+  /* 1st pass — same line index AND same value: the exact hit. */
+  for (let i = mem.length - 1; i >= 0; i--) {
+    if (mem[i].line === lineIndex && mem[i].result === key) return mem[i].expr;
+  }
+
+  /* 2nd pass — the line moved (rows inserted/deleted), so fall back to
+     a value match, but ONLY when that value was ever produced by one
+     single formula. Ambiguous values stay untouched — safety first.  */
+  let candidate = null;
+  for (let i = mem.length - 1; i >= 0; i--) {
+    if (mem[i].result !== key) continue;
+    if (candidate === null) candidate = mem[i].expr;
+    else if (candidate !== mem[i].expr) return null;
+  }
+  return candidate;
+}
+
+/* ── caret / line geometry helpers ────────────────────────────── */
+
+function lineInfoAt(value, pos) {
+  const start = value.lastIndexOf("\n", pos - 1) + 1;
+  let end = value.indexOf("\n", pos);
+  if (end === -1) end = value.length;
+  const lineIndex = value.slice(0, start).split("\n").length - 1;
+  return { start, end, lineIndex, text: value.slice(start, end) };
+}
+
+function replaceLine(ta, start, end, newText) {
+  const value = ta.value;
+  ta.value = value.slice(0, start) + newText + value.slice(end);
+  const caret = start + newText.length;
+  ta.selectionStart = ta.selectionEnd = caret;
+}
+
+/* ── restoring the original equation ──────────────────────────── */
+
+/**
+ * If the caret sits on a line that still holds a remembered RESULT,
+ * return everything needed to swap it back to the ORIGINAL EQUATION.
+ * Returns null when there is nothing to restore.
+ *
+ * The returned `contentStart` / `contentEnd` delimit the trimmed
+ * number itself, which lets the Backspace handler tell "a digit is
+ * about to be eaten" apart from "the indent/newline is about to be
+ * eaten" — only the former must be intercepted.
+ */
+function findRestorableAtCaret(ta) {
+  if (!ta || ta.selectionStart !== ta.selectionEnd) return null;
+
+  const value = ta.value;
+  const pos   = ta.selectionStart;
+  const start = value.lastIndexOf("\n", pos - 1) + 1;
+  let end     = value.indexOf("\n", pos);
+  if (end === -1) end = value.length;
+
+  const lineIndex = value.slice(0, start).split("\n").length - 1;
+  const raw       = value.slice(start, end);
+  const trimmed   = raw.trim();
+  if (!trimmed) return null;
+
+  const expr = findExpression(lineIndex, trimmed);
+  if (!expr || expr === trimmed) return null;
+
+  const lead  = raw.length - raw.trimStart().length;
+  const trail = raw.length - raw.trimEnd().length;
+
+  return {
+    start, end, expr,
+    result: trimmed,
+    contentStart: start + lead,
+    contentEnd:   end - trail
+  };
+}
+
+/**
+ * Put the original equation back under the caret — used by focus,
+ * click and arrow-key navigation. Purely cosmetic: nothing is
+ * prevented or consumed.
+ */
+function restoreExpressionAtCaret(ta) {
+  const hit = findRestorableAtCaret(ta);
+  if (!hit) return false;
+  replaceLine(ta, hit.start, hit.end, hit.expr);
+  return true;
+}
+
+/**
+ * Backspace / Delete landed on a computed total. A total that came
+ * out of a formula is never edited digit by digit, so the equation
+ * is restored INSTEAD of deleting the character, and the keypress
+ * is swallowed. The caret parks at the end of the equation so the
+ * wrong operand can be fixed straight away.
+ *
+ *   "300"  (from 200+100)  +  Backspace   →   "200+100"   caret at end
+ *
+ * The `forward` flag distinguishes Delete from Backspace so that
+ * pressing them right at the line indent / trailing edge still
+ * joins or splits lines the normal way.
+ */
+function restoreExpressionOnBackspace(ta, forward) {
+  if (!ta || ta.selectionStart !== ta.selectionEnd) return false;
+
+  const hit = findRestorableAtCaret(ta);
+  if (!hit) return false;
+
+  const pos = ta.selectionStart;
+  const wouldEatADigit = forward
+    ? (pos >= hit.contentStart && pos <  hit.contentEnd)   // Delete
+    : (pos >  hit.contentStart && pos <= hit.contentEnd);  // Backspace
+  if (!wouldEatADigit) return false;
+
+  replaceLine(ta, hit.start, hit.end, hit.expr);
+  return true;
+}
+
+/** Esc — collapse the restored equation back to its total. */
+function revertExpressionLine(ta) {
+  if (!ta || ta.selectionStart !== ta.selectionEnd) return false;
+
+  const { start, end, lineIndex, text } = lineInfoAt(ta.value, ta.selectionStart);
+  const line = text.trim();
+  if (!line || PURE_NUMBER_RE.test(line)) return false;
+
+  const result = safeCalc(line);
+  if (!isFinite(result)) return false;
+
+  const replacement = formatEvaluated(result);
+  rememberExpression(lineIndex, line, replacement);
+  replaceLine(ta, start, end, replacement);
+  return true;
+}
+
+/**
+ * Collapse every formula line in the box (used on blur and before
+ * Process) so the visible text, the counters and the export agree.
+ */
+function evaluateAllExpressions(ta) {
+  if (!ta) return false;
+
+  let changed = false;
+
+  const out = ta.value.split("\n").map((line, i) => {
+    const t = line.trim();
+    if (!t || PURE_NUMBER_RE.test(t)) return line;
+
+    const result = safeCalc(t);
+    if (!isFinite(result)) return line;
+
+    const replacement = formatEvaluated(result);
+    rememberExpression(i, t, replacement);
+    changed = true;
+    return replacement;
+  });
+
+  if (!changed) return false;
+  ta.value = out.join("\n");
+  return true;
+}
+
+/** Wire the caret-aware behaviour onto one amount textarea. */
+function attachExpressionMemory(ta) {
+  if (!ta) return;
+
+  ta.addEventListener("focus", () => restoreExpressionAtCaret(ta));
+  ta.addEventListener("click", () => restoreExpressionAtCaret(ta));
+  ta.addEventListener("keyup", (e) => {
+    if (NAV_KEYS.has(e.key)) restoreExpressionAtCaret(ta);
+  });
+
+  ta.addEventListener("blur", () => {
+    if (!evaluateAllExpressions(ta)) return;
+    checkCrossTotal();
+    if (ta.id === "billAmounts") {
+      updateTextBillCounter();
+      updateBillAmountSums(true);
+    }
+    saveToStorage();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TAB WORKSPACES
    ═══════════════════════════════════════════════════════════════ */
 
@@ -944,11 +1199,6 @@ function getActiveTab() {
   return tabsState.tabs.find(t => t.id === tabsState.activeId) || null;
 }
 
-/**
- * Generate a fresh, guaranteed-unique tab id.
- * The numeric part is only an internal handle — it is never displayed
- * and is allowed to grow forever, so closing tabs never reuses ids.
- */
 function nextTabId() {
   let id;
   do { id = "tab_" + (tabIdCounter++); }
@@ -968,16 +1218,11 @@ function makeTabObject() {
     seriesDate: "",
     bills: [{ invoice: "", expense: "", date: "" }],
     processed: null,
-    receipt: ""
+    receipt: "",
+    exprMemory: []             // ← evaluation history for this tab
   };
 }
 
-/**
- * Renumber every tab so its displayed number matches its current
- * position in the strip. Closing Tab 2 of 5 → the remaining four
- * become Tab 1, Tab 2, Tab 3, Tab 4. Tab IDs never change here —
- * only the human-readable `.name` field.
- */
 function renumberTabs() {
   tabsState.tabs.forEach((t, i) => { t.name = "Tab " + (i + 1); });
 }
@@ -1086,6 +1331,18 @@ function normalizeTab(raw) {
     };
   }
 
+  /* Expression memory must survive a reload but is never trusted blindly. */
+  const exprMemory = Array.isArray(t.exprMemory)
+    ? t.exprMemory
+        .filter(e => e && typeof e.expr === "string" && typeof e.result === "string")
+        .map(e => ({
+          expr:   e.expr.slice(0, MAX_EXPR_LEN),
+          result: String(e.result).slice(0, 40),
+          line:   Number.isInteger(e.line) && e.line >= 0 ? e.line : 0
+        }))
+        .slice(-EXPR_MEMORY_LIMIT)
+    : [];
+
   return {
     id: typeof t.id === "string" && t.id ? t.id : "tab_" + (tabIdCounter++),
     name: "Tab",
@@ -1097,7 +1354,8 @@ function normalizeTab(raw) {
     seriesDate: typeof t.seriesDate === "string" ? t.seriesDate : "",
     bills,
     processed,
-    receipt: typeof t.receipt === "string" ? t.receipt : ""
+    receipt: typeof t.receipt === "string" ? t.receipt : "",
+    exprMemory
   };
 }
 
@@ -1130,9 +1388,6 @@ function renderTabs() {
       switchTab(tab.id);
     });
 
-    /* Pass the tab OBJECT, not its id — this guarantees the click
-       closes exactly the tab the user clicked on, even in the
-       (now impossible) event of a duplicate id existing.            */
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       closeTab(tab);
@@ -1186,7 +1441,7 @@ function newTab() {
   const active = getActiveTab();
   if (active) Object.assign(active, captureWorkspace());
 
-  const tab = makeTabObject();     // nextTabId() guarantees a free id
+  const tab = makeTabObject();
   tabsState.tabs.push(tab);
   renumberTabs();
   tabsState.activeId = tab.id;
@@ -1198,12 +1453,6 @@ function newTab() {
   showToast(`Opened ${tab.name}.`, "success");
 }
 
-/**
- * Close a tab.
- * Accepts EITHER a tab object (from the UI — preferred, identity-based)
- * OR a tab id string (from keyboard shortcuts). This dual signature is
- * what makes the operation immune to id collisions.
- */
 function closeTab(target) {
   let idx;
   if (target && typeof target === "object") {
@@ -1360,13 +1609,6 @@ function bootTabs() {
   if (payload && Array.isArray(payload.tabs) && payload.tabs.length) {
     tabsState.tabs = payload.tabs.map(normalizeTab);
 
-    /* ── CRITICAL FIX ──────────────────────────────────────────
-       Ensure every restored id is unique AND advance tabIdCounter
-       past the highest restored numeric suffix. Without this step,
-       the generator would restart at 1 on every page load, and the
-       next new tab would silently reuse an existing id — causing
-       the "close far-right tab closes the first tab" bug.
-       ───────────────────────────────────────────────────────── */
     const seen = new Set();
     tabsState.tabs.forEach(t => {
       while (seen.has(t.id)) t.id = "tab_" + (tabIdCounter++);
@@ -1609,7 +1851,7 @@ function parseAmountBlocks(raw) {
     const amounts = [];
     let total = 0;
     blocks[i].split("\n").forEach(line => {
-      const n = parseFloat(line.trim());
+      const n = evalAmountLine(line);          // ← was parseFloat(line.trim())
       if (!isNaN(n) && isFinite(n)) { amounts.push(n); total += n; }
     });
     result.push({ amounts, total });
@@ -1618,7 +1860,10 @@ function parseAmountBlocks(raw) {
 }
 
 function parseCrossCheckBlocks(raw) {
-  return String(raw).split("\n").map(l => parseFloat(l.trim())).filter(n => !isNaN(n) && isFinite(n));
+  return String(raw)
+    .split("\n")
+    .map(l => evalAmountLine(l))               // ← was parseFloat(l.trim())
+    .filter(n => !isNaN(n) && isFinite(n));
 }
 
 function updateTextBillCounter() {
@@ -1645,26 +1890,60 @@ function updateBillAmountSums(autoCreate = true) {
   });
 }
 
+/**
+ * Amount-box keyboard contract:
+ *
+ *   Backspace / Delete → if a digit of a computed total is about to be
+ *                        removed, the ORIGINAL EQUATION is restored
+ *                        instead and the keypress is swallowed.
+ *   Esc                → collapse a restored equation back to its total.
+ *   Enter              → evaluate the current line, remember the formula,
+ *                        and open a fresh line below.
+ */
 function enableCalculation(id) {
   const node = document.getElementById(id);
   if (!node) return;
+
   node.addEventListener("keydown", function (e) {
+    const ta = this;
+
+    /* ── Backspace / Delete : never nibble at a computed total ─── */
+    if (e.key === "Backspace" || e.key === "Delete") {
+      if (restoreExpressionOnBackspace(ta, e.key === "Delete")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
+
+    /* ── Esc : keep the computed total, drop the restored formula ── */
+    if (e.key === "Escape") {
+      if (revertExpressionLine(ta)) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+
     if (e.key !== "Enter") return;
     e.preventDefault();
-    const ta = this;
+
     const pos = ta.selectionStart;
     const val = ta.value;
-    const lineStart = val.lastIndexOf("\n", pos - 1) + 1;
-    const lineEnd   = val.indexOf("\n", pos);
-    const end       = lineEnd === -1 ? val.length : lineEnd;
-    const line      = val.substring(lineStart, end).trim();
+    const { start, end, lineIndex, text } = lineInfoAt(val, pos);
+    const line = text.trim();
     let replacement = line;
+
     if (line) {
       const result = safeCalc(line);
-      if (!isNaN(result)) replacement = result % 1 === 0 ? String(result) : String(Number(result.toFixed(2)));
+      if (!isNaN(result)) {
+        replacement = result % 1 === 0 ? String(result) : String(Number(result.toFixed(2)));
+        if (!PURE_NUMBER_RE.test(line)) {
+          rememberExpression(lineIndex, line, replacement);   // ← the edit-history entry
+        }
+      }
     }
-    ta.value = val.substring(0, lineStart) + replacement + "\n" + val.substring(end);
-    ta.selectionStart = ta.selectionEnd = lineStart + replacement.length + 1;
+
+    ta.value = val.substring(0, start) + replacement + "\n" + val.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + replacement.length + 1;
+
     checkCrossTotal();
     updateTextBillCounter();
     updateBillAmountSums(true);
@@ -2115,6 +2394,11 @@ function renderResults(billData, title) {
    ═══════════════════════════════════════════════════════════════ */
 
 function processData(silent = false) {
+  /* Collapse any formula still sitting in the entry boxes first, so the
+     preview, the counters and the export can never disagree. */
+  evaluateAllExpressions(document.getElementById("billAmounts"));
+  evaluateAllExpressions(document.getElementById("crossCheckBox"));
+
   updateReceiptString();
 
   const raw = document.getElementById("billAmounts").value.trim();
@@ -2189,6 +2473,10 @@ function clearAll() {
   ["tableTitle", "billAmounts", "crossCheckBox", "seriesDate"].forEach(id => {
     document.getElementById(id).value = "";
   });
+
+  /* The formula history belongs to the data that just got wiped. */
+  const tab = getActiveTab();
+  if (tab) tab.exprMemory = [];
 
   const grid = document.getElementById("billEntryGrid");
   grid.querySelectorAll(".bill-row").forEach(r => r.remove());
@@ -2403,8 +2691,12 @@ function wireEventListeners() {
     });
   });
 
-  enableCalculation("billAmounts");
-  enableCalculation("crossCheckBox");
+  /* Amount boxes: evaluate on Enter, remember the formula, restore it on
+     click / arrow / Backspace, and collapse it back with Esc. */
+  ["billAmounts", "crossCheckBox"].forEach(id => {
+    enableCalculation(id);
+    attachExpressionMemory(document.getElementById(id));
+  });
 
   document.querySelectorAll(".modal-overlay").forEach(ov => {
     ov.addEventListener("click", (e) => {
