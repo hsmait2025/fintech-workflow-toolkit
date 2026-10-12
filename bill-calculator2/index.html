@@ -263,6 +263,54 @@ h1 { text-align: center; margin: 0 0 7px; font-size: 20px; color: var(--text); }
 }
 .entry-box label { display: block; margin-bottom: 4.5px; font-weight: bold; font-size: 12.1px; }
 
+/* ─── Entry-box header row: label + live stats ─────────────────── */
+.entry-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.entry-head > label {
+  margin-bottom: 0 !important;
+}
+.entry-stats {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Live total chip ─────────────────────────────────────────── */
+.live-total-box {
+  background: #e7f1ff;
+  border: 1px solid #b9d8ff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: bold;
+  color: #1c4e80;
+  white-space: nowrap;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.live-total-box span { margin-left: 3px; }
+.live-total-box.match {
+  background: #f0fff4;
+  border-color: var(--success);
+  color: var(--success);
+}
+.live-total-box.mismatch {
+  background: #fff5f5;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.counter-box.small-counter {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
 textarea {
   width: 100%;
   height: var(--textarea-h);
@@ -475,7 +523,9 @@ button:active  { transform: scale(0.97); }
 }
 .receipt-text:focus { border-color: #1c4e80; box-shadow: 0 0 0 2px rgba(28,78,128,0.15); }
 
+/* ─── Summary — hidden until Process is run ───────────────────── */
 .summary { margin-top: 9px; display: flex; gap: 9px; flex-wrap: wrap; }
+.summary.is-hidden { display: none; }
 .card {
   flex: 1 1 calc(50% - 5px);
   background: var(--surface);
@@ -684,15 +734,23 @@ th { background: #ffffff; color: black; }
     </div>
 
     <div class="entry-box">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <label for="billAmounts" style="margin: 0;">Bill Amount Entry</label>
-        <div class="counter-box" style="padding: 2px 6px; font-size: 11px;" aria-live="polite">Total Bills : <span id="textBillCounter">0</span></div>
+      <div class="entry-head">
+        <label for="billAmounts">Bill Amount Entry</label>
+        <div class="entry-stats">
+          <div class="counter-box small-counter" aria-live="polite">Total Bills : <span id="textBillCounter">0</span></div>
+          <div class="live-total-box" aria-live="polite">Live Total : <span id="liveBillTotal">0</span></div>
+        </div>
       </div>
       <textarea id="billAmounts" placeholder="Enter bill amounts here..." aria-label="Bill amounts"></textarea>
     </div>
 
     <div class="entry-box">
-      <label for="crossCheckBox">Crosscheck</label>
+      <div class="entry-head">
+        <label for="crossCheckBox">Crosscheck</label>
+        <div class="entry-stats">
+          <div class="live-total-box" aria-live="polite">Live Total : <span id="liveCrossTotal">0</span></div>
+        </div>
+      </div>
       <textarea id="crossCheckBox" placeholder="Enter crosscheck amounts here..." aria-label="Crosscheck amounts"></textarea>
       <div class="crosscheck-status" id="crosscheckStatus" role="status" aria-live="polite">Waiting for Crosscheck…</div>
     </div>
@@ -735,7 +793,8 @@ th { background: #ffffff; color: black; }
               placeholder="Press Process (Ctrl+Enter) to generate the receipt line…"></textarea>
   </div>
 
-  <div class="summary">
+  <!-- Hidden until Process / Ctrl+Enter -->
+  <div class="summary is-hidden" id="summarySection">
     <div class="card"><h2>Total Bills</h2><p id="billCount">0</p></div>
     <div class="card"><h2>Grand Total</h2><p id="grandTotal">0</p></div>
   </div>
@@ -940,6 +999,20 @@ function safeFilename(name) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SUMMARY VISIBILITY — Grand Total is revealed ONLY by Process
+   ═══════════════════════════════════════════════════════════════ */
+
+function showSummary() {
+  const s = document.getElementById("summarySection");
+  if (s) s.classList.remove("is-hidden");
+}
+
+function hideSummary() {
+  const s = document.getElementById("summarySection");
+  if (s) s.classList.add("is-hidden");
+}
+
+/* ═══════════════════════════════════════════════════════════════
    EXPRESSION MEMORY — "edit the equation, not the answer"
    ───────────────────────────────────────────────────────────────
    When a line such as  200+100  is evaluated to  300 , the pair
@@ -957,10 +1030,6 @@ function safeFilename(name) {
        • PageUp / PageDn→ caret movement only
        • focus / blur   → focus is focus; blur still collapses any
                           formula that is left un-collapsed.
-
-   The point of this discipline is that the amount box behaves like
-   a normal text field at all times, EXCEPT when the user explicitly
-   asks the tool to open its formula history.
    ═══════════════════════════════════════════════════════════════ */
 
 const EXPR_MEMORY_LIMIT = 300;
@@ -1924,6 +1993,9 @@ function enableCalculation(id) {
     ta.value = val.substring(0, start) + replacement + "\n" + val.substring(end);
     ta.selectionStart = ta.selectionEnd = start + replacement.length + 1;
 
+    /* Editing invalidates the previously-processed summary. */
+    hideSummary();
+
     checkCrossTotal();
     updateTextBillCounter();
     updateBillAmountSums(true);
@@ -1932,7 +2004,7 @@ function enableCalculation(id) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   CROSS-CHECK
+   CROSS-CHECK  +  LIVE TOTALS
    ═══════════════════════════════════════════════════════════════ */
 
 function setCrosscheckStatus(parts, cls) {
@@ -1948,6 +2020,14 @@ function setCrosscheckStatus(parts, cls) {
   container.className = "crosscheck-status" + (cls ? " " + cls : "");
 }
 
+/**
+ * Single source of truth for both:
+ *   • the LIVE totals printed against each entry box, and
+ *   • the cross-check verdict (row highlighting + status line).
+ *
+ * Every code path that mutates the amount boxes ends up here, so the
+ * two views can never drift apart.
+ */
 function checkCrossTotal() {
   const rawAmounts = document.getElementById("billAmounts").value.trim();
   const rawCross   = document.getElementById("crossCheckBox").value.trim();
@@ -1958,6 +2038,26 @@ function checkCrossTotal() {
   const billTotal  = amountBlocks.reduce((acc, b) => acc + b.total, 0);
   const crossTotal = crossLines.reduce((acc, v) => acc + v, 0);
 
+  /* ── LIVE totals against both entry boxes ───────────────────── */
+  const billEl  = document.getElementById("liveBillTotal");
+  const crossEl = document.getElementById("liveCrossTotal");
+  if (billEl && crossEl) {
+    billEl.textContent  = fmtValue(billTotal);
+    crossEl.textContent = fmtValue(crossTotal);
+
+    const billBox  = billEl.parentElement;
+    const crossBox = crossEl.parentElement;
+    billBox.classList.remove("match", "mismatch");
+    crossBox.classList.remove("match", "mismatch");
+
+    if (amountBlocks.length > 0 && crossLines.length > 0) {
+      const cls = Math.abs(billTotal - crossTotal) < 0.005 ? "match" : "mismatch";
+      billBox.classList.add(cls);
+      crossBox.classList.add(cls);
+    }
+  }
+
+  /* ── Row-level mismatch highlighting ───────────────────────── */
   const rows = document.querySelectorAll(".bill-row");
   rows.forEach(r => r.classList.remove("row-mismatch"));
 
@@ -2330,6 +2430,9 @@ function clearPreview() {
   emptyMsg.className = "expense-empty-msg";
   emptyMsg.textContent = "No data processed yet.";
   chipsContainer.appendChild(emptyMsg);
+
+  /* No processed data → the Grand Total must stay out of sight. */
+  hideSummary();
 }
 
 function renderResults(billData, title) {
@@ -2364,6 +2467,9 @@ function renderResults(billData, title) {
     chip.appendChild(span);
     chipsContainer.appendChild(chip);
   });
+
+  /* Process has run → reveal the Grand Total card. */
+  showSummary();
 
   checkCrossTotal();
   currentProcessed = { title, billData };
@@ -2464,13 +2570,15 @@ function clearAll() {
   updateSNos();
 
   currentProcessed = null;
-  clearPreview();
-  setCrosscheckStatus([{ text: "Waiting for Crosscheck…" }], "");
+  clearPreview();                    // ← hides the summary too
 
   const rs = document.getElementById("receiptString");
   if (rs) { rs.value = ""; rs.style.height = ""; }
 
   document.getElementById("textBillCounter").textContent = "0";
+
+  /* Reset the live totals + status line in one shot. */
+  checkCrossTotal();
 
   refreshActiveTabLabel();
   saveToStorage();
@@ -2662,6 +2770,8 @@ function wireEventListeners() {
   ["billAmounts", "crossCheckBox"].forEach(id => {
     const node = document.getElementById(id);
     node.addEventListener("input", () => {
+      /* Editing invalidates the previously-processed summary. */
+      hideSummary();
       checkCrossTotal();
       if (id === "billAmounts") {
         updateTextBillCounter();
