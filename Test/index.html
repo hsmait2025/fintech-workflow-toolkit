@@ -3,33 +3,65 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
-<meta name="theme-color" content="#0b0f14" />
-<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#f3f6f9" />
+<meta name="color-scheme" content="light" />
 <meta name="description" content="ScanLex — tap any word in a photo to see its definition." />
 <title>ScanLex — Visual Scan Dictionary</title>
 
+<!-- Speed: warm up DNS + TLS for every origin we hit at runtime -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="preconnect" href="https://tessdata.projectnaptha.com" crossorigin />
+<link rel="preconnect" href="https://api.dictionaryapi.dev" crossorigin />
+<link rel="preconnect" href="https://api.datamuse.com" crossorigin />
+<!-- Speed: start the Tesseract script fetch during HTML parse, before JS runs -->
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" as="script" crossorigin />
+
 <style>
 /* ==========================================================================
-   1. TOKENS
+   1. TOKENS — light theme
    ========================================================================== */
 :root {
-  --bg: #0b0f14;
-  --surface: #111a23;
-  --surface-2: #16212c;
-  --surface-3: #1d2b38;
-  --line: #24323f;
-  --text: #e9f0f7;
-  --muted: #90a4b6;
-  --accent: #4cc9f0;
-  --accent-soft: rgba(76, 201, 240, 0.14);
-  --accent-line: rgba(76, 201, 240, 0.32);
-  --danger: #ff6b6b;
-  --danger-soft: rgba(255, 107, 107, 0.14);
-  --success: #3ddc97;
+  /* Surfaces */
+  --bg: #f3f6f9;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --surface-3: #e9eef3;
+  --line: #d9e1e8;
+  --line-strong: #c4cfd9;
+
+  /* Text */
+  --text: #0d1720;
+  --muted: #5a6b7c;
+  --placeholder: #94a3b3;
+
+  /* Accent (readable on white; bright for fills) */
+  --accent: #0a7dab;
+  --accent-bright: #4cc9f0;
+  --accent-soft: rgba(76, 201, 240, 0.16);
+  --accent-line: rgba(76, 201, 240, 0.38);
+
+  /* Feedback */
+  --danger: #d93d3d;
+  --danger-soft: rgba(217, 61, 61, 0.10);
+  --danger-line: rgba(217, 61, 61, 0.28);
+  --success: #16a35c;
+
+  /* Over-video chrome (always dark, so it's visible on any camera feed) */
+  --overlay-dark: rgba(15, 23, 32, 0.75);
+  --overlay-dark-strong: rgba(15, 23, 32, 0.88);
+  --overlay-text: #e9f0f7;
+  --overlay-muted: #b0c0cd;
+
+  /* Toast (dark on light so it stands out) */
+  --toast-bg: #1e2936;
+  --toast-border: #334155;
+  --toast-text: #ffffff;
+
+  /* Geometry + misc */
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
-  --shadow-sheet: 0 -18px 60px rgba(0, 0, 0, 0.65);
+  --shadow-sheet: 0 -18px 60px rgba(15, 23, 32, 0.18);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -44,10 +76,13 @@
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--text);
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  font-size: 16px; line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -75,32 +110,39 @@ button { cursor: pointer; border: 0; background: none; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot {
   width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 .brand h1 {
   margin: 0; font-size: 1.05rem; font-weight: 650;
-  letter-spacing: -0.01em; white-space: nowrap;
+  letter-spacing: -0.01em; white-space: nowrap; color: var(--text);
 }
 .app-actions { display: flex; gap: 8px; }
 .icon-btn {
   display: grid; place-items: center;
   width: 44px; height: 44px; border-radius: 14px;
-  background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
   transition: background 0.18s var(--ease-out), transform 0.12s var(--ease-out);
 }
 .icon-btn:active { transform: scale(0.94); background: var(--surface-3); }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn.is-on {
-  background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
 }
 
 /* ==========================================================================
-   4. OFFLINE
+   4. OFFLINE BANNER
    ========================================================================== */
 .offline-banner {
   margin: 0 16px 10px; padding: 10px 14px; border-radius: var(--radius-sm);
-  background: var(--danger-soft); border: 1px solid rgba(255, 107, 107, 0.32);
-  color: #ffc9c9; font-size: 0.85rem; text-align: center;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: #a82323;
+  font-size: 0.85rem; text-align: center;
 }
 
 /* ==========================================================================
@@ -111,10 +153,12 @@ button { cursor: pointer; border: 0; background: none; }
   min-height: 0; padding: 0 12px calc(var(--safe-bottom) + 12px); gap: 12px;
 }
 
+/* ---- Camera view (viewfinder is always dark) ------------------------- */
 .camera-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   border-radius: var(--radius-lg); overflow: hidden;
-  background: #000; border: 1px solid var(--line);
+  background: #000;
+  border: 1px solid var(--line);
   isolation: isolate; touch-action: none;
 }
 .video {
@@ -128,14 +172,15 @@ button { cursor: pointer; border: 0; background: none; }
   position: absolute; top: 12px; left: 12px; z-index: 6;
   display: flex; align-items: center; gap: 7px;
   padding: 6px 11px; border-radius: 999px;
-  background: rgba(8, 14, 20, 0.72);
+  background: var(--overlay-dark);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.72rem; font-weight: 600; color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.72rem; font-weight: 600; color: var(--overlay-text);
   max-width: 62%;
 }
 .cam-badge .dot {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success);
   flex: 0 0 auto;
 }
 .cam-badge .dot.warn { background: var(--danger); }
@@ -146,50 +191,52 @@ button { cursor: pointer; border: 0; background: none; }
 .zoom-bar {
   position: absolute; top: 12px; right: 12px; z-index: 6;
   display: flex; align-items: center; gap: 6px;
-  background: rgba(8, 14, 20, 0.72);
+  background: var(--overlay-dark);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px; padding: 4px;
 }
 .zoom-btn {
   width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center;
   font-size: 1.35rem; font-weight: 400; line-height: 1;
-  color: var(--text); background: transparent;
+  color: var(--overlay-text);
+  background: transparent;
   transition: background 0.15s;
 }
-.zoom-btn:active { background: rgba(255, 255, 255, 0.12); }
+.zoom-btn:active { background: rgba(255, 255, 255, 0.14); }
 .zoom-btn:disabled { opacity: 0.35; }
 .zoom-value {
   min-width: 42px; text-align: center;
   font-size: 0.82rem; font-weight: 650; letter-spacing: 0.02em;
-  color: var(--text); font-variant-numeric: tabular-nums;
+  color: var(--overlay-text); font-variant-numeric: tabular-nums;
 }
 
 .focus-ring {
   position: absolute; width: 64px; height: 64px;
-  border: 2px solid var(--accent); border-radius: 50%;
+  border: 2px solid var(--accent-bright); border-radius: 50%;
   transform: translate(-50%, -50%) scale(0.4); opacity: 0;
   pointer-events: none; z-index: 5;
 }
 .focus-ring.is-active { animation: focus-pulse 0.7s var(--ease-out) forwards; }
 @keyframes focus-pulse {
-  0%   { opacity: 0.9; transform: translate(-50%, -50%) scale(0.4); }
-  100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.5); }
+  0%   { opacity: 0.95; transform: translate(-50%, -50%) scale(0.4); }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.5); }
 }
 
 .ocr-overlay {
   position: absolute; inset: 0; z-index: 3;
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 14px;
-  background: rgba(6, 10, 14, 0.72);
+  background: var(--overlay-dark-strong);
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  animation: fade-in 0.18s var(--ease-out);
+  animation: fade-in 0.15s var(--ease-out);
 }
-.ocr-overlay p { margin: 0; font-size: 0.9rem; }
+.ocr-overlay p { margin: 0; font-size: 0.9rem; color: var(--overlay-text); }
 .spinner {
   width: 46px; height: 46px; border-radius: 50%;
-  border: 3px solid rgba(76, 201, 240, 0.18); border-top-color: var(--accent);
+  border: 3px solid rgba(76, 201, 240, 0.20);
+  border-top-color: var(--accent-bright);
   animation: spin 0.85s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -200,16 +247,19 @@ button { cursor: pointer; border: 0; background: none; }
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 28px 22px; text-align: center;
   background: linear-gradient(160deg, #101a24 0%, #0b1219 100%);
+  color: var(--overlay-text);
 }
-.camera-error h2 { margin: 0; font-size: 1.1rem; }
-.camera-error p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
+.camera-error h2 { margin: 0; font-size: 1.1rem; color: var(--overlay-text); }
+.camera-error p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
 
+/* ---- Analyze view (frozen image on black) --------------------------- */
 .analyze-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-lg);
-  background: #000; border: 1px solid var(--line);
+  background: #000;
+  border: 1px solid var(--line);
   overflow: hidden;
 }
 .frozen-wrap { position: relative; }
@@ -224,39 +274,43 @@ button { cursor: pointer; border: 0; background: none; }
   position: absolute; padding: 0; margin: 0; border: 0;
   background: transparent; border-radius: 4px;
   pointer-events: auto; cursor: pointer;
-  transition: background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  transition: background 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out);
   -webkit-tap-highlight-color: transparent;
 }
 .word-tap::after {
   content: '';
   position: absolute;
   left: 15%; right: 15%; bottom: 1px;
-  height: 1px;
-  background: rgba(76, 201, 240, 0.45);
-  border-radius: 1px; pointer-events: none;
+  height: 1.5px;
+  background: rgba(76, 201, 240, 0.8);
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(76, 201, 240, 0.55);
+  pointer-events: none;
 }
 .word-tap:active, .word-tap.is-active {
-  background: rgba(76, 201, 240, 0.28);
-  box-shadow: 0 0 0 1.5px rgba(76, 201, 240, 0.75);
+  background: rgba(76, 201, 240, 0.30);
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.9);
 }
 
 .scan-progress {
   position: absolute; left: 16px; right: 16px; bottom: 18px;
   z-index: 8; padding: 12px 16px;
-  background: rgba(8, 14, 20, 0.82);
+  background: var(--overlay-dark-strong);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--line); border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
 }
 .scan-progress p {
-  margin: 0 0 8px 0; font-size: 0.86rem; color: var(--text);
+  margin: 0 0 8px 0; font-size: 0.86rem; color: var(--overlay-text);
   display: flex; justify-content: space-between;
 }
 .scan-progress .pct {
-  color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650;
+  color: var(--accent-bright);
+  font-variant-numeric: tabular-nums; font-weight: 650;
 }
 .progress-bar {
   height: 4px; border-radius: 2px;
-  background: rgba(255, 255, 255, 0.1); overflow: hidden;
+  background: rgba(255, 255, 255, 0.12); overflow: hidden;
 }
 .progress-fill {
   height: 100%; width: 0%;
@@ -269,11 +323,11 @@ button { cursor: pointer; border: 0; background: none; }
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 32px 24px;
   text-align: center;
-  background: rgba(8, 14, 20, 0.9);
+  background: var(--overlay-dark-strong);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
-.no-text h2 { margin: 0; font-size: 1.1rem; }
-.no-text p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
+.no-text h2 { margin: 0; font-size: 1.1rem; color: var(--overlay-text); }
+.no-text p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
 
 /* ==========================================================================
    6. CONTROLS
@@ -285,9 +339,10 @@ button { cursor: pointer; border: 0; background: none; }
 .capture-btn {
   display: flex; align-items: center; justify-content: center; gap: 12px;
   width: 100%; max-width: 440px; height: 62px; border-radius: 31px;
-  font-size: 1rem; font-weight: 640; letter-spacing: 0.01em; color: #04121a;
+  font-size: 1rem; font-weight: 640; letter-spacing: 0.01em;
+  color: #04121a;
   background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 45%, #3aa8d8 100%);
-  box-shadow: 0 10px 30px rgba(76, 201, 240, 0.28);
+  box-shadow: 0 10px 30px rgba(76, 201, 240, 0.35);
   transition: transform 0.12s var(--ease-out), box-shadow 0.2s var(--ease-out), opacity 0.2s;
 }
 .capture-btn:active:not(:disabled) { transform: scale(0.975); }
@@ -316,8 +371,15 @@ button { cursor: pointer; border: 0; background: none; }
   transition: transform 0.12s var(--ease-out), background 0.18s, opacity 0.18s;
 }
 .btn:active { transform: scale(0.97); }
-.btn-primary { background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%); color: #04121a; }
-.btn-ghost { background: var(--surface-3); border: 1px solid var(--line); color: var(--text); }
+.btn-primary {
+  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%);
+  color: #04121a;
+}
+.btn-ghost {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
 .btn-block { width: 100%; }
 
 /* ==========================================================================
@@ -325,14 +387,14 @@ button { cursor: pointer; border: 0; background: none; }
    ========================================================================== */
 .scrim {
   position: fixed; inset: 0; z-index: 40;
-  background: rgba(3, 7, 11, 0.66);
+  background: rgba(15, 23, 32, 0.42);
   backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
   opacity: 0; visibility: hidden;
-  transition: opacity 0.3s var(--ease-out), visibility 0s linear 0.3s;
+  transition: opacity 0.24s var(--ease-out), visibility 0s linear 0.24s;
 }
 .scrim.is-open {
   opacity: 1; visibility: visible;
-  transition: opacity 0.3s var(--ease-out), visibility 0s;
+  transition: opacity 0.24s var(--ease-out), visibility 0s;
 }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
@@ -345,11 +407,11 @@ button { cursor: pointer; border: 0; background: none; }
   border-top: 1px solid var(--line);
   box-shadow: var(--shadow-sheet);
   transform: translateY(110%); visibility: hidden;
-  transition: transform 0.36s var(--ease-out), visibility 0s linear 0.36s;
+  transition: transform 0.28s var(--ease-out), visibility 0s linear 0.28s;
 }
 .sheet.is-open {
   transform: translateY(0); visibility: visible;
-  transition: transform 0.36s var(--ease-out), visibility 0s;
+  transition: transform 0.28s var(--ease-out), visibility 0s;
 }
 .sheet-handle {
   width: 44px; height: 4px; border-radius: 2px;
@@ -362,16 +424,22 @@ button { cursor: pointer; border: 0; background: none; }
   font-size: 1.35rem; line-height: 1;
 }
 .sheet-close:active { background: var(--line); }
-.sheet-title { margin: 0 44px 6px 0; font-size: 1.15rem; letter-spacing: -0.01em; }
+.sheet-title { margin: 0 44px 6px 0; font-size: 1.15rem; letter-spacing: -0.01em; color: var(--text); }
 .sheet-sub { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
 
 .text-input {
   width: 100%; height: 54px; padding: 0 16px; border-radius: 14px;
-  background: var(--surface-2); border: 1.5px solid var(--line);
-  color: var(--text); font-size: 1rem; transition: border-color 0.18s;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  color: var(--text); font-size: 1rem;
+  transition: border-color 0.18s;
 }
-.text-input::placeholder { color: #62788b; }
-.text-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.text-input::placeholder { color: var(--placeholder); }
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .text-input[aria-invalid="true"] { border-color: var(--danger); }
 .input-error { margin: 8px 2px 12px; color: var(--danger); font-size: 0.84rem; }
 #manualForm .btn { margin-top: 14px; }
@@ -383,24 +451,30 @@ button { cursor: pointer; border: 0; background: none; }
   background: var(--surface-2);
   border: 1.5px solid var(--line);
   border-radius: 14px;
+  color: var(--text);
   transition: background 0.15s, border-color 0.15s;
 }
 .lens-item.is-active {
-  border-color: var(--accent); background: var(--accent-soft);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 .lens-item:active { background: var(--surface-3); }
 .lens-icon {
   width: 42px; height: 42px; border-radius: 50%;
-  background: var(--surface-3); color: var(--accent);
+  background: var(--surface-3);
+  color: var(--accent);
   display: grid; place-items: center;
   flex: 0 0 auto;
   font-weight: 700; font-size: 0.78rem;
   letter-spacing: 0.02em;
 }
-.lens-item.is-active .lens-icon { background: var(--accent); color: #04121a; }
+.lens-item.is-active .lens-icon {
+  background: var(--accent-bright);
+  color: #04121a;
+}
 .lens-body { flex: 1; min-width: 0; }
 .lens-name {
-  font-weight: 600; font-size: 0.94rem;
+  font-weight: 600; font-size: 0.94rem; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lens-meta {
@@ -414,7 +488,7 @@ button { cursor: pointer; border: 0; background: none; }
   letter-spacing: 0.02em;
 }
 .lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
-.lens-badge.nofocus { background: rgba(255, 107, 107, 0.18); color: #ffb4b4; }
+.lens-badge.nofocus { background: var(--danger-soft); color: var(--danger); }
 
 /* ==========================================================================
    9. RESULT
@@ -426,28 +500,34 @@ button { cursor: pointer; border: 0; background: none; }
 .result-word {
   margin: 0; font-size: 1.85rem; font-weight: 700;
   letter-spacing: -0.025em; line-height: 1.15; word-break: break-word;
+  color: var(--text);
 }
 .result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; }
 .audio-btn {
   flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--accent-soft);
-  border: 1px solid var(--accent-line); color: var(--accent);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   transition: transform 0.12s var(--ease-out), background 0.18s;
 }
 .audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
 .meaning { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .pos-badge {
   display: inline-block; padding: 5px 11px; border-radius: 999px;
-  background: var(--accent-soft); border: 1px solid var(--accent-line);
-  color: var(--accent); font-size: 0.7rem; font-weight: 650;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 0.7rem; font-weight: 650;
   letter-spacing: 0.09em; text-transform: uppercase;
 }
 .def-list { margin: 12px 0 0; padding-left: 20px; list-style: decimal; }
-.def-list li { margin-bottom: 12px; line-height: 1.55; font-size: 0.96rem; padding-left: 4px; }
+.def-list li { margin-bottom: 12px; line-height: 1.55; font-size: 0.96rem; padding-left: 4px; color: var(--text); }
 .def-list li::marker { color: var(--accent); font-weight: 600; }
 .example {
   display: block; margin-top: 6px; padding-left: 10px;
-  border-left: 2px solid var(--line); color: var(--muted);
+  border-left: 2px solid var(--line);
+  color: var(--muted);
   font-size: 0.89rem; font-style: italic;
 }
 .result-empty { margin: 20px 0 0; color: var(--muted); font-size: 0.92rem; }
@@ -459,16 +539,18 @@ button { cursor: pointer; border: 0; background: none; }
    ========================================================================== */
 .modal {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
-  padding: 24px; background: rgba(3, 7, 11, 0.72);
+  padding: 24px;
+  background: rgba(15, 23, 32, 0.48);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-  animation: fade-in 0.2s var(--ease-out);
+  animation: fade-in 0.15s var(--ease-out);
 }
 .modal-card {
   width: 100%; max-width: 380px; padding: 26px 22px 20px;
-  border-radius: var(--radius-lg); background: var(--surface);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
-  text-align: center; animation: pop-in 0.24s var(--ease-out);
+  box-shadow: 0 24px 70px rgba(15, 23, 32, 0.28);
+  text-align: center; animation: pop-in 0.22s var(--ease-out);
 }
 @keyframes pop-in {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
@@ -477,29 +559,33 @@ button { cursor: pointer; border: 0; background: none; }
 .modal-icon {
   width: 52px; height: 52px; margin: 0 auto 14px;
   display: grid; place-items: center; border-radius: 50%;
-  background: var(--danger-soft); border: 1px solid rgba(255, 107, 107, 0.3);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
   color: var(--danger); font-size: 1.5rem; font-weight: 700;
 }
-.modal-title { margin: 0 0 8px; font-size: 1.08rem; }
+.modal-title { margin: 0 0 8px; font-size: 1.08rem; color: var(--text); }
 .modal-text { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* ==========================================================================
-   11. TOAST
+   11. TOAST (dark-on-light for visibility)
    ========================================================================== */
 .toast {
   position: fixed; left: 50%; bottom: calc(28px + var(--safe-bottom));
   transform: translate(-50%, 20px); z-index: 80;
   max-width: min(90vw, 420px); padding: 12px 20px; border-radius: 14px;
-  background: var(--surface-3); border: 1px solid var(--line); color: var(--text);
-  font-size: 0.87rem; text-align: center; opacity: 0; visibility: hidden;
-  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out),
-    visibility 0s linear 0.24s;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  background: var(--toast-bg);
+  border: 1px solid var(--toast-border);
+  color: var(--toast-text);
+  font-size: 0.87rem; text-align: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out),
+    visibility 0s linear 0.22s;
+  box-shadow: 0 12px 40px rgba(15, 23, 32, 0.22);
 }
 .toast.is-visible {
   opacity: 1; transform: translate(-50%, 0); visibility: visible;
-  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out), visibility 0s;
+  transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out), visibility 0s;
 }
 
 /* ==========================================================================
@@ -687,13 +773,27 @@ button { cursor: pointer; border: 0; background: none; }
  * ========================================================================== */
 
 /* ==========================================================================
+ * 0. DEVICE-ADAPTIVE TUNING (computed once, before CONFIG is frozen)
+ * ========================================================================== */
+function computeMaxEdgePx() {
+  try {
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    if (cores <= 3 || mem <= 2) return 900;   // constrained devices
+    if (cores <= 5 || mem <= 3) return 1100;  // mid-range
+    return 1300;                              // modern devices
+  } catch {
+    return 1200;
+  }
+}
+
+/* ==========================================================================
  * 1. CONFIG
  * ========================================================================== */
 const CONFIG = Object.freeze({
   API: Object.freeze({
     PRIMARY_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
     FALLBACK_URL: 'https://api.datamuse.com/words',
-    // Reduced: primary is raced against the fallback, so no need to wait long.
     TIMEOUT_MS: 5000,
     HEADERS: Object.freeze({ Accept: 'application/json' })
   }),
@@ -716,14 +816,12 @@ const CONFIG = Object.freeze({
     MIN_WORD_CONFIDENCE: 30,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
-    // Reduced from 1600 → 1200: ~40 % faster OCR with negligible
-    // accuracy loss for book text (word is legible at this size).
-    MAX_EDGE_PX: 1200,
+    MAX_EDGE_PX: computeMaxEdgePx(),
     WORD_TAP_PADDING: 8
   }),
 
   CACHE: Object.freeze({
-    TTL_MS: 60 * 60 * 1000,   // 1 hour
+    TTL_MS: 60 * 60 * 1000,
     MAX_ENTRIES: 200
   }),
 
@@ -868,15 +966,53 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * 4. LOOKUP CACHE (in-memory, TTL + LRU-ish FIFO eviction)
+ * 4. LOOKUP CACHE — in-memory + sessionStorage persistence
  * ========================================================================== */
 const LookupCache = (() => {
+  const KEY = 'scanlex.cache.v1';
   const map = new Map();
+
+  function load() {
+    try {
+      const raw = sessionStorage.getItem(KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const now = Date.now();
+      for (const [word, entry] of Object.entries(parsed || {})) {
+        if (entry && typeof entry.ts === 'number' && entry.data &&
+            now - entry.ts < CONFIG.CACHE.TTL_MS) {
+          map.set(word, entry);
+        }
+      }
+    } catch { /* corrupt or quota — start fresh */ }
+  }
+
+  function save() {
+    try {
+      const obj = {};
+      for (const [word, entry] of map) obj[word] = entry;
+      sessionStorage.setItem(KEY, JSON.stringify(obj));
+    } catch {
+      // Quota exceeded — keep only the most recent 50 entries.
+      try {
+        const trimmed = [...map.entries()].slice(-50);
+        const obj = Object.fromEntries(trimmed);
+        sessionStorage.setItem(KEY, JSON.stringify(obj));
+      } catch {}
+    }
+  }
+
+  load();
+
   return {
     get(word) {
       const e = map.get(word);
       if (!e) return null;
-      if (Date.now() - e.ts > CONFIG.CACHE.TTL_MS) { map.delete(word); return null; }
+      if (Date.now() - e.ts > CONFIG.CACHE.TTL_MS) {
+        map.delete(word);
+        save();
+        return null;
+      }
       return e.data;
     },
     set(word, data) {
@@ -885,6 +1021,7 @@ const LookupCache = (() => {
         const first = map.keys().next().value;
         map.delete(first);
       }
+      save();
     }
   };
 })();
@@ -1811,7 +1948,7 @@ const OCRService = (() => {
 })();
 
 /* ==========================================================================
- * 9. DICTIONARY SERVICE — parallel primary+fallback, first success wins
+ * 9. DICTIONARY SERVICE — parallel race + cache
  * ========================================================================== */
 const DictionaryService = (() => {
   const POS_MAP = Object.freeze({
@@ -1940,12 +2077,6 @@ const DictionaryService = (() => {
     } finally { clearTimeout(timer); }
   }
 
-  /**
-   * Lookup with:
-   *   • Cache first (instant)
-   *   • Parallel primary + fallback — whichever succeeds first wins
-   *   • If both fail, reject with primary's error (more informative)
-   */
   async function lookup(word) {
     const cached = LookupCache.get(word);
     if (cached) return cached;
@@ -1973,13 +2104,8 @@ const DictionaryService = (() => {
         }
       };
 
-      fetchPrimary(word)
-        .then((r) => tryResolve(r, 'primary'))
-        .catch((e) => { primaryErr = e; tryReject(); });
-
-      fetchFallback(word)
-        .then((r) => tryResolve(r, 'fallback'))
-        .catch((e) => { fallbackErr = e; tryReject(); });
+      fetchPrimary(word).then((r) => tryResolve(r, 'primary')).catch((e) => { primaryErr = e; tryReject(); });
+      fetchFallback(word).then((r) => tryResolve(r, 'fallback')).catch((e) => { fallbackErr = e; tryReject(); });
     });
   }
 
@@ -2047,7 +2173,6 @@ const App = (() => {
     return L.length > 18 ? L.slice(0, 16) + '…' : L;
   }
 
-  /** Fire Tesseract download + init immediately — parallel with camera. */
   function warmUpOcr() {
     if (state.ocrWarmedUp) return;
     state.ocrWarmedUp = true;
@@ -2334,9 +2459,8 @@ const App = (() => {
   function init() {
     cacheDom();
 
-    // Warm up OCR immediately so Tesseract download+init runs in parallel
-    // with the camera permission prompt and stream startup. By the time the
-    // user aligns the page and taps Capture, the worker is ready.
+    // OCR warmup fires *before* the camera starts — Tesseract download + init
+    // runs in parallel with the permission prompt and stream startup.
     warmUpOcr();
 
     UI.bindEvents({
