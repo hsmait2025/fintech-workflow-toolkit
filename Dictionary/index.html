@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+<meta name="theme-color" content="#f3f6f9" />
+<meta name="color-scheme" content="light" />
+<meta name="description" content="ScanLex — tap any word in a photo to see its definition." />
+<title>ScanLex — Visual Scan Dictionary</title>
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="preconnect" href="https://tessdata.projectnaptha.com" crossorigin />
+<link rel="preconnect" href="https://api.dictionaryapi.dev" crossorigin />
+<link rel="preconnect" href="https://api.datamuse.com" crossorigin />
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" as="script" crossorigin />
+
+<style>
+/* ==========================================================================
+   1. TOKENS — light theme
+   ========================================================================== */
+:root {
+  --bg: #f3f6f9;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --surface-3: #e9eef3;
+  --line: #d9e1e8;
+  --line-strong: #c4cfd9;
+
+  --text: #0d1720;
+  --muted: #5a6b7c;
+  --placeholder: #94a3b3;
+
+  --accent: #0a7dab;
+  --accent-bright: #4cc9f0;
+  --accent-soft: rgba(76, 201, 240, 0.16);
+  --accent-line: rgba(76, 201, 240, 0.38);
+
+  --danger: #d93d3d;
+  --danger-soft: rgba(217, 61, 61, 0.10);
+  --danger-line: rgba(217, 61, 61, 0.28);
+  --success: #16a35c;
+
+  --overlay-dark: rgba(15, 23, 32, 0.75);
+  --overlay-dark-strong: rgba(15, 23, 32, 0.88);
+  --overlay-text: #e9f0f7;
+  --overlay-muted: #b0c0cd;
+
+  --toast-bg: #1e2936;
+  --toast-border: #334155;
+  --toast-text: #ffffff;
+
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --shadow-sheet: 0 -18px 60px rgba(15, 23, 32, 0.18);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ==========================================================================
+   2. RESET
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   3. APP SHELL
+   ========================================================================== */
+.app {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh;
+  padding-left: var(--safe-left); padding-right: var(--safe-right);
+}
+.app-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: calc(var(--safe-top) + 12px) 16px 12px; flex: 0 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.brand h1 {
+  margin: 0; font-size: 1.05rem; font-weight: 650;
+  letter-spacing: -0.01em; white-space: nowrap; color: var(--text);
+}
+.app-actions { display: flex; gap: 8px; }
+.icon-btn {
+  display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: background 0.18s var(--ease-out), transform 0.12s var(--ease-out);
+}
+.icon-btn:active { transform: scale(0.94); background: var(--surface-3); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   4. OFFLINE BANNER
+   ========================================================================== */
+.offline-banner {
+  margin: 0 16px 10px; padding: 10px 14px; border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: #a82323;
+  font-size: 0.85rem; text-align: center;
+}
+
+/* ==========================================================================
+   5. STAGE + VIEWS
+   ========================================================================== */
+.stage {
+  flex: 1 1 auto; display: flex; flex-direction: column;
+  min-height: 0; padding: 0 12px calc(var(--safe-bottom) + 12px); gap: 12px;
+}
+
+.camera-view {
+  position: relative; flex: 1 1 auto; min-height: 0;
+  border-radius: var(--radius-lg); overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line);
+  isolation: isolate; touch-action: none;
+}
+.video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; background: #000;
+  transition: transform 0.22s var(--ease-out);
+  transform-origin: center center;
+}
+
+.cam-badge {
+  position: absolute; top: 12px; left: 12px; z-index: 6;
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 11px; border-radius: 999px;
+  background: var(--overlay-dark);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.72rem; font-weight: 600; color: var(--overlay-text);
+  max-width: 62%;
+}
+.cam-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success);
+  flex: 0 0 auto;
+}
+.cam-badge .dot.warn { background: var(--danger); }
+.cam-badge-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.zoom-bar {
+  position: absolute; top: 12px; right: 12px; z-index: 6;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--overlay-dark);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px; padding: 4px;
+}
+.zoom-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.35rem; font-weight: 400; line-height: 1;
+  color: var(--overlay-text);
+  background: transparent;
+  transition: background 0.15s;
+}
+.zoom-btn:active { background: rgba(255, 255, 255, 0.14); }
+.zoom-btn:disabled { opacity: 0.35; }
+.zoom-value {
+  min-width: 42px; text-align: center;
+  font-size: 0.82rem; font-weight: 650; letter-spacing: 0.02em;
+  color: var(--overlay-text); font-variant-numeric: tabular-nums;
+}
+
+.focus-ring {
+  position: absolute; width: 64px; height: 64px;
+  border: 2px solid var(--accent-bright); border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.4); opacity: 0;
+  pointer-events: none; z-index: 5;
+}
+.focus-ring.is-active { animation: focus-pulse 0.7s var(--ease-out) forwards; }
+@keyframes focus-pulse {
+  0%   { opacity: 0.95; transform: translate(-50%, -50%) scale(0.4); }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.5); }
+}
+
+.ocr-overlay {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px;
+  background: var(--overlay-dark-strong);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: fade-in 0.15s var(--ease-out);
+}
+.ocr-overlay p { margin: 0; font-size: 0.9rem; color: var(--overlay-text); }
+.spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid rgba(76, 201, 240, 0.20);
+  border-top-color: var(--accent-bright);
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.camera-error {
+  position: absolute; inset: 0; z-index: 4;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 28px 22px; text-align: center;
+  background: linear-gradient(160deg, #101a24 0%, #0b1219 100%);
+  color: var(--overlay-text);
+}
+.camera-error h2 { margin: 0; font-size: 1.1rem; color: var(--overlay-text); }
+.camera-error p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
+.camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+
+.analyze-view {
+  position: relative; flex: 1 1 auto; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg);
+  background: #000;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.frozen-wrap { position: relative; }
+.frozen-canvas {
+  width: 100%; height: 100%; display: block;
+  user-select: none; -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.word-layer { position: absolute; inset: 0; pointer-events: none; }
+.word-tap {
+  position: absolute; padding: 0; margin: 0; border: 0;
+  background: transparent; border-radius: 4px;
+  pointer-events: auto; cursor: pointer;
+  transition: background 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.word-tap::after {
+  content: '';
+  position: absolute;
+  left: 15%; right: 15%; bottom: 1px;
+  height: 1.5px;
+  background: rgba(76, 201, 240, 0.8);
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(76, 201, 240, 0.55);
+  pointer-events: none;
+}
+.word-tap:active, .word-tap.is-active {
+  background: rgba(76, 201, 240, 0.30);
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.9);
+}
+
+/* Clear-selection pill — floats in the top-right of the analyze view */
+.clear-word-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--overlay-dark);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--overlay-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, transform 0.12s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  animation: fade-in 0.15s var(--ease-out);
+}
+.clear-word-btn:active {
+  background: var(--overlay-dark-strong);
+  transform: scale(0.95);
+}
+.clear-word-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.scan-progress {
+  position: absolute; left: 16px; right: 16px; bottom: 18px;
+  z-index: 8; padding: 12px 16px;
+  background: var(--overlay-dark-strong);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+}
+.scan-progress p {
+  margin: 0 0 8px 0; font-size: 0.86rem; color: var(--overlay-text);
+  display: flex; justify-content: space-between;
+}
+.scan-progress .pct {
+  color: var(--accent-bright);
+  font-variant-numeric: tabular-nums; font-weight: 650;
+}
+.progress-bar {
+  height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #6ee7ff, #4cc9f0);
+  transition: width 0.25s var(--ease-out);
+}
+
+.no-text {
+  position: absolute; inset: 0; z-index: 9;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 32px 24px;
+  text-align: center;
+  background: var(--overlay-dark-strong);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.no-text h2 { margin: 0; font-size: 1.1rem; color: var(--overlay-text); }
+.no-text p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
+
+/* ==========================================================================
+   6. CONTROLS
+   ========================================================================== */
+.controls {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+}
+.capture-btn {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; max-width: 440px; height: 62px; border-radius: 31px;
+  font-size: 1rem; font-weight: 640; letter-spacing: 0.01em;
+  color: #04121a;
+  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 45%, #3aa8d8 100%);
+  box-shadow: 0 10px 30px rgba(76, 201, 240, 0.35);
+  transition: transform 0.12s var(--ease-out), box-shadow 0.2s var(--ease-out), opacity 0.2s;
+}
+.capture-btn:active:not(:disabled) { transform: scale(0.975); }
+.capture-btn:disabled { opacity: 0.5; box-shadow: none; cursor: not-allowed; }
+.capture-ring {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2.5px solid currentColor;
+  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16);
+}
+.analyze-actions {
+  display: flex; gap: 10px; width: 100%; max-width: 440px;
+}
+.analyze-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.96rem; }
+.status-hint {
+  margin: 0; font-size: 0.82rem; color: var(--muted);
+  text-align: center; min-height: 1.2em; max-width: 44ch;
+}
+
+/* ==========================================================================
+   7. BUTTONS
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 20px; border-radius: 14px;
+  font-size: 0.94rem; font-weight: 600;
+  transition: transform 0.12s var(--ease-out), background 0.18s, opacity 0.18s;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary {
+  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%);
+  color: #04121a;
+}
+.btn-ghost {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.btn-block { width: 100%; }
+
+/* ==========================================================================
+   8. SCRIM + SHEETS
+   ========================================================================== */
+.scrim {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(15, 23, 32, 0.42);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.24s var(--ease-out), visibility 0s linear 0.24s;
+}
+.scrim.is-open {
+  opacity: 1; visibility: visible;
+  transition: opacity 0.24s var(--ease-out), visibility 0s;
+}
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  max-height: 84vh; max-height: 84dvh; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px calc(20px + var(--safe-right)) calc(24px + var(--safe-bottom))
+           calc(20px + var(--safe-left));
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-top: 1px solid var(--line);
+  box-shadow: var(--shadow-sheet);
+  transform: translateY(110%); visibility: hidden;
+  transition: transform 0.28s var(--ease-out), visibility 0s linear 0.28s;
+}
+.sheet.is-open {
+  transform: translateY(0); visibility: visible;
+  transition: transform 0.28s var(--ease-out), visibility 0s;
+}
+.sheet-handle {
+  width: 44px; height: 4px; border-radius: 2px;
+  background: var(--line); margin: 4px auto 14px;
+}
+.sheet-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--surface-3); color: var(--muted);
+  font-size: 1.35rem; line-height: 1;
+}
+.sheet-close:active { background: var(--line); }
+.sheet-title { margin: 0 44px 6px 0; font-size: 1.15rem; letter-spacing: -0.01em; color: var(--text); }
+.sheet-sub { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+
+.text-input {
+  width: 100%; height: 54px; padding: 0 16px; border-radius: 14px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  color: var(--text); font-size: 1rem;
+  transition: border-color 0.18s;
+}
+.text-input::placeholder { color: var(--placeholder); }
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.text-input[aria-invalid="true"] { border-color: var(--danger); }
+.input-error { margin: 8px 2px 12px; color: var(--danger); font-size: 0.84rem; }
+#manualForm .btn { margin-top: 14px; }
+
+.lens-list { display: flex; flex-direction: column; gap: 8px; }
+.lens-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; width: 100%; text-align: left;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+}
+.lens-item.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.lens-item:active { background: var(--surface-3); }
+.lens-icon {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--accent);
+  display: grid; place-items: center;
+  flex: 0 0 auto;
+  font-weight: 700; font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+.lens-item.is-active .lens-icon {
+  background: var(--accent-bright);
+  color: #04121a;
+}
+.lens-body { flex: 1; min-width: 0; }
+.lens-name {
+  font-weight: 600; font-size: 0.94rem; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lens-meta {
+  margin-top: 4px; font-size: 0.76rem; color: var(--muted);
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.lens-badge {
+  display: inline-block; padding: 2px 7px; border-radius: 6px;
+  background: var(--surface-3); color: var(--muted);
+  font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
+.lens-badge.nofocus { background: var(--danger-soft); color: var(--danger); }
+
+/* ==========================================================================
+   9. RESULT
+   ========================================================================== */
+.result-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; padding-right: 44px; margin-bottom: 6px;
+}
+.result-word {
+  margin: 0; font-size: 1.85rem; font-weight: 700;
+  letter-spacing: -0.025em; line-height: 1.15; word-break: break-word;
+  color: var(--text);
+}
+.result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; }
+.audio-btn {
+  flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  transition: transform 0.12s var(--ease-out), background 0.18s;
+}
+.audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
+.meaning { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.pos-badge {
+  display: inline-block; padding: 5px 11px; border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 0.7rem; font-weight: 650;
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.def-list { margin: 12px 0 0; padding-left: 20px; list-style: decimal; }
+.def-list li { margin-bottom: 12px; line-height: 1.55; font-size: 0.96rem; padding-left: 4px; color: var(--text); }
+.def-list li::marker { color: var(--accent); font-weight: 600; }
+.example {
+  display: block; margin-top: 6px; padding-left: 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.89rem; font-style: italic;
+}
+.result-empty { margin: 20px 0 0; color: var(--muted); font-size: 0.92rem; }
+.result-actions { display: flex; gap: 10px; margin-top: 26px; }
+.result-actions .btn { flex: 1 1 0; }
+
+/* ==========================================================================
+   10. MODAL
+   ========================================================================== */
+.modal {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 32, 0.48);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  animation: fade-in 0.15s var(--ease-out);
+}
+.modal-card {
+  width: 100%; max-width: 380px; padding: 26px 22px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 70px rgba(15, 23, 32, 0.28);
+  text-align: center; animation: pop-in 0.22s var(--ease-out);
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.modal-icon {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger); font-size: 1.5rem; font-weight: 700;
+}
+.modal-title { margin: 0 0 8px; font-size: 1.08rem; color: var(--text); }
+.modal-text { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
+.modal-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* ==========================================================================
+   11. TOAST
+   ========================================================================== */
+.toast {
+  position: fixed; left: 50%; bottom: calc(28px + var(--safe-bottom));
+  transform: translate(-50%, 20px); z-index: 80;
+  max-width: min(90vw, 420px); padding: 12px 20px; border-radius: 14px;
+  background: var(--toast-bg);
+  border: 1px solid var(--toast-border);
+  color: var(--toast-text);
+  font-size: 0.87rem; text-align: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out),
+    visibility 0s linear 0.22s;
+  box-shadow: 0 12px 40px rgba(15, 23, 32, 0.22);
+}
+.toast.is-visible {
+  opacity: 1; transform: translate(-50%, 0); visibility: visible;
+  transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out), visibility 0s;
+}
+
+/* ==========================================================================
+   12. RESPONSIVE
+   ========================================================================== */
+@media (min-width: 720px) {
+  .stage { padding: 0 24px calc(var(--safe-bottom) + 20px); }
+  .app-bar { padding-left: 24px; padding-right: 24px; }
+  .sheet {
+    left: 50%; right: auto; width: min(560px, 100%);
+    transform: translate(-50%, 110%);
+  }
+  .sheet.is-open { transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header class="app-bar">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <h1>ScanLex</h1>
+    </div>
+    <div class="app-actions">
+      <button id="btnTorch" class="icon-btn" type="button" aria-label="Toggle torch" aria-pressed="false" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+      </button>
+      <button id="btnLens" class="icon-btn" type="button" aria-label="Change lens" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 12a8 8 0 0 1-13.7 5.6L3 14" />
+          <path d="M4 12a8 8 0 0 1 13.7-5.6L21 10" />
+          <path d="M21 4v6h-6" />
+          <path d="M3 20v-6h6" />
+        </svg>
+      </button>
+      <button id="btnManual" class="icon-btn" type="button" aria-label="Type a word">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
+          <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="offline-banner" id="offlineBanner" role="status" hidden>
+    You're offline — definitions can't be loaded right now.
+  </div>
+
+  <main class="stage">
+    <section class="camera-view" id="cameraView" aria-label="Camera viewfinder">
+      <video id="video" class="video" playsinline autoplay muted
+             aria-label="Live camera preview"></video>
+
+      <div class="cam-badge" id="camBadge" hidden>
+        <span class="dot" id="camBadgeDot"></span>
+        <span class="cam-badge-text" id="camBadgeText">Camera</span>
+      </div>
+
+      <div class="zoom-bar" id="zoomBar" hidden>
+        <button id="btnZoomOut" class="zoom-btn" type="button" aria-label="Zoom out">−</button>
+        <span class="zoom-value" id="zoomValue">1.0×</span>
+        <button id="btnZoomIn" class="zoom-btn" type="button" aria-label="Zoom in">+</button>
+      </div>
+
+      <div class="focus-ring" id="focusRing" aria-hidden="true"></div>
+
+      <div class="ocr-overlay" id="ocrOverlay" hidden>
+        <div class="spinner" role="progressbar" aria-label="Processing"></div>
+        <p id="ocrLabel">Reading…</p>
+      </div>
+
+      <div class="camera-error" id="cameraError" hidden>
+        <h2>Camera unavailable</h2>
+        <p id="cameraErrorText">We couldn't start your camera.</p>
+        <div class="row">
+          <button id="btnCameraRetry" class="btn btn-ghost" type="button">Try again</button>
+          <button id="btnCameraManual" class="btn btn-primary" type="button">Type a word</button>
+        </div>
+      </div>
+
+      <canvas id="cropCanvas" hidden aria-hidden="true"></canvas>
+    </section>
+
+    <section class="analyze-view" id="analyzeView" hidden aria-label="Detected text">
+      <div class="frozen-wrap" id="frozenWrap">
+        <canvas id="frozenCanvas" class="frozen-canvas"></canvas>
+        <div class="word-layer" id="wordLayer"></div>
+      </div>
+
+      <button id="btnClearWord" class="clear-word-btn" type="button"
+              aria-label="Clear selected word" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+        <span>Clear</span>
+      </button>
+
+      <div class="scan-progress" id="scanProgress" hidden>
+        <p>Scanning text… <span class="pct" id="scanPct">0%</span></p>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <div class="no-text" id="noText" hidden>
+        <h2>No text detected</h2>
+        <p>Try again with better lighting, or zoom in closer before capturing.</p>
+      </div>
+    </section>
+
+    <div class="controls" id="cameraControls">
+      <button id="btnCapture" class="capture-btn" type="button">
+        <span class="capture-ring" aria-hidden="true"></span>
+        Capture
+      </button>
+      <p class="status-hint" id="statusHint" role="status" aria-live="polite">
+        Starting camera…
+      </p>
+    </div>
+
+    <div class="controls" id="analyzeControls" hidden>
+      <div class="analyze-actions">
+        <button id="btnRetake" class="btn btn-ghost" type="button">Retake</button>
+        <button id="btnManualFromAnalyze" class="btn btn-ghost" type="button">Type word</button>
+      </div>
+      <p class="status-hint" id="analyzeHint">Tap any word to look it up</p>
+    </div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" aria-hidden="true"></div>
+
+<section class="sheet" id="lensSheet" role="dialog" aria-modal="true" aria-labelledby="lensTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnLensClose" type="button" aria-label="Close">×</button>
+  <h2 class="sheet-title" id="lensTitle">Choose camera</h2>
+  <p class="sheet-sub">Pick the lens that gives the sharpest close-up view. Lenses marked "Autofocus" work best for reading text.</p>
+  <div class="lens-list" id="lensList"></div>
+</section>
+
+<section class="sheet" id="resultSheet" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnResultClose" type="button" aria-label="Close">×</button>
+  <div class="result-body" id="resultBody"></div>
+</section>
+
+<section class="sheet" id="manualSheet" role="dialog" aria-modal="true" aria-labelledby="manualTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnManualClose" type="button" aria-label="Close">×</button>
+  <h2 class="sheet-title" id="manualTitle">Type a word</h2>
+  <p class="sheet-sub">Camera not available? Enter the word manually.</p>
+  <form id="manualForm" novalidate>
+    <label class="sr-only" for="manualInput">Word to look up</label>
+    <input id="manualInput" class="text-input" type="text" inputmode="text"
+           autocomplete="off" autocapitalize="none" spellcheck="false"
+           maxlength="45" placeholder="e.g. serendipity" data-autofocus />
+    <p class="input-error" id="manualError" role="alert" hidden></p>
+    <button class="btn btn-primary btn-block" type="submit" id="btnManualSubmit">
+      Look up definition
+    </button>
+  </form>
+</section>
+
+<div class="modal" id="errorModal" role="alertdialog" aria-modal="true"
+     aria-labelledby="errorTitle" aria-describedby="errorText" hidden>
+  <div class="modal-card">
+    <div class="modal-icon" aria-hidden="true">!</div>
+    <h2 class="modal-title" id="errorTitle">Something went wrong</h2>
+    <p class="modal-text" id="errorText"></p>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-block" type="button" id="errorRetry" hidden>Retry</button>
+      <button class="btn btn-ghost btn-block" type="button" id="errorDismiss">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* ==========================================================================
+ * ScanLex — Visual Scan Dictionary
+ * ========================================================================== */
+
+/* ==========================================================================
+ * 0. DEVICE-ADAPTIVE TUNING
+ * ========================================================================== */
+function computeMaxEdgePx() {
+  try {
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    if (cores <= 3 || mem <= 2) return 900;
+    if (cores <= 5 || mem <= 3) return 1100;
+    return 1300;
+  } catch {
+    return 1200;
+  }
+}
+
+/* ==========================================================================
+ * 1. CONFIG
+ * ========================================================================== */
+const CONFIG = Object.freeze({
+  API: Object.freeze({
+    PRIMARY_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
+    FALLBACK_URL: 'https://api.datamuse.com/words',
+    TIMEOUT_MS: 5000,
+    HEADERS: Object.freeze({ Accept: 'application/json' })
+  }),
+
+  CAMERA: Object.freeze({
+    IDEAL_WIDTH: 1920,
+    IDEAL_HEIGHT: 1080,
+    HIGH_WIDTH: 3840,
+    HIGH_HEIGHT: 2160,
+    FOCUS_SETTLE_MS: 500,
+    ZOOM_STEP_FRACTION: 0.15,
+    PROBE_DELAY_MS: 100
+  }),
+
+  OCR: Object.freeze({
+    CDN_URL: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+    LANGUAGE: 'eng',
+    OEM: 1,
+    PSM: '6',
+    MIN_WORD_CONFIDENCE: 30,
+    MIN_WORD_LENGTH: 2,
+    MAX_WORD_LENGTH: 45,
+    MAX_EDGE_PX: computeMaxEdgePx(),
+    WORD_TAP_PADDING: 8
+  }),
+
+  CACHE: Object.freeze({
+    TTL_MS: 60 * 60 * 1000,
+    MAX_ENTRIES: 200
+  }),
+
+  UI: Object.freeze({
+    MAX_MEANINGS: 3,
+    MAX_DEFINITIONS_PER_MEANING: 3,
+    MAX_SYNONYMS: 4,
+    TOAST_MS: 2600,
+    WORD_TAP_DELAY_MS: 60
+  }),
+
+  SELECTORS: Object.freeze({
+    cameraView:      '#cameraView',
+    analyzeView:     '#analyzeView',
+    video:           '#video',
+    camBadge:        '#camBadge',
+    camBadgeDot:     '#camBadgeDot',
+    camBadgeText:    '#camBadgeText',
+    focusRing:       '#focusRing',
+    zoomBar:         '#zoomBar',
+    zoomValue:       '#zoomValue',
+    btnZoomIn:       '#btnZoomIn',
+    btnZoomOut:      '#btnZoomOut',
+    frozenCanvas:    '#frozenCanvas',
+    frozenWrap:      '#frozenWrap',
+    wordLayer:       '#wordLayer',
+    btnClearWord:    '#btnClearWord',
+    scanProgress:    '#scanProgress',
+    scanPct:         '#scanPct',
+    progressFill:    '#progressFill',
+    noText:          '#noText',
+    cropCanvas:      '#cropCanvas',
+    ocrOverlay:      '#ocrOverlay',
+    ocrLabel:        '#ocrLabel',
+    cameraError:     '#cameraError',
+    cameraErrorText: '#cameraErrorText',
+    btnCameraRetry:  '#btnCameraRetry',
+    btnCameraManual: '#btnCameraManual',
+    btnCapture:      '#btnCapture',
+    btnRetake:       '#btnRetake',
+    btnManualFromAnalyze: '#btnManualFromAnalyze',
+    cameraControls:  '#cameraControls',
+    analyzeControls: '#analyzeControls',
+    btnLens:         '#btnLens',
+    btnTorch:        '#btnTorch',
+    btnManual:       '#btnManual',
+    statusHint:      '#statusHint',
+    analyzeHint:     '#analyzeHint',
+    scrim:           '#scrim',
+    lensSheet:       '#lensSheet',
+    lensList:        '#lensList',
+    btnLensClose:    '#btnLensClose',
+    resultSheet:     '#resultSheet',
+    resultBody:      '#resultBody',
+    btnResultClose:  '#btnResultClose',
+    manualSheet:     '#manualSheet',
+    manualForm:      '#manualForm',
+    manualInput:     '#manualInput',
+    manualError:     '#manualError',
+    btnManualClose:  '#btnManualClose',
+    errorModal:      '#errorModal',
+    errorTitle:      '#errorTitle',
+    errorText:       '#errorText',
+    errorRetry:      '#errorRetry',
+    errorDismiss:    '#errorDismiss',
+    toast:           '#toast',
+    offlineBanner:   '#offlineBanner'
+  })
+});
+
+/* ==========================================================================
+ * 2. ERRORS
+ * ========================================================================== */
+class AppError extends Error {
+  constructor(code, message, options = {}) {
+    super(message);
+    this.name = 'AppError';
+    this.code = code;
+    this.retryable = Boolean(options.retryable);
+    this.cause = options.cause;
+  }
+}
+
+const MESSAGES = Object.freeze({
+  CAMERA_INSECURE:  'Camera access requires a secure (HTTPS) connection.',
+  CAMERA_UNSUPPORTED: 'This browser does not support camera capture.',
+  CAMERA_DENIED:    'Camera permission was denied. You can still type a word manually.',
+  CAMERA_NOT_FOUND: 'No camera was found on this device.',
+  CAMERA_BUSY:      'The camera is being used by another app. Close it and try again.',
+  CAMERA_FAILED:    'The camera could not be started.',
+  CAMERA_NOT_READY: 'The camera is still warming up. Give it a moment and try again.',
+  OCR_LIB:          'The text-recognition engine could not be loaded. Check your connection.',
+  OCR_FAILED:       'Text recognition failed. Try again with steadier lighting.',
+  OCR_EMPTY:        'No readable text was found. Try again with better lighting, or zoom in closer before capturing.',
+  OFFLINE:          'You appear to be offline. Reconnect to look up definitions.',
+  TIMEOUT:          'The dictionary request timed out. Please try again.',
+  NETWORK:          'A network error occurred while contacting the dictionary.',
+  NOT_FOUND:        'No definition was found for that word.',
+  HTTP_ERROR:       'The dictionary service returned an unexpected response.',
+  BAD_WORD:         'Please enter a single word using letters only.'
+});
+
+/* ==========================================================================
+ * 3. UTILITIES
+ * ========================================================================== */
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function h(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = String(value);
+    else if (key === 'dataset') Object.assign(node.dataset, value);
+    else if (key.startsWith('on') && typeof value === 'function') {
+      node.addEventListener(key.slice(2).toLowerCase(), value);
+    } else node.setAttribute(key, value === true ? '' : String(value));
+  }
+  for (const child of children.flat(Infinity)) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+const ICONS = Object.freeze({
+  speaker:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>' +
+    '<path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+});
+
+const DOM = {};
+function cacheDom() {
+  for (const [key, selector] of Object.entries(CONFIG.SELECTORS)) {
+    const node = document.querySelector(selector);
+    if (!node) throw new Error(`[ScanLex] Missing DOM node "${key}" (${selector})`);
+    DOM[key] = node;
+  }
+  Object.freeze(DOM);
+}
+
+/* ==========================================================================
+ * 4. LOOKUP CACHE
+ * ========================================================================== */
+const LookupCache = (() => {
+  const KEY = 'scanlex.cache.v1';
+  const map = new Map();
+
+  function load() {
+    try {
+      const raw = sessionStorage.getItem(KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const now = Date.now();
+      for (const [word, entry] of Object.entries(parsed || {})) {
+        if (entry && typeof entry.ts === 'number' && entry.data &&
+            now - entry.ts < CONFIG.CACHE.TTL_MS) {
+          map.set(word, entry);
+        }
+      }
+    } catch { /* corrupt or quota — start fresh */ }
+  }
+
+  function save() {
+    try {
+      const obj = {};
+      for (const [word, entry] of map) obj[word] = entry;
+      sessionStorage.setItem(KEY, JSON.stringify(obj));
+    } catch {
+      try {
+        const trimmed = [...map.entries()].slice(-50);
+        const obj = Object.fromEntries(trimmed);
+        sessionStorage.setItem(KEY, JSON.stringify(obj));
+      } catch {}
+    }
+  }
+
+  load();
+
+  return {
+    get(word) {
+      const e = map.get(word);
+      if (!e) return null;
+      if (Date.now() - e.ts > CONFIG.CACHE.TTL_MS) {
+        map.delete(word);
+        save();
+        return null;
+      }
+      return e.data;
+    },
+    set(word, data) {
+      map.set(word, { data, ts: Date.now() });
+      if (map.size > CONFIG.CACHE.MAX_ENTRIES) {
+        const first = map.keys().next().value;
+        map.delete(first);
+      }
+      save();
+    }
+  };
+})();
+
+/* ==========================================================================
+ * 5. UI
+ * ========================================================================== */
+const UI = (() => {
+  let toastTimer = null;
+  let lastFocused = null;
+  let retryHandler = null;
+  let focusRingTimer = null;
+
+  function setStatus(text) { DOM.statusHint.textContent = text; }
+  function setAnalyzeHint(text) { DOM.analyzeHint.textContent = text; }
+
+  function setBusy(isBusy, label) {
+    DOM.ocrOverlay.hidden = !isBusy;
+    if (label) DOM.ocrLabel.textContent = label;
+    DOM.btnCapture.disabled = isBusy;
+  }
+
+  function isOverlayOpen() {
+    return DOM.resultSheet.classList.contains('is-open') ||
+           DOM.manualSheet.classList.contains('is-open') ||
+           DOM.lensSheet.classList.contains('is-open') ||
+           !DOM.errorModal.hidden;
+  }
+
+  function updateScrim() {
+    const open = DOM.resultSheet.classList.contains('is-open') ||
+                 DOM.manualSheet.classList.contains('is-open') ||
+                 DOM.lensSheet.classList.contains('is-open');
+    DOM.scrim.classList.toggle('is-open', open);
+  }
+
+  function openSheet(sheet) {
+    lastFocused = document.activeElement;
+    sheet.classList.add('is-open');
+    updateScrim();
+    const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
+    requestAnimationFrame(() => target?.focus({ preventScroll: true }));
+  }
+
+  function closeSheet(sheet) {
+    sheet.classList.remove('is-open');
+    updateScrim();
+    if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
+  }
+
+  function closeAllSheets() {
+    [DOM.resultSheet, DOM.manualSheet, DOM.lensSheet].forEach((s) => {
+      if (s.classList.contains('is-open')) closeSheet(s);
+    });
+  }
+
+  function toast(message) {
+    if (!message) return;
+    DOM.toast.textContent = message;
+    DOM.toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => DOM.toast.classList.remove('is-visible'), CONFIG.UI.TOAST_MS);
+  }
+
+  function showError({ title, message, retryLabel, onRetry }) {
+    DOM.errorTitle.textContent = title;
+    DOM.errorText.textContent = message;
+    retryHandler = typeof onRetry === 'function' ? onRetry : null;
+    DOM.errorRetry.hidden = !retryHandler;
+    if (retryHandler) DOM.errorRetry.textContent = retryLabel || 'Retry';
+    DOM.errorModal.hidden = false;
+    updateScrim();
+    requestAnimationFrame(() => {
+      (retryHandler ? DOM.errorRetry : DOM.errorDismiss).focus({ preventScroll: true });
+    });
+  }
+
+  function hideError() { DOM.errorModal.hidden = true; retryHandler = null; updateScrim(); }
+  function triggerRetry() { const fn = retryHandler; hideError(); if (fn) fn(); }
+
+  function showCameraError(message) { DOM.cameraErrorText.textContent = message; DOM.cameraError.hidden = false; }
+  function hideCameraError() { DOM.cameraError.hidden = true; }
+  function setOffline(v) { DOM.offlineBanner.hidden = !v; }
+
+  function showInputError(message) {
+    DOM.manualError.textContent = message;
+    DOM.manualError.hidden = false;
+    DOM.manualInput.setAttribute('aria-invalid', 'true');
+    DOM.manualInput.focus({ preventScroll: true });
+  }
+  function clearInputError() {
+    DOM.manualError.hidden = true;
+    DOM.manualError.textContent = '';
+    DOM.manualInput.removeAttribute('aria-invalid');
+  }
+
+  function showFocusRing(clientX, clientY) {
+    const rect = DOM.cameraView.getBoundingClientRect();
+    DOM.focusRing.style.left = (clientX - rect.left) + 'px';
+    DOM.focusRing.style.top = (clientY - rect.top) + 'px';
+    DOM.focusRing.classList.remove('is-active');
+    void DOM.focusRing.offsetWidth;
+    DOM.focusRing.classList.add('is-active');
+    clearTimeout(focusRingTimer);
+    focusRingTimer = setTimeout(() => DOM.focusRing.classList.remove('is-active'), 750);
+  }
+
+  function setTorchUI(on, available) {
+    DOM.btnTorch.hidden = !available;
+    DOM.btnTorch.classList.toggle('is-on', Boolean(on));
+    DOM.btnTorch.setAttribute('aria-pressed', String(Boolean(on)));
+  }
+
+  function setZoomUI(current, min, max, available) {
+    DOM.zoomBar.hidden = !available;
+    if (!available) return;
+    DOM.zoomValue.textContent = current.toFixed(1) + '×';
+    DOM.btnZoomOut.disabled = current <= min + 0.001;
+    DOM.btnZoomIn.disabled = current >= max - 0.001;
+  }
+
+  function setCamBadge(label, hasFocus) {
+    if (!label) { DOM.camBadge.hidden = true; return; }
+    DOM.camBadge.hidden = false;
+    DOM.camBadgeText.textContent = label;
+    DOM.camBadgeDot.classList.toggle('warn', !hasFocus);
+  }
+
+  function showCameraView() {
+    DOM.cameraView.hidden = false;
+    DOM.analyzeView.hidden = true;
+    DOM.cameraControls.hidden = false;
+    DOM.analyzeControls.hidden = true;
+  }
+
+  function showAnalyzeView() {
+    DOM.cameraView.hidden = true;
+    DOM.analyzeView.hidden = false;
+    DOM.cameraControls.hidden = true;
+    DOM.analyzeControls.hidden = false;
+  }
+
+  function showScanProgress(show, pct = 0) {
+    DOM.scanProgress.hidden = !show;
+    if (show) {
+      DOM.progressFill.style.width = pct + '%';
+      DOM.scanPct.textContent = pct + '%';
+    }
+  }
+
+  function updateScanProgress(pct) {
+    DOM.progressFill.style.width = pct + '%';
+    DOM.scanPct.textContent = pct + '%';
+  }
+
+  function showNoText(show) { DOM.noText.hidden = !show; }
+
+  /* ---- Word overlays ---------------------------------------------------- */
+  function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
+    DOM.wordLayer.replaceChildren();
+    const sx = displayW / canvasW;
+    const sy = displayH / canvasH;
+    const pad = CONFIG.OCR.WORD_TAP_PADDING;
+
+    const frag = document.createDocumentFragment();
+    for (const w of words) {
+      const { x0, y0, x1, y1 } = w.bbox;
+      const left   = Math.max(0, x0 * sx - pad);
+      const top    = Math.max(0, y0 * sy - pad);
+      const width  = Math.min(displayW - left, (x1 - x0) * sx + pad * 2);
+      const height = Math.min(displayH - top, (y1 - y0) * sy + pad * 2);
+      if (width < 8 || height < 8) continue;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'word-tap';
+      btn.style.left = left + 'px';
+      btn.style.top = top + 'px';
+      btn.style.width = width + 'px';
+      btn.style.height = height + 'px';
+      btn.setAttribute('aria-label', `Look up "${w.text}"`);
+      btn.dataset.word = w.text;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Auto-clear any previously selected word.
+        DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
+          if (b !== btn) b.classList.remove('is-active');
+        });
+        btn.classList.add('is-active');
+        setTimeout(() => {
+          // If the user cleared the selection during the delay, skip the lookup.
+          if (!btn.classList.contains('is-active')) return;
+          onWordTap(w.text);
+        }, CONFIG.UI.WORD_TAP_DELAY_MS);
+      });
+      frag.appendChild(btn);
+    }
+    DOM.wordLayer.appendChild(frag);
+    DOM.wordLayer.style.pointerEvents = 'auto';
+  }
+
+  function clearWords() { DOM.wordLayer.replaceChildren(); }
+
+  function clearActiveWords() {
+    DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
+      b.classList.remove('is-active');
+    });
+  }
+
+  function showClearButton() { DOM.btnClearWord.hidden = false; }
+  function hideClearButton() { DOM.btnClearWord.hidden = true; }
+
+  /* ---- Lens list ------------------------------------------------------- */
+  function renderLensList(cameras, activeId, onPick) {
+    DOM.lensList.replaceChildren();
+    for (const cam of cameras) {
+      const isActive = cam.deviceId === activeId;
+      const hasFocus = cam.focusModes.some(m => ['continuous', 'single-shot', 'manual'].includes(m));
+
+      const metaBits = [];
+      metaBits.push(h('span', {
+        class: 'lens-badge ' + (hasFocus ? 'focus' : 'nofocus'),
+        text: hasFocus ? 'Autofocus' : 'Fixed focus'
+      }));
+      if (cam.maxWidth) {
+        metaBits.push(h('span', {
+          class: 'lens-badge',
+          text: `${Math.round(cam.maxWidth)}×${Math.round(cam.maxHeight)}`
+        }));
+      }
+      if (cam.zoomMax > 1.5) {
+        metaBits.push(h('span', {
+          class: 'lens-badge',
+          text: `Zoom ${cam.zoomMax.toFixed(1)}×`
+        }));
+      }
+
+      const item = h('button', {
+        class: 'lens-item' + (isActive ? ' is-active' : ''),
+        type: 'button',
+        onClick: () => onPick(cam.deviceId)
+      },
+        h('div', { class: 'lens-icon', text: isActive ? '✓' : '📷' }),
+        h('div', { class: 'lens-body' },
+          h('div', { class: 'lens-name', text: cam.label }),
+          h('div', { class: 'lens-meta' }, ...metaBits)
+        )
+      );
+      DOM.lensList.appendChild(item);
+    }
+  }
+
+  /* ---- Result rendering ------------------------------------------------- */
+  function playAudio(url) {
+    try {
+      const audio = new Audio(url);
+      const p = audio.play();
+      if (p?.catch) p.catch(() => toast('Pronunciation is unavailable right now.'));
+    } catch { toast('Pronunciation is unavailable right now.'); }
+  }
+
+  function renderResult(entry, actions) {
+    const nodes = [];
+    const headText = h('div', {},
+      h('h2', { class: 'result-word', id: 'resultTitle', text: entry.word }),
+      entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null
+    );
+    const head = h('div', { class: 'result-head' }, headText);
+    if (entry.audio) {
+      const audioBtn = h('button', {
+        class: 'audio-btn', type: 'button',
+        'aria-label': `Play pronunciation of ${entry.word}`,
+        onClick: () => playAudio(entry.audio)
+      });
+      audioBtn.innerHTML = ICONS.speaker;
+      head.append(audioBtn);
+    }
+    nodes.push(head);
+
+    if (!entry.meanings.length) {
+      nodes.push(h('p', { class: 'result-empty', text: 'No definitions were returned for this word.' }));
+    }
+    for (const meaning of entry.meanings) {
+      nodes.push(
+        h('section', { class: 'meaning' },
+          h('span', { class: 'pos-badge', text: meaning.partOfSpeech || 'definition' }),
+          h('ol', { class: 'def-list' },
+            ...meaning.definitions.map((def) =>
+              h('li', {},
+                h('span', { text: def.definition }),
+                def.example ? h('em', { class: 'example', text: `“${def.example}”` }) : null
+              )
+            )
+          )
+        )
+      );
+    }
+    nodes.push(
+      h('div', { class: 'result-actions' },
+        h('button', {
+          class: 'btn btn-ghost', type: 'button', text: 'Scan another',
+          onClick: actions.onScanAnother
+        }),
+        h('button', {
+          class: 'btn btn-ghost', type: 'button', text: 'Type a word',
+          onClick: actions.onTypeWord
+        })
+      )
+    );
+    DOM.resultBody.replaceChildren(...nodes);
+  }
+
+  /* ---- Bindings --------------------------------------------------------- */
+  function bindEvents(handlers) {
+    DOM.btnCapture.addEventListener('click', handlers.onCapture);
+    DOM.btnRetake.addEventListener('click', handlers.onRetake);
+    DOM.btnClearWord.addEventListener('click', handlers.onClearWord);
+    DOM.btnManualFromAnalyze.addEventListener('click', handlers.onManualRequest);
+    DOM.btnManual.addEventListener('click', handlers.onManualRequest);
+    DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
+    DOM.btnCameraRetry.addEventListener('click', handlers.onCameraRetry);
+    DOM.btnLens.addEventListener('click', handlers.onOpenLensPicker);
+    DOM.btnLensClose.addEventListener('click', handlers.onCloseLensPicker);
+    DOM.btnTorch.addEventListener('click', handlers.onTorchToggle);
+    DOM.btnZoomIn.addEventListener('click', handlers.onZoomIn);
+    DOM.btnZoomOut.addEventListener('click', handlers.onZoomOut);
+
+    DOM.btnResultClose.addEventListener('click', handlers.onCloseResult);
+    DOM.btnManualClose.addEventListener('click', handlers.onCloseManual);
+    DOM.scrim.addEventListener('click', () => { closeAllSheets(); handlers.onAfterSheetsClosed?.(); });
+    DOM.manualForm.addEventListener('submit', handlers.onManualSubmit);
+    DOM.manualInput.addEventListener('input', clearInputError);
+    DOM.errorRetry.addEventListener('click', triggerRetry);
+    DOM.errorDismiss.addEventListener('click', () => {
+      hideError();
+      handlers.onErrorDismissed?.();
+    });
+
+    const pointerMap = new Map();
+    let pinch = null;
+    let tapCandidate = null;
+
+    DOM.cameraView.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      DOM.cameraView.setPointerCapture?.(e.pointerId);
+      pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointerMap.size === 2) {
+        const [a, b] = [...pointerMap.values()];
+        pinch = {
+          startDist: Math.hypot(a.x - b.x, a.y - b.y),
+          startZoom: handlers.getZoom()
+        };
+        tapCandidate = null;
+      } else if (pointerMap.size === 1) {
+        tapCandidate = { x: e.clientX, y: e.clientY, t: performance.now() };
+      }
+    });
+
+    DOM.cameraView.addEventListener('pointermove', (e) => {
+      if (!pointerMap.has(e.pointerId)) return;
+      pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && pointerMap.size === 2) {
+        const [a, b] = [...pointerMap.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        handlers.setZoom(pinch.startZoom * (dist / pinch.startDist));
+        tapCandidate = null;
+      }
+    });
+
+    const endPointer = (e) => {
+      pointerMap.delete(e.pointerId);
+      if (pointerMap.size < 2) pinch = null;
+      if (pointerMap.size === 0 && tapCandidate) {
+        const dx = Math.abs(e.clientX - tapCandidate.x);
+        const dy = Math.abs(e.clientY - tapCandidate.y);
+        const dt = performance.now() - tapCandidate.t;
+        if (dx < 12 && dy < 12 && dt < 350) {
+          handlers.onViewfinderTap?.(e.clientX, e.clientY);
+        }
+        tapCandidate = null;
+      }
+    };
+    DOM.cameraView.addEventListener('pointerup', endPointer);
+    DOM.cameraView.addEventListener('pointercancel', endPointer);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!DOM.errorModal.hidden) { hideError(); handlers.onErrorDismissed?.(); }
+      else if (DOM.lensSheet.classList.contains('is-open')) handlers.onCloseLensPicker();
+      else if (DOM.manualSheet.classList.contains('is-open')) handlers.onCloseManual();
+      else if (DOM.resultSheet.classList.contains('is-open')) handlers.onCloseResult();
+    });
+  }
+
+  return {
+    setStatus, setAnalyzeHint, setBusy,
+    openSheet, closeSheet, closeAllSheets,
+    toast, showError, hideError,
+    showCameraError, hideCameraError, setOffline,
+    showInputError, clearInputError,
+    showFocusRing, setTorchUI, setZoomUI, setCamBadge,
+    showCameraView, showAnalyzeView,
+    showScanProgress, updateScanProgress, showNoText,
+    renderWords, clearWords, clearActiveWords,
+    showClearButton, hideClearButton,
+    renderLensList,
+    renderResult, bindEvents
+  };
+})();
+
+/* ==========================================================================
+ * 6. CAMERA SELECTION
+ * ========================================================================== */
+const CameraSelection = (() => {
+  async function probe(deviceId) {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { deviceId: { exact: deviceId } }
+    });
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities?.() || {};
+    const settings = track.getSettings?.() || {};
+
+    const info = {
+      deviceId,
+      label: track.label || 'Camera',
+      focusModes: Array.isArray(caps.focusMode) ? caps.focusMode : [],
+      zoomMin: caps.zoom?.min ?? 1,
+      zoomMax: caps.zoom?.max ?? 1,
+      hasTorch: caps.torch === true,
+      maxWidth: settings.width || 0,
+      maxHeight: settings.height || 0
+    };
+    stream.getTracks().forEach(t => t.stop());
+    return info;
+  }
+
+  function score(cam) {
+    let s = 0;
+    const L = (cam.label || '').toLowerCase();
+    if (/\b(back|rear|environment)\b/.test(L)) s += 150;
+    if (/\b(front|user|facetime)\b/.test(L)) s -= 250;
+    if (/\b(main|primary)\b/.test(L)) s += 120;
+    if (/\bwide\b/.test(L) && !/ultra/.test(L)) s += 80;
+    if (/\btele|telephoto\b/.test(L)) s += 30;
+    if (/ultra[\s-]?wide/.test(L)) s -= 250;
+    if (/wide[\s-]?angle/.test(L)) s -= 120;
+    if (/\bfish/.test(L)) s -= 300;
+    if (/\b(depth|mono|tof|ir)\b/.test(L)) s -= 500;
+    if (cam.focusModes.length === 0) s -= 60;
+    if (cam.focusModes.includes('continuous')) s += 120;
+    else if (cam.focusModes.includes('single-shot')) s += 80;
+    else if (cam.focusModes.includes('manual')) s += 40;
+    if (cam.maxWidth >= 3000) s += 40;
+    else if (cam.maxWidth >= 1900) s += 20;
+    else if (cam.maxWidth && cam.maxWidth < 1600) s -= 20;
+    if (cam.zoomMax - cam.zoomMin > 5) s += 25;
+    else if (cam.zoomMax - cam.zoomMin > 1.5) s += 10;
+    return s;
+  }
+
+  async function ensurePermission() {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }
+    });
+    s.getTracks().forEach(t => t.stop());
+    await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
+  }
+
+  async function probeAll() {
+    await ensurePermission();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    if (!cams.length) return [];
+
+    const toProbe = cams.filter(c => {
+      const L = (c.label || '').toLowerCase();
+      return !/\b(depth|mono|tof|ir)\b/.test(L);
+    });
+    if (!toProbe.length) toProbe.push(...cams);
+
+    const probed = [];
+    for (const cam of toProbe) {
+      try {
+        const info = await probe(cam.deviceId);
+        if (cam.label) info.label = cam.label;
+        info.score = score(info);
+        probed.push(info);
+        await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
+      } catch (e) {
+        console.warn('[ScanLex] Probe failed for', cam.label, e.message);
+      }
+    }
+
+    probed.sort((a, b) => b.score - a.score);
+    return probed;
+  }
+
+  return { probeAll };
+})();
+
+/* ==========================================================================
+ * 7. CAMERA SERVICE
+ * ========================================================================== */
+const CameraService = (() => {
+  let stream = null;
+  let videoEl = null;
+  let facingMode = 'environment';
+  let paused = false;
+  let torchOn = false;
+  let zoomInfo = { min: 1, max: 1, step: 0.1, native: false };
+  let currentZoom = 1;
+  let digitalZoom = 1;
+  let allCameras = [];
+  let selectedCamera = null;
+
+  function getTrack() {
+    const track = stream?.getVideoTracks()[0];
+    return track && track.readyState === 'live' ? track : null;
+  }
+  function getCaps() {
+    const track = getTrack();
+    if (!track) return {};
+    try { return track.getCapabilities?.() || {}; } catch { return {}; }
+  }
+  function translateError(error) {
+    const name = error?.name;
+    switch (name) {
+      case 'NotAllowedError':
+      case 'PermissionDeniedError':
+      case 'SecurityError':
+        return new AppError('CAMERA_DENIED', MESSAGES.CAMERA_DENIED, { cause: error });
+      case 'NotFoundError':
+      case 'DevicesNotFoundError':
+      case 'OverconstrainedError':
+        return new AppError('CAMERA_NOT_FOUND', MESSAGES.CAMERA_NOT_FOUND, { cause: error });
+      case 'NotReadableError':
+      case 'TrackStartError':
+      case 'AbortError':
+        return new AppError('CAMERA_BUSY', MESSAGES.CAMERA_BUSY, { cause: error });
+      default:
+        return new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED, { cause: error });
+    }
+  }
+  function waitForMetadata(video) {
+    if (video.readyState >= 1 && video.videoWidth > 0) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY));
+      }, 10000);
+      function onLoaded() { cleanup(); resolve(); }
+      function cleanup() {
+        clearTimeout(timeout);
+        video.removeEventListener('loadedmetadata', onLoaded);
+        video.removeEventListener('error', onError);
+      }
+      function onError() { cleanup(); reject(new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED)); }
+      video.addEventListener('loadedmetadata', onLoaded, { once: true });
+      video.addEventListener('error', onError, { once: true });
+    });
+  }
+  async function applyContinuousFocus() {
+    const track = getTrack();
+    if (!track) return;
+    const caps = getCaps();
+    if (!Array.isArray(caps.focusMode) || !caps.focusMode.includes('continuous')) return;
+    try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch {}
+  }
+  async function triggerAutofocus() {
+    const track = getTrack();
+    if (!track) { await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS); return; }
+    const caps = getCaps();
+    if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
+        if (caps.focusMode.includes('continuous')) {
+          try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch {}
+        }
+        return;
+      } catch {}
+    }
+    await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
+  }
+  async function tapToFocus(clientX, clientY) {
+    const track = getTrack();
+    if (!track || !videoEl) return;
+    const caps = getCaps();
+    if (!Array.isArray(caps.pointsOfInterest)) return;
+    const parentRect = DOM.cameraView.getBoundingClientRect();
+    const Lw = parentRect.width, Lh = parentRect.height;
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    if (!Lw || !Lh || !vw || !vh) return;
+    const vpX = clamp((clientX - parentRect.left) / Lw, 0, 1);
+    const vpY = clamp((clientY - parentRect.top) / Lh, 0, 1);
+    const S_cover = Math.max(Lw / vw, Lh / vh);
+    let nx, ny;
+    if (zoomInfo.native) {
+      nx = (vpX - 0.5) * Lw / (S_cover * vw) + 0.5;
+      ny = (vpY - 0.5) * Lh / (S_cover * vh) + 0.5;
+    } else {
+      const Z = digitalZoom || 1;
+      nx = (vpX - 0.5) * Lw / (Z * S_cover * vw) + 0.5;
+      ny = (vpY - 0.5) * Lh / (Z * S_cover * vh) + 0.5;
+    }
+    nx = clamp(nx, 0, 1); ny = clamp(ny, 0, 1);
+    const px = facingMode === 'user' ? 1 - nx : nx;
+    const advanced = [{ pointsOfInterest: [{ x: px, y: ny }] }];
+    if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
+      advanced.push({ focusMode: 'single-shot' });
+    }
+    try {
+      await track.applyConstraints({ advanced });
+      if (caps.focusMode?.includes('continuous')) {
+        setTimeout(() => applyContinuousFocus(), 800);
+      }
+    } catch {}
+  }
+  function refreshZoomInfo() {
+    const caps = getCaps();
+    if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min) {
+      zoomInfo = { min: caps.zoom.min ?? 1, max: caps.zoom.max, step: caps.zoom.step ?? 0.1, native: true };
+    } else {
+      zoomInfo = { min: 1, max: 4, step: 0.1, native: false };
+    }
+    currentZoom = zoomInfo.min;
+    digitalZoom = 1;
+    if (videoEl) videoEl.style.transform = '';
+  }
+  async function setZoom(value) {
+    const track = getTrack();
+    if (!track) return;
+    const target = clamp(value, zoomInfo.min, zoomInfo.max);
+    if (zoomInfo.native) {
+      try { await track.applyConstraints({ advanced: [{ zoom: target }] }); currentZoom = target; } catch {}
+    } else {
+      digitalZoom = target; currentZoom = target;
+      if (videoEl) videoEl.style.transform = `scale(${digitalZoom})`;
+    }
+    applyContinuousFocus();
+  }
+  function getZoom() { return currentZoom; }
+  function getZoomInfo() { return { ...zoomInfo }; }
+  function hasTorch() { return getCaps().torch === true; }
+  function isTorchOn() { return torchOn; }
+  async function setTorch(on) {
+    const track = getTrack();
+    if (!track || !hasTorch()) return false;
+    try { await track.applyConstraints({ advanced: [{ torch: Boolean(on) }] }); torchOn = Boolean(on); return true; }
+    catch { return false; }
+  }
+  async function openCamera(deviceId) {
+    const attempts = [];
+    if (deviceId) {
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId }, width: { min: 1280, ideal: CONFIG.CAMERA.HIGH_WIDTH }, height: { min: 720, ideal: CONFIG.CAMERA.HIGH_HEIGHT }, advanced: [{ focusMode: 'continuous' }] } });
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId }, width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH }, height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT }, advanced: [{ focusMode: 'continuous' }] } });
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId }, advanced: [{ focusMode: 'continuous' }] } });
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId } } });
+    }
+    attempts.push({ audio: false, video: { facingMode: { ideal: facingMode }, width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH }, height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT }, advanced: [{ focusMode: 'continuous' }] } });
+    attempts.push({ audio: false, video: { facingMode: { ideal: facingMode } } });
+    attempts.push({ audio: false, video: true });
+    let lastErr;
+    for (const a of attempts) {
+      try { return await navigator.mediaDevices.getUserMedia(a); }
+      catch (e) { lastErr = e; }
+    }
+    throw translateError(lastErr);
+  }
+  async function start(video, options = {}) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new AppError(
+        window.isSecureContext ? 'CAMERA_UNSUPPORTED' : 'CAMERA_INSECURE',
+        window.isSecureContext ? MESSAGES.CAMERA_UNSUPPORTED : MESSAGES.CAMERA_INSECURE
+      );
+    }
+    videoEl = video;
+    await stop();
+    if (!allCameras.length || options.refresh) {
+      try { allCameras = await CameraSelection.probeAll(); }
+      catch (e) { throw translateError(e); }
+    }
+    let targetId = options.deviceId || null;
+    if (!targetId && allCameras.length) { targetId = allCameras[0].deviceId; selectedCamera = allCameras[0]; }
+    else if (targetId) {
+      selectedCamera = allCameras.find(c => c.deviceId === targetId) || {
+        deviceId: targetId, label: 'Camera', focusModes: [], maxWidth: 0, maxHeight: 0,
+        zoomMin: 1, zoomMax: 1, hasTorch: false
+      };
+    }
+    stream = await openCamera(targetId);
+    videoEl.srcObject = stream;
+    videoEl.setAttribute('playsinline', '');
+    videoEl.muted = true;
+    try { await videoEl.play(); } catch {}
+    await waitForMetadata(videoEl);
+    await sleep(150);
+    await applyContinuousFocus();
+    refreshZoomInfo();
+    paused = false;
+    torchOn = false;
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = true;
+      const liveLabel = track.label;
+      if (selectedCamera && liveLabel) selectedCamera.label = liveLabel;
+      track.addEventListener('ended', () => {
+        if (stream && stream.getVideoTracks().every((t) => t.readyState === 'ended')) stream = null;
+      });
+    });
+    return stream;
+  }
+  async function stop() {
+    if (stream) {
+      stream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
+      stream = null;
+    }
+    if (videoEl) { videoEl.pause(); videoEl.srcObject = null; }
+    paused = false; torchOn = false;
+  }
+  function pause() {
+    if (!stream || paused) return;
+    stream.getVideoTracks().forEach((t) => { t.enabled = false; });
+    if (videoEl) videoEl.pause();
+    paused = true;
+  }
+  async function resume() {
+    if (!stream || !paused) return;
+    stream.getVideoTracks().forEach((t) => { t.enabled = true; });
+    if (videoEl) { try { await videoEl.play(); } catch {} }
+    paused = false;
+    applyContinuousFocus();
+  }
+  async function switchTo(deviceId) {
+    if (!videoEl) return;
+    await start(videoEl, { deviceId, refresh: false });
+  }
+  function isActive() {
+    return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+  function getAllCameras() { return allCameras.slice(); }
+  function getSelectedCamera() { return selectedCamera; }
+  function getFocusSupport() {
+    const modes = selectedCamera?.focusModes || [];
+    return { hasAutoFocus: modes.some(m => ['continuous', 'single-shot', 'manual'].includes(m)), modes };
+  }
+  function captureFrame(targetCanvas) {
+    if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    const Lw = videoEl.offsetWidth, Lh = videoEl.offsetHeight;
+    if (!vw || !vh || !Lw || !Lh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+    const Z = zoomInfo.native ? 1 : (digitalZoom || 1);
+    const S_cover = Math.max(Lw / vw, Lh / vh);
+    const srcW = Lw / (Z * S_cover);
+    const srcH = Lh / (Z * S_cover);
+    const srcX = (vw - srcW) / 2;
+    const srcY = (vh - srcH) / 2;
+    const srcLong = Math.max(srcW, srcH);
+    const cap = Math.min(1, CONFIG.OCR.MAX_EDGE_PX / srcLong);
+    const targetW = Math.max(1, Math.round(srcW * cap));
+    const targetH = Math.max(1, Math.round(srcH * cap));
+    targetCanvas.width = targetW;
+    targetCanvas.height = targetH;
+    const ctx = targetCanvas.getContext('2d');
+    if (!ctx) throw new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(videoEl, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+    return targetCanvas;
+  }
+  return {
+    start, stop, pause, resume, switchTo, isActive,
+    triggerAutofocus, tapToFocus,
+    hasTorch, setTorch, isTorchOn,
+    setZoom, getZoom, getZoomInfo,
+    getAllCameras, getSelectedCamera, getFocusSupport,
+    captureFrame
+  };
+})();
+
+/* ==========================================================================
+ * 8. OCR SERVICE
+ * ========================================================================== */
+const OCRService = (() => {
+  let workerPromise = null;
+  let libraryPromise = null;
+  let progressCallback = null;
+
+  function loadLibrary() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (libraryPromise) return libraryPromise;
+    libraryPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = CONFIG.OCR.CDN_URL;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => window.Tesseract
+        ? resolve(window.Tesseract)
+        : reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
+      script.onerror = () => {
+        libraryPromise = null;
+        reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
+      };
+      document.head.appendChild(script);
+    });
+    return libraryPromise;
+  }
+
+  function getWorker() {
+    if (workerPromise) return workerPromise;
+    workerPromise = (async () => {
+      const Tesseract = await loadLibrary();
+      const worker = await Tesseract.createWorker(CONFIG.OCR.LANGUAGE, CONFIG.OCR.OEM, {
+        logger: (msg) => {
+          if (msg?.status === 'recognizing text' && progressCallback) {
+            progressCallback(Math.round((msg.progress || 0) * 100));
+          }
+        },
+        errorHandler: (err) => console.error('[ScanLex][OCR]', err)
+      });
+      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM }); } catch {}
+      return worker;
+    })().catch((err) => {
+      workerPromise = null;
+      if (err instanceof AppError) throw err;
+      throw new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true, cause: err });
+    });
+    return workerPromise;
+  }
+
+  function otsuThreshold(gray) {
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+    const total = gray.length;
+    let sum = 0;
+    for (let i = 0; i < 256; i++) sum += i * hist[i];
+    let sumB = 0, wB = 0, maxVar = 0, threshold = 127;
+    for (let i = 0; i < 256; i++) {
+      wB += hist[i];
+      if (wB === 0) continue;
+      const wF = total - wB;
+      if (wF === 0) break;
+      sumB += i * hist[i];
+      const mB = sumB / wB, mF = (sum - sumB) / wF;
+      const between = wB * wF * (mB - mF) * (mB - mF);
+      if (between > maxVar) { maxVar = between; threshold = i; }
+    }
+    return threshold;
+  }
+
+  function binarize(src) {
+    const out = document.createElement('canvas');
+    out.width = src.width; out.height = src.height;
+    const ctx = out.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0);
+    const img = ctx.getImageData(0, 0, out.width, out.height);
+    const data = img.data;
+    const gray = new Uint8Array(data.length / 4);
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+      gray[j] = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) | 0;
+    }
+    const t = otsuThreshold(gray);
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+      const v = gray[j] > t ? 255 : 0;
+      data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return out;
+  }
+
+  function getBBox(node) {
+    const b = node?.bbox || node?.boundingBox || {};
+    if (typeof b.x0 === 'number' && typeof b.x1 === 'number') {
+      return { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 };
+    }
+    if (typeof b.left === 'number' && typeof b.right === 'number') {
+      return { x0: b.left, y0: b.top, x1: b.right, y1: b.bottom };
+    }
+    return null;
+  }
+
+  function collectWords(data) {
+    const words = [];
+    if (Array.isArray(data.words)) words.push(...data.words);
+    if (!words.length && Array.isArray(data.blocks)) {
+      for (const b of data.blocks) for (const p of b?.paragraphs || [])
+        for (const l of p?.lines || []) for (const w of l?.words || []) words.push(w);
+    }
+    if (!words.length && Array.isArray(data.lines)) {
+      for (const l of data.lines) for (const w of l?.words || []) words.push(w);
+    }
+    return words;
+  }
+
+  async function recognizeWithBoxes(canvas, onProgress) {
+    progressCallback = onProgress || null;
+    const worker = await getWorker();
+    const binary = binarize(canvas);
+    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
+
+    let data;
+    try {
+      const result = await worker.recognize(binary, {}, { text: true, blocks: true });
+      data = result.data;
+    } catch {
+      const result = await worker.recognize(binary);
+      data = result.data;
+    }
+
+    const rawWords = collectWords(data);
+    const words = [];
+    for (const w of rawWords) {
+      const text = String(w?.text || '').trim();
+      if (!text) continue;
+      const letters = text.replace(/[^A-Za-z]/g, '');
+      if (letters.length < CONFIG.OCR.MIN_WORD_LENGTH) continue;
+      if (text.length > CONFIG.OCR.MAX_WORD_LENGTH) continue;
+      const confidence = Number(w.confidence) || 0;
+      if (confidence < CONFIG.OCR.MIN_WORD_CONFIDENCE) continue;
+      const bbox = getBBox(w);
+      if (!bbox) continue;
+      if (bbox.x1 - bbox.x0 < 4 || bbox.y1 - bbox.y0 < 4) continue;
+      words.push({ text, confidence, bbox });
+    }
+
+    progressCallback = null;
+    return { words, fullText: typeof data.text === 'string' ? data.text : '' };
+  }
+
+  function tokenize(raw) {
+    if (typeof raw !== 'string') return [];
+    return raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z\s'-]+/g, ' ').replace(/\s+/g, ' ').trim()
+      .split(' ').map((t) => t.replace(/^[-']+|[-']+$/g, ''))
+      .filter((t) => {
+        const l = t.replace(/[^a-z]/g, '');
+        return l.length >= CONFIG.OCR.MIN_WORD_LENGTH && t.length <= CONFIG.OCR.MAX_WORD_LENGTH;
+      });
+  }
+
+  function sanitizeWord(raw) {
+    const tokens = tokenize(raw);
+    return tokens.length ? tokens[0] : '';
+  }
+
+  return { getWorker, recognizeWithBoxes, sanitizeWord };
+})();
+
+/* ==========================================================================
+ * 9. DICTIONARY SERVICE — parallel race + cache
+ * ========================================================================== */
+const DictionaryService = (() => {
+  const POS_MAP = Object.freeze({
+    n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb',
+    u: 'undefined', prop: 'proper noun', intj: 'interjection',
+    conj: 'conjunction', pron: 'pronoun', prep: 'preposition',
+    det: 'determiner', num: 'numeral'
+  });
+
+  function normalizePrimary(payload, query) {
+    const entries = Array.isArray(payload) ? payload : [];
+    const first = entries[0] || {};
+    const phonetics = entries.flatMap((e) => Array.isArray(e.phonetics) ? e.phonetics : []);
+    const phonetic = (typeof first.phonetic === 'string' && first.phonetic) ||
+      (phonetics.find((p) => p?.text)?.text ?? '');
+    const audio = phonetics.find((p) => p?.audio)?.audio ?? '';
+    const groups = new Map();
+    for (const entry of entries) {
+      for (const meaning of Array.isArray(entry.meanings) ? entry.meanings : []) {
+        const pos = (typeof meaning.partOfSpeech === 'string' && meaning.partOfSpeech) || 'definition';
+        if (!groups.has(pos)) groups.set(pos, []);
+        const bucket = groups.get(pos);
+        for (const def of Array.isArray(meaning.definitions) ? meaning.definitions : []) {
+          if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) break;
+          const text = typeof def?.definition === 'string' ? def.definition.trim() : '';
+          if (!text || bucket.some((x) => x.definition === text)) continue;
+          bucket.push({
+            definition: text,
+            example: typeof def.example === 'string' ? def.example.trim() : '',
+            synonyms: Array.isArray(def.synonyms) ? def.synonyms.slice(0, CONFIG.UI.MAX_SYNONYMS) : []
+          });
+        }
+      }
+    }
+    const meanings = [...groups.entries()].filter(([, d]) => d.length > 0)
+      .slice(0, CONFIG.UI.MAX_MEANINGS)
+      .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
+    return {
+      word: typeof first.word === 'string' && first.word ? first.word : query,
+      phonetic, audio, meanings
+    };
+  }
+
+  async function fetchPrimary(word) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+    try {
+      const url = `${CONFIG.API.PRIMARY_URL}/${encodeURIComponent(word)}`;
+      const res = await fetch(url, { method: 'GET', headers: CONFIG.API.HEADERS, signal: controller.signal });
+      if (res.status === 404) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      if (!res.ok) {
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
+          retryable: res.status >= 500 || res.status === 429
+        });
+      }
+      let payload;
+      try { payload = await res.json(); }
+      catch (e) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: e }); }
+      const norm = normalizePrimary(payload, word);
+      if (!norm.meanings.length) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      return norm;
+    } catch (e) {
+      if (e instanceof AppError) throw e;
+      if (e?.name === 'AbortError') throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: e });
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: e });
+    } finally { clearTimeout(timer); }
+  }
+
+  function normalizeFallback(payload, word) {
+    if (!Array.isArray(payload) || !payload.length) return null;
+    const lower = word.toLowerCase();
+    const exact = payload.find((e) => e?.word?.toLowerCase() === lower &&
+      Array.isArray(e.defs) && e.defs.length);
+    const withDefs = payload.find((e) => Array.isArray(e?.defs) && e.defs.length);
+    const match = exact || withDefs;
+    if (!match) return null;
+    const groups = new Map();
+    for (const rawDef of match.defs) {
+      if (typeof rawDef !== 'string') continue;
+      const tabIdx = rawDef.indexOf('\t');
+      let pos = 'definition';
+      let text = rawDef;
+      if (tabIdx >= 0) {
+        const code = rawDef.slice(0, tabIdx).trim().toLowerCase();
+        text = rawDef.slice(tabIdx + 1).trim();
+        pos = POS_MAP[code] || 'definition';
+      }
+      if (!text) continue;
+      if (!groups.has(pos)) groups.set(pos, []);
+      const bucket = groups.get(pos);
+      if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) continue;
+      if (bucket.some((d) => d.definition === text)) continue;
+      bucket.push({ definition: text, example: '', synonyms: [] });
+    }
+    const meanings = [...groups.entries()].filter(([, d]) => d.length > 0)
+      .slice(0, CONFIG.UI.MAX_MEANINGS)
+      .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
+    if (!meanings.length) return null;
+    return {
+      word: typeof match.word === 'string' && match.word ? match.word : word,
+      phonetic: '', audio: '', meanings
+    };
+  }
+
+  async function fetchFallback(word) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+    try {
+      const url = `${CONFIG.API.FALLBACK_URL}?sp=${encodeURIComponent(word)}&md=d&max=5`;
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      if (!res.ok) {
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
+          retryable: res.status >= 500 || res.status === 429
+        });
+      }
+      let payload;
+      try { payload = await res.json(); }
+      catch (e) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: e }); }
+      const norm = normalizeFallback(payload, word);
+      if (!norm) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      return norm;
+    } catch (e) {
+      if (e instanceof AppError) throw e;
+      if (e?.name === 'AbortError') throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: e });
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: e });
+    } finally { clearTimeout(timer); }
+  }
+
+  async function lookup(word) {
+    const cached = LookupCache.get(word);
+    if (cached) return cached;
+
+    if (!navigator.onLine) throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let primaryErr = null;
+      let fallbackErr = null;
+
+      const tryResolve = (entry, source) => {
+        if (settled) return;
+        settled = true;
+        LookupCache.set(word, entry);
+        if (source === 'fallback') UI.toast('Loaded from backup source.');
+        resolve(entry);
+      };
+
+      const tryReject = () => {
+        if (settled) return;
+        if (primaryErr && fallbackErr) {
+          settled = true;
+          reject(primaryErr);
+        }
+      };
+
+      fetchPrimary(word).then((r) => tryResolve(r, 'primary')).catch((e) => { primaryErr = e; tryReject(); });
+      fetchFallback(word).then((r) => tryResolve(r, 'fallback')).catch((e) => { fallbackErr = e; tryReject(); });
+    });
+  }
+
+  return { lookup };
+})();
+
+/* ==========================================================================
+ * 10. APP CONTROLLER
+ * ========================================================================== */
+const App = (() => {
+  const state = {
+    busy: false,
+    phase: 'camera',
+    cameraReady: false,
+    lastWord: '',
+    ocrWarmedUp: false,
+    currentWords: [],
+    ocrRequestId: 0,
+    lookupRequestId: 0
+  };
+
+  async function startCamera() {
+    try {
+      await CameraService.start(DOM.video);
+      state.cameraReady = true;
+      UI.hideCameraError();
+      DOM.btnCapture.disabled = false;
+
+      const cams = CameraService.getAllCameras();
+      DOM.btnLens.hidden = cams.length < 2;
+
+      UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
+      const zi = CameraService.getZoomInfo();
+      UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+
+      const sel = CameraService.getSelectedCamera();
+      const focus = CameraService.getFocusSupport();
+      if (sel) UI.setCamBadge(shortenLabel(sel.label), focus.hasAutoFocus);
+
+      if (focus.hasAutoFocus) {
+        UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+      } else {
+        UI.setStatus('⚠ No autofocus on this lens — tap the lens button to switch.');
+      }
+    } catch (error) {
+      state.cameraReady = false;
+      const msg = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(msg);
+      UI.setStatus('Camera unavailable — type a word instead.');
+      DOM.btnCapture.disabled = true;
+      UI.setCamBadge(null, false);
+    }
+  }
+
+  function shortenLabel(label) {
+    if (!label) return 'Camera';
+    let L = label.replace(/camera\d*\s*/i, '').trim();
+    L = L.replace(/,?\s*facing\s+(back|front|environment|user)/i, '').trim();
+    L = L.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    if (/ultra[\s-]?wide/i.test(L)) return 'Ultra-wide';
+    if (/\btele/i.test(L)) return 'Telephoto';
+    if (/\bwide\b/i.test(L)) return 'Wide';
+    if (/\bmain\b/i.test(L)) return 'Main';
+    if (/\bfront\b/i.test(L)) return 'Front';
+    if (!L) return 'Camera';
+    return L.length > 18 ? L.slice(0, 16) + '…' : L;
+  }
+
+  function warmUpOcr() {
+    if (state.ocrWarmedUp) return;
+    state.ocrWarmedUp = true;
+    OCRService.getWorker().catch(() => { state.ocrWarmedUp = false; });
+  }
+
+  /* ---- Word-count helper for hint text --------------------------------- */
+  function wordsHint(n) {
+    if (!n) return 'Tap any word to look it up';
+    return `${n} word${n === 1 ? '' : 's'} found — tap one`;
+  }
+
+  /* ---- Reset the clear button + highlight after a result session ------- */
+  function resetWordSelection() {
+    UI.clearActiveWords();
+    UI.hideClearButton();
+    state.lastWord = '';
+    if (state.currentWords.length) {
+      UI.setAnalyzeHint(wordsHint(state.currentWords.length));
+    }
+  }
+
+  /* ---- Capture → freeze → OCR whole frame → word overlays --------------- */
+  async function onCapture() {
+    if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
+      if (!state.cameraReady) openManualSheet(state.lastWord);
+      return;
+    }
+
+    state.busy = true;
+    DOM.btnCapture.disabled = true;
+    UI.setStatus('Focusing…');
+
+    try {
+      await CameraService.triggerAutofocus();
+      const frozen = CameraService.captureFrame(DOM.cropCanvas);
+      CameraService.pause();
+
+      DOM.frozenCanvas.width = frozen.width;
+      DOM.frozenCanvas.height = frozen.height;
+      const fctx = DOM.frozenCanvas.getContext('2d');
+      fctx.drawImage(frozen, 0, 0);
+
+      state.phase = 'analyzing';
+      UI.showAnalyzeView();
+      UI.showNoText(false);
+      UI.clearWords();
+      UI.hideClearButton();
+
+      requestAnimationFrame(() => {
+        if (state.phase !== 'analyzing') return;
+        try { layoutFrozenImage(); }
+        catch (e) { console.warn('[ScanLex] layoutFrozenImage failed', e); }
+        startWholeFrameOcr(frozen);
+      });
+    } catch (error) {
+      handleError(error);
+      state.busy = false;
+      state.phase = 'camera';
+      DOM.btnCapture.disabled = false;
+    }
+  }
+
+  function layoutFrozenImage() {
+    const stage = DOM.analyzeView.getBoundingClientRect();
+    const canvas = DOM.frozenCanvas;
+    const aspect = canvas.width / canvas.height;
+    const stageAspect = stage.width / stage.height;
+    let w, h;
+    if (aspect > stageAspect) { w = stage.width; h = stage.width / aspect; }
+    else { h = stage.height; w = stage.height * aspect; }
+    DOM.frozenWrap.style.width = w + 'px';
+    DOM.frozenWrap.style.height = h + 'px';
+  }
+
+  async function startWholeFrameOcr(frozen) {
+    const myId = ++state.ocrRequestId;
+    UI.showScanProgress(true, 0);
+    UI.setAnalyzeHint('Scanning text…');
+
+    let result;
+    try {
+      result = await OCRService.recognizeWithBoxes(frozen, (pct) => {
+        if (myId !== state.ocrRequestId) return;
+        UI.updateScanProgress(pct);
+      });
+    } catch (error) {
+      if (myId !== state.ocrRequestId) return;
+      UI.showScanProgress(false);
+      UI.showNoText(true);
+      UI.setAnalyzeHint('Tap Retake to try again');
+      state.busy = false;
+      state.phase = 'ready';
+      console.error('[ScanLex]', error);
+      return;
+    }
+
+    if (myId !== state.ocrRequestId) return;
+
+    UI.showScanProgress(false);
+    state.currentWords = result.words;
+    state.busy = false;
+    state.phase = 'ready';
+
+    if (!result.words.length) {
+      UI.showNoText(true);
+      UI.setAnalyzeHint('No text found — tap Retake to try again');
+      return;
+    }
+
+    const cw = DOM.frozenCanvas.width;
+    const ch = DOM.frozenCanvas.height;
+    const dw = DOM.frozenWrap.getBoundingClientRect().width;
+    const dh = DOM.frozenWrap.getBoundingClientRect().height;
+    UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
+    UI.hideClearButton();
+    UI.setAnalyzeHint(wordsHint(result.words.length));
+  }
+
+  /* ---- Retake ----------------------------------------------------------- */
+  async function onRetake() {
+    state.ocrRequestId++;
+    state.lookupRequestId++;
+    state.busy = false;
+    state.phase = 'camera';
+    state.currentWords = [];
+    state.lastWord = '';
+
+    UI.clearActiveWords();
+    UI.hideClearButton();
+    UI.clearWords();
+    UI.showScanProgress(false);
+    UI.showNoText(false);
+    UI.showCameraView();
+
+    DOM.btnCapture.disabled = true;
+    try {
+      await CameraService.resume();
+    } catch (error) {
+      console.warn('[ScanLex] Camera resume failed on retake', error);
+    } finally {
+      DOM.btnCapture.disabled = false;
+      UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+    }
+  }
+
+  /* ---- Clear selected word --------------------------------------------- */
+  function onClearWord() {
+    // Invalidate any in-flight lookup so its result can't reopen the sheet.
+    state.lookupRequestId++;
+    if (DOM.resultSheet.classList.contains('is-open')) {
+      UI.closeSheet(DOM.resultSheet);
+    }
+    resetWordSelection();
+  }
+
+  /* ---- Lookup ----------------------------------------------------------- */
+  async function lookupWord(rawWord) {
+    const word = OCRService.sanitizeWord(rawWord);
+    if (!word) return;
+
+    const myId = ++state.lookupRequestId;
+    state.lastWord = word;
+    UI.showClearButton();
+    UI.showScanProgress(true, 0);
+    UI.setAnalyzeHint(`Looking up "${word}"…`);
+
+    try {
+      const entry = await DictionaryService.lookup(word);
+      if (myId !== state.lookupRequestId) return;
+      UI.showScanProgress(false);
+      UI.setAnalyzeHint(wordsHint(state.currentWords.length));
+      UI.renderResult(entry, {
+        onScanAnother: () => {
+          UI.closeSheet(DOM.resultSheet);
+          onRetake();
+        },
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          resetWordSelection();
+          openManualSheet('');
+        }
+      });
+      UI.openSheet(DOM.resultSheet);
+    } catch (error) {
+      if (myId !== state.lookupRequestId) return;
+      UI.showScanProgress(false);
+      UI.setAnalyzeHint('Tap a word to look it up');
+      handleError(error, word);
+    }
+  }
+
+  /* ---- Error handling --------------------------------------------------- */
+  function describeError(error, attemptedWord) {
+    const code = error instanceof AppError ? error.code : 'UNKNOWN';
+    const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
+    const w = attemptedWord || state.lastWord;
+    switch (code) {
+      case 'NOT_FOUND':
+        return {
+          title: 'Word not found',
+          message: `We read “${w}” but couldn't find a definition. The OCR may have misread it — try retaking the photo, or type the word.`,
+          retryLabel: 'Type the word',
+          onRetry: () => { resetWordSelection(); openManualSheet(w); }
+        };
+      case 'OFFLINE':
+        return { title: "You're offline", message: MESSAGES.OFFLINE,
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
+      case 'TIMEOUT':
+        return { title: 'Request timed out', message: MESSAGES.TIMEOUT,
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
+      case 'NETWORK':
+        return { title: 'Connection problem', message: MESSAGES.NETWORK,
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
+      case 'HTTP_ERROR':
+        return { title: 'Dictionary unavailable', message: MESSAGES.HTTP_ERROR,
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
+      case 'OCR_EMPTY':
+      case 'OCR_FAILED':
+        return { title: 'Could not read the text', message: MESSAGES.OCR_EMPTY,
+          retryLabel: 'Retake', onRetry: () => onRetake() };
+      case 'OCR_LIB':
+        return { title: 'Scanner unavailable', message: MESSAGES.OCR_LIB,
+          retryLabel: 'Retry',
+          onRetry: () => OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB)) };
+      case 'BAD_WORD':
+        return { title: 'Invalid word', message: MESSAGES.BAD_WORD,
+          retryLabel: 'Type a word', onRetry: () => openManualSheet('') };
+      case 'CAMERA_NOT_READY':
+        return { title: 'Camera not ready', message: MESSAGES.CAMERA_NOT_READY,
+          retryLabel: 'Try again', onRetry: () => onCapture() };
+      default:
+        return { title: 'Something went wrong', message: fallback };
+    }
+  }
+
+  function handleError(error, attemptedWord) {
+    console.error('[ScanLex]', error);
+    UI.showError(describeError(error, attemptedWord));
+  }
+
+  function openManualSheet(prefill = '') {
+    UI.closeAllSheets();
+    UI.clearInputError();
+    DOM.manualInput.value = prefill || '';
+    UI.openSheet(DOM.manualSheet);
+  }
+
+  async function onManualSubmit(event) {
+    event.preventDefault();
+    const word = OCRService.sanitizeWord(DOM.manualInput.value);
+    if (!word) { UI.showInputError(MESSAGES.BAD_WORD); return; }
+    UI.clearInputError();
+    UI.closeSheet(DOM.manualSheet);
+    state.lastWord = word;
+
+    const myId = ++state.lookupRequestId;
+    try {
+      const entry = await DictionaryService.lookup(word);
+      if (myId !== state.lookupRequestId) return;
+      UI.renderResult(entry, {
+        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          resetWordSelection();
+          openManualSheet('');
+        }
+      });
+      UI.openSheet(DOM.resultSheet);
+    } catch (error) {
+      if (myId !== state.lookupRequestId) return;
+      handleError(error, word);
+    }
+  }
+
+  /* ---- Lens picker ----------------------------------------------------- */
+  function openLensPicker() {
+    const cams = CameraService.getAllCameras();
+    if (cams.length < 2) { UI.toast('Only one camera available.'); return; }
+    const sel = CameraService.getSelectedCamera();
+    UI.renderLensList(cams, sel?.deviceId, async (deviceId) => {
+      UI.closeSheet(DOM.lensSheet);
+      await onPickLens(deviceId);
+    });
+    UI.openSheet(DOM.lensSheet);
+  }
+
+  async function onPickLens(deviceId) {
+    if (state.busy) return;
+    try {
+      UI.setStatus('Switching lens…');
+      await CameraService.switchTo(deviceId);
+      state.cameraReady = true;
+      UI.hideCameraError();
+      UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
+      const zi = CameraService.getZoomInfo();
+      UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+      const sel = CameraService.getSelectedCamera();
+      const focus = CameraService.getFocusSupport();
+      if (sel) UI.setCamBadge(shortenLabel(sel.label), focus.hasAutoFocus);
+      if (focus.hasAutoFocus) UI.setStatus('Lens switched — align the page and capture.');
+      else UI.setStatus('⚠ This lens has no autofocus. Try another lens.');
+    } catch (error) {
+      const msg = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(msg);
+      UI.setStatus('Could not switch lens — try another.');
+    }
+  }
+
+  async function onTorchToggle() {
+    const next = !CameraService.isTorchOn();
+    const ok = await CameraService.setTorch(next);
+    if (ok) UI.setTorchUI(next, true);
+    else { UI.setTorchUI(false, CameraService.hasTorch()); UI.toast('Torch unavailable.'); }
+  }
+  async function onZoomIn() {
+    const zi = CameraService.getZoomInfo();
+    const step = Math.max((zi.max - zi.min) * CONFIG.CAMERA.ZOOM_STEP_FRACTION, zi.step);
+    await CameraService.setZoom(CameraService.getZoom() + step);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+  }
+  async function onZoomOut() {
+    const zi = CameraService.getZoomInfo();
+    const step = Math.max((zi.max - zi.min) * CONFIG.CAMERA.ZOOM_STEP_FRACTION, zi.step);
+    await CameraService.setZoom(CameraService.getZoom() - step);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+  }
+  async function setZoomRaw(value) {
+    const zi = CameraService.getZoomInfo();
+    await CameraService.setZoom(value);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+  }
+  async function onViewfinderTap(x, y) {
+    if (state.phase !== 'camera' || !state.cameraReady) return;
+    UI.showFocusRing(x, y);
+    try { await CameraService.tapToFocus(x, y); } catch {}
+  }
+
+  function syncOnlineState() {
+    const offline = !navigator.onLine;
+    UI.setOffline(offline);
+    if (offline) UI.setStatus('You are offline — reconnect to look up words.');
+  }
+
+  function init() {
+    cacheDom();
+    warmUpOcr();
+
+    UI.bindEvents({
+      onCapture,
+      onRetake,
+      onClearWord,
+      onManualRequest: () => openManualSheet(state.lastWord),
+      onCameraRetry: () => startCamera(),
+      onOpenLensPicker: openLensPicker,
+      onCloseLensPicker: () => UI.closeSheet(DOM.lensSheet),
+      onTorchToggle,
+      onZoomIn,
+      onZoomOut,
+      getZoom: () => CameraService.getZoom(),
+      setZoom: setZoomRaw,
+      onViewfinderTap,
+      onCloseResult: () => {
+        // Closing the result sheet leaves the tapped word highlighted so the
+        // user can see which word they looked up. Tapping another word, or
+        // pressing Clear, resets it.
+        UI.closeSheet(DOM.resultSheet);
+      },
+      onCloseManual: () => UI.closeSheet(DOM.manualSheet),
+      onAfterSheetsClosed: () => {},
+      onManualSubmit
+    });
+
+    window.addEventListener('resize', () => {
+      if (state.phase === 'ready' || state.phase === 'analyzing') {
+        layoutFrozenImage();
+        if (state.currentWords.length) {
+          const cw = DOM.frozenCanvas.width;
+          const ch = DOM.frozenCanvas.height;
+          const dw = DOM.frozenWrap.getBoundingClientRect().width;
+          const dh = DOM.frozenWrap.getBoundingClientRect().height;
+          UI.renderWords(state.currentWords, cw, ch, dw, dh, lookupWord);
+        }
+      }
+    });
+
+    window.addEventListener('online', syncOnlineState);
+    window.addEventListener('offline', syncOnlineState);
+    syncOnlineState();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) CameraService.pause();
+      else if (state.phase === 'camera') CameraService.resume();
+    });
+    window.addEventListener('pagehide', () => { CameraService.stop(); });
+
+    startCamera();
+  }
+
+  return { init, onCapture };
+})();
+
+/* ==========================================================================
+ * 11. BOOTSTRAP
+ * ========================================================================== */
+try { App.init(); }
+catch (error) {
+  console.error('[ScanLex] Fatal initialisation error', error);
+  document.body.textContent = 'ScanLex failed to start. Please reload the page.';
+}
+</script>
+</body>
+</html>
