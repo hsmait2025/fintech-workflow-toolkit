@@ -1,2894 +1,2204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" id="metaThemeColor" />
-  <title>Grocery Calc POS</title>
-
-  <!-- html2canvas CDN for High-Resolution PNG Snapshots -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-  <!--
-    ============================================================================
-    CHANGE LOG (latest first)
-    ============================================================================
-    [REQ-09] MAIN PRICE DISPLAY — LAST DIGIT NO LONGER CLIPPED, LARGER FONT
-      • Root cause of the "last digit cut off" bug:
-          The main amount uses `text-align: right` + `overflow: hidden` +
-          `letter-spacing: -0.055em`. In CSS, letter-spacing is applied AFTER
-          every character, including the last one. A NEGATIVE letter-spacing
-          therefore makes the text block's advance width smaller than the
-          visible glyphs, and the right-aligned block is then positioned so
-          the last glyph's right edge sits ~0.055em PAST the container's
-          right edge. `overflow: hidden` clips that strip, so on wide glyphs
-          like 3 or 0 the right sliver of the last digit disappears.
-      • Fix:
-          - Reduced letter-spacing to -0.04em (keeps the modern tight look).
-          - Added `padding-right: 0.1em` on .price-display so the last glyph
-            always ends comfortably inside the clip line (0.1em > 0.04em).
-      • Font size increase so the main amount is CLEARLY larger than the
-        vendor price shown under "Vendor X Price" in the header:
-          - Old: clamp(2.6rem, 11vw, 4.2rem) — on a phone ≈ 43px, barely
-            distinguishable from the header's ≈ 32px vendor price.
-          - New: clamp(3rem, 14vw, 5rem) — on a phone ≈ 55px, roughly 1.7×
-            the header amount. Weight bumped 500 → 600 for balance.
-      • Short-screen media query size bumped accordingly so compact phones
-        also get a visibly larger amount than the header.
-      • Applies to BOTH "Price" (grocery) and "Expense Amount" (expense) —
-        they share the same #displayCurrentItemPrice element.
-      • No layout proportion changes: numpad, grid rows, and screen splits
-        are untouched.
-
-    [REQ-08] PURCHASE DASHBOARD — FULL-SCREEN SHEET ON MOBILE
-    [REQ-07] EXPENSE TABLE PROPORTIONS & AMOUNT VISIBILITY FIX
-    [REQ-06] DAILY EXPENSE TRACKER (PARALLEL TRACK)
-    [REQ-05] NUMPAD REDUCED TO 30% OF SCREEN
-    [REQ-04] NUMPAD REDUCED TO 40% OF SCREEN (superseded)
-    [REQ-03] INLINE EDIT FOR WEIGHT AND QUOTE PRICE
-    [REQ-02] WEIGHT QUICK-BUTTON CLEANUP & FONT ENLARGEMENT
-    [REQ-01] WEIGHT QUICK-BUTTON SET REVISION
-    ============================================================================
-  -->
-
-  <style>
-    /* DARK THEME (DEFAULT) */
-    :root {
-      --bg: #000000;
-      --surface: #1c1c1e;
-      --surface-2: #2c2c2e;
-      --surface-3: #3a3a3c;
-      --key-bg: #2c2c2e;
-      --key-active: #48484a;
-
-      --text: #ffffff;
-      --muted: #8e8e93;
-
-      --blue: #0a84ff;
-      --blue-soft: #64d2ff;
-      --green: #30d158;
-      --orange: #ff9f0a;
-      --red: #ff453a;
-      --yellow: #ffd60a;
-      --purple: #bf5af2;
-
-      --border: #29292b;
-
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-
-      --page-pad: clamp(10px, 3vw, 16px);
-      --key-gap: clamp(7px, 2.2vw, 10px);
-    }
-
-    /* LIGHT THEME OVERRIDES */
-    body.light-theme {
-      --bg: #f2f2f7;
-      --surface: #ffffff;
-      --surface-2: #e5e5ea;
-      --surface-3: #d1d1d6;
-      --key-bg: #e5e5ea;
-      --key-active: #d1d1d6;
-
-      --text: #000000;
-      --muted: #6c6c70;
-
-      --blue: #007aff;
-      --blue-soft: #0056b3;
-      --green: #28a745;
-      --orange: #ff9500;
-      --red: #ff3b30;
-      --yellow: #d3a000;
-      --purple: #8e24aa;
-
-      --border: #e5e5ea;
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "SF Pro Display",
-        "SF Pro Text",
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-      transition: background-color 0.2s ease, color 0.2s ease;
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-    }
-
-    button {
-      border: 0;
-    }
-
-    .view-container {
-      width: 100%;
-      height: 100dvh;
-      height: 100svh;
-      min-height: 0;
-      display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
-      overflow: hidden;
-      padding-top: var(--safe-top);
-      padding-right: var(--safe-right);
-      padding-left: var(--safe-left);
-      background: var(--bg);
-    }
-
-    /* VENDOR SWITCHER BAR + GROCERY|EXPENSE TOGGLE */
-    .vendor-switcher-bar {
-      padding: 8px var(--page-pad);
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .vendor-select-btn {
-      flex: 1 1 auto;
-      width: auto;
-      min-width: 0;
-      min-height: 42px;
-      padding: 6px 14px;
-      border-radius: 12px;
-      background: var(--surface);
-      color: var(--text);
-      font-size: 0.95rem;
-      font-weight: 700;
-      border: 1px solid var(--purple);
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url('data:image/svg+xml;utf8,<svg fill="%23bf5af2" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      cursor: pointer;
-      outline: none;
-    }
-
-    .vendor-select-btn option {
-      background: var(--surface);
-      color: var(--text);
-    }
-
-    .mode-toggle {
-      display: flex;
-      flex-shrink: 0;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--surface);
-      min-height: 42px;
-    }
-
-    .mode-btn {
-      padding: 0 14px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: 0;
-      min-height: 42px;
-      white-space: nowrap;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-
-    .mode-btn[data-mode="grocery"].mode-btn-active {
-      background: var(--blue);
-      color: #fff;
-    }
-
-    .mode-btn[data-mode="expense"].mode-btn-active {
-      background: var(--orange);
-      color: #000;
-    }
-
-    .mode-btn:not(.mode-btn-active):active {
-      background: var(--surface-2);
-    }
-
-    /* TOP BAR */
-    .top-cart-bar {
-      min-height: 52px;
-      padding: 6px var(--page-pad);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-shrink: 0;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .vendor-mini {
-      min-width: 0;
-    }
-
-    .vendor-quote-label {
-      margin-bottom: 2px;
-      color: var(--muted);
-      font-size: clamp(0.72rem, 2.8vw, 0.85rem);
-      font-weight: 700;
-      letter-spacing: 0.75px;
-      line-height: 1.1;
-      text-transform: uppercase;
-    }
-
-    /* Vendor price stays as-is; the main price display is now clearly
-       larger than this reference. */
-    .vendor-quote-price {
-      color: var(--blue-soft);
-      font-size: clamp(2rem, 5vw, 2.3rem);
-      font-weight: 750;
-      line-height: 1.1;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .view-cart-btn {
-      min-height: 44px;
-      max-width: 62%;
-      padding: 6px 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      justify-content: center;
-      border-radius: 18px;
-      background: var(--blue);
-      color: #fff;
-      cursor: pointer;
-      overflow: hidden;
-    }
-
-    .view-cart-btn:active {
-      transform: scale(0.97);
-      opacity: 0.88;
-    }
-
-    .cart-btn-title {
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: clamp(0.9rem, 3.4vw, 1.05rem);
-      font-weight: 700;
-      line-height: 1.15;
-    }
-
-    .cart-btn-sub {
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: clamp(0.75rem, 2.6vw, 0.85rem);
-      font-weight: 600;
-      line-height: 1.15;
-      opacity: 0.9;
-    }
-
-    /* HOME INFORMATION PANEL */
-    .top-window-60 {
-      min-height: 0;
-      padding: clamp(8px, 2.5vw, 14px) var(--page-pad) 8px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 10px;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      scrollbar-width: none;
-    }
-
-    .top-window-60::-webkit-scrollbar,
-    .cart-scroll-container::-webkit-scrollbar {
-      display: none;
-    }
-
-    .display-section {
-      flex: 1 1 auto;
-      min-height: 90px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .section-label {
-      margin-bottom: 4px;
-      color: var(--muted);
-      font-size: clamp(0.7rem, 2.6vw, 0.8rem);
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      line-height: 1.15;
-      text-transform: uppercase;
-    }
-
-    .main-display {
-      min-width: 0;
-      text-align: right;
-    }
-
-    /* ------------------------------------------------------------------
-       [REQ-09] MAIN PRICE DISPLAY — FIXED CLIPPING + LARGER SIZE
-       • padding-right covers the trailing negative letter-spacing so the
-         last glyph never touches the overflow clip line.
-       • Font size raised so the amount is visibly larger than the vendor
-         price in the header on every screen width.
-       ------------------------------------------------------------------ */
-    .price-display {
-      width: 100%;
-      overflow: hidden;
-      color: var(--text);
-      font-size: clamp(3rem, 14vw, 5rem);
-      font-weight: 600;
-      letter-spacing: -0.04em;
-      /* Safety buffer: 0.1em > |letter-spacing| = 0.04em */
-      padding-right: 0.1em;
-      line-height: 1;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .price-display.has-input {
-      color: var(--blue-soft);
-    }
-
-    .display-meta {
-      margin-top: 6px;
-      display: flex;
-      align-items: baseline;
-      justify-content: flex-end;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .formula-display {
-      color: var(--yellow);
-      font-size: clamp(0.8rem, 3.2vw, 1rem);
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.2px;
-    }
-
-    .selection-area {
-      flex: 0 0 auto;
-    }
-
-    .selector-group + .selector-group {
-      margin-top: 10px;
-    }
-
-    /* QUICK-BUTTON ROWS */
-    .base-weight-row-updated {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 7px;
-    }
-
-    .target-weight-row-custom {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 7px;
-    }
-
-    .weight-btn,
-    .base-dropdown-select,
-    .chip-dropdown-select {
-      min-width: 0;
-      min-height: 44px;
-      padding: 6px 3px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface-2);
-      color: var(--text);
-      font-size: clamp(1.05rem, 4.2vw, 1.25rem);
-      font-weight: 700;
-      line-height: 1;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .base-dropdown-select,
-    .chip-dropdown-select {
-      width: 100%;
-      text-align-last: center;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url('data:image/svg+xml;utf8,<svg fill="%238e8e93" height="12" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      padding-right: 18px;
-    }
-
-    .base-dropdown-select option,
-    .chip-dropdown-select option {
-      background: var(--surface);
-      color: var(--text);
-    }
-
-    .weight-btn:active {
-      transform: scale(0.96);
-    }
-
-    .weight-btn.base-selected,
-    .base-dropdown-select.base-selected {
-      border-color: var(--blue);
-      background-color: rgba(10, 132, 255, 0.28);
-      color: var(--text);
-    }
-
-    .target-btn:active {
-      background: rgba(48, 209, 88, 0.34);
-      border-color: var(--green);
-      color: var(--text);
-    }
-
-    .custom-inline-btn {
-      border-color: rgba(255, 159, 10, 0.7);
-      background: rgba(255, 159, 10, 0.2);
-      color: var(--orange);
-      font-size: clamp(0.9rem, 3.6vw, 1.05rem);
-      padding-left: 2px;
-      padding-right: 2px;
-    }
-
-    /* EXPENSE MODE */
-    .expense-selection-area {
-      flex: 0 0 auto;
-      padding-top: 8px;
-    }
-
-    .btn-add-expense {
-      width: 100%;
-      min-height: 64px;
-      border-radius: 14px;
-      background: var(--orange);
-      color: #000;
-      font-size: clamp(1.05rem, 4.2vw, 1.25rem);
-      font-weight: 750;
-      cursor: pointer;
-      border: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-add-expense:active {
-      transform: scale(0.98);
-      background: #ffb340;
-    }
-
-    /* SHARED NUMPAD WRAPPER — EXACTLY 30% OF VIEWPORT HEIGHT */
-    .bottom-numpad-30 {
-      width: 100%;
-      height: 30dvh;
-      min-height: 0;
-      max-height: none;
-      flex-shrink: 0;
-      padding: 8px var(--page-pad) max(10px, var(--safe-bottom));
-      display: flex;
-      overflow: hidden;
-      background: var(--bg);
-    }
-
-    .keypad-container {
-      width: min(100%, 410px);
-      height: 100%;
-      min-height: 0;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-template-rows: repeat(4, minmax(0, 1fr));
-      gap: var(--key-gap);
-    }
-
-    .key {
-      min-width: 0;
-      min-height: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 0;
-      border-radius: clamp(18px, 6vw, 30px);
-      background: var(--key-bg);
-      color: var(--text);
-      font-size: clamp(1.55rem, 7vw, 2.15rem);
-      font-weight: 500;
-      line-height: 1;
-      cursor: pointer;
-      user-select: none;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .key:active {
-      background: var(--key-active);
-      transform: scale(0.965);
-    }
-
-    .key.action-clear-all {
-      background: #a5a5a5;
-      color: #000;
-      font-weight: 600;
-    }
-
-    .key.action-clear-all:active {
-      background: #c5c5c5;
-    }
-
-    .key.action-backspace {
-      background: var(--orange);
-      color: #000;
-      font-size: clamp(1.35rem, 6vw, 1.9rem);
-      font-weight: 600;
-    }
-
-    .key.action-backspace:active {
-      background: #ffb340;
-    }
-
-    /* CUSTOM WEIGHT SCREEN */
-    #customWeightView {
-      display: none;
-      grid-template-rows: minmax(0, 1fr) auto;
-      background: var(--bg);
-    }
-
-    .custom-top-60 {
-      min-height: 0;
-      padding: 18px var(--page-pad) 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 16px;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .custom-display-group {
-      flex: 1 1 auto;
-      min-height: 150px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      text-align: center;
-    }
-
-    .custom-title {
-      margin-bottom: 8px;
-      color: var(--purple);
-      font-size: clamp(0.8rem, 3.2vw, 0.95rem);
-      font-weight: 750;
-      letter-spacing: 1px;
-      line-height: 1.1;
-      text-transform: uppercase;
-    }
-
-    .custom-display {
-      overflow: hidden;
-      color: var(--yellow);
-      font-size: clamp(2.8rem, 13vw, 4.5rem);
-      font-weight: 500;
-      letter-spacing: -0.055em;
-      line-height: 1;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .custom-subdisplay {
-      margin-top: 8px;
-      color: var(--purple);
-      font-size: clamp(1rem, 3.8vw, 1.2rem);
-      font-weight: 600;
-    }
-
-    .custom-action-row {
-      width: min(100%, 360px);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 9px;
-      flex-shrink: 0;
-    }
-
-    .btn-cancel,
-    .btn-add-cart {
-      min-height: 48px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-size: clamp(0.9rem, 3.6vw, 1.05rem);
-    }
-
-    .btn-cancel {
-      background: var(--surface-3);
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .btn-add-cart {
-      background: var(--green);
-      color: #000;
-      font-weight: 750;
-      text-transform: uppercase;
-    }
-
-    .btn-cancel:active,
-    .btn-add-cart:active {
-      transform: scale(0.97);
-    }
-
-    /* CALCULATOR SCREEN */
-    #calculatorView {
-      display: none;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      background: var(--bg);
-    }
-
-    .calc-top-bar {
-      min-height: 52px;
-      padding: 8px var(--page-pad);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .calc-back-btn {
-      min-height: 38px;
-      padding: 0 16px;
-      border-radius: 10px;
-      background: var(--surface-3);
-      color: var(--text);
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .calc-back-btn:active {
-      transform: scale(0.96);
-    }
-
-    .calc-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--orange);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-
-    .calc-display-container {
-      min-height: 0;
-      padding: 18px var(--page-pad) 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      text-align: right;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .calc-history-display {
-      min-height: 24px;
-      color: var(--yellow);
-      font-size: clamp(1rem, 4vw, 1.35rem);
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
-      direction: ltr;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      scrollbar-width: none;
-    }
-
-    .calc-history-display::-webkit-scrollbar {
-      display: none;
-    }
-
-    .calc-main-display {
-      margin-top: 4px;
-      color: var(--text);
-      font-size: clamp(2.8rem, 12vw, 4.5rem);
-      font-weight: 500;
-      letter-spacing: -0.05em;
-      line-height: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .calc-keypad-container {
-      width: min(100%, 410px);
-      height: 100%;
-      min-height: 0;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      grid-template-rows: repeat(5, minmax(0, 1fr));
-      gap: clamp(5px, 1.8vw, 8px);
-    }
-
-    .key.op-key {
-      background: var(--orange);
-      color: #000;
-      font-weight: 600;
-    }
-
-    .key.op-key:active {
-      background: #ffb340;
-    }
-
-    .key.calc-action-clear {
-      background: #a5a5a5;
-      color: #000;
-      font-weight: 600;
-    }
-
-    .key.calc-action-clear:active {
-      background: #c5c5c5;
-    }
-
-    .key.calc-equals {
-      background: var(--green);
-      color: #000;
-      font-weight: 700;
-    }
-
-    .key.calc-equals:active {
-      background: #50e377;
-    }
-
-    /* MODAL BASE */
-    .modal {
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      padding:
-        max(14px, var(--safe-top))
-        max(14px, var(--safe-right))
-        max(14px, var(--safe-bottom))
-        max(14px, var(--safe-left));
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .modal-content {
-      width: min(100%, 460px);
-      max-height: min(90dvh, 720px);
-      min-height: 0;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      background: var(--surface);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      overflow-y: auto;
-    }
-
-    /* PURCHASE DASHBOARD — FULL-SCREEN SHEET ON PHONES */
-    #cartModal {
-      padding: 0;
-      align-items: stretch;
-      justify-content: stretch;
-    }
-
-    #cartModal .modal-content {
-      width: 100%;
-      max-width: 100%;
-      height: 100%;
-      max-height: 100%;
-      border-radius: 0;
-      border: 0;
-      box-shadow: none;
-      padding:
-        max(14px, var(--safe-top))
-        max(14px, var(--safe-right))
-        max(14px, var(--safe-bottom))
-        max(14px, var(--safe-left));
-    }
-
-    @media (min-width: 600px) {
-      #cartModal {
-        padding:
-          max(14px, var(--safe-top))
-          max(14px, var(--safe-right))
-          max(14px, var(--safe-bottom))
-          max(14px, var(--safe-left));
-        align-items: center;
-        justify-content: center;
-      }
-
-      #cartModal .modal-content {
-        width: min(100%, 560px);
-        height: auto;
-        max-height: min(90dvh, 900px);
-        border-radius: 22px;
-        border: 1px solid var(--border);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        padding: 16px;
-      }
-    }
-
-    /* NAME PROMPT MODAL STYLES */
-    .name-input-field {
-      width: 100%;
-      height: 48px;
-      margin-top: 14px;
-      padding: 0 14px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface-2);
-      color: var(--text);
-      font-size: 1.05rem;
-      outline: none;
-    }
-
-    .name-input-field:focus {
-      border-color: var(--blue);
-    }
-
-    .quick-chips-row {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .chip-btn {
-      min-height: 40px;
-      padding: 6px 10px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface-2);
-      color: var(--text);
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .chip-btn:active {
-      background: var(--blue);
-      color: #fff;
-    }
-
-    .chip-dropdown-select {
-      min-height: 40px;
-      border-radius: 12px;
-      font-size: 0.9rem;
-    }
-
-    .modal-action-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 18px;
-    }
-
-    /* CART MODAL & DASHBOARD */
-    .cart-title-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .cart-title {
-      margin: 0;
-      font-size: clamp(1.15rem, 4.2vw, 1.3rem);
-      font-weight: 700;
-    }
-
-    .cart-count {
-      color: var(--muted);
-      font-size: clamp(0.82rem, 3vw, 0.92rem);
-      font-weight: 600;
-    }
-
-    .cart-scroll-container {
-      min-height: 0;
-      margin-top: 10px;
-      overflow: auto;
-      border-radius: 10px;
-    }
-
-    /* DASHBOARD TABLE */
-    .dashboard-container {
-      margin-bottom: 16px;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: var(--surface-2);
-    }
-
-    .dashboard-title {
-      margin-bottom: 8px;
-      color: var(--yellow);
-      font-size: 0.85rem;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .dashboard-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-    }
-
-    .dashboard-table th {
-      color: var(--muted);
-      text-align: left;
-      padding: 4px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dashboard-table td {
-      padding: 6px 4px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dashboard-table tr.total-row {
-      font-weight: 700;
-      color: var(--green);
-    }
-
-    .dashboard-table tr.expense-row {
-      color: var(--orange);
-      font-weight: 650;
-    }
-
-    /* SECTION HEADERS */
-    .vendor-section-header {
-      padding: 8px 6px;
-      background: var(--surface-2);
-      color: var(--purple);
-      font-weight: 700;
-      font-size: 0.88rem;
-      border-radius: 6px;
-      margin-top: 10px;
-    }
-
-    .expense-section-header {
-      padding: 8px 6px;
-      background: var(--surface-2);
-      color: var(--orange);
-      font-weight: 700;
-      font-size: 0.88rem;
-      border-radius: 6px;
-      margin-top: 10px;
-    }
-
-    /* CART ITEMS TABLE */
-    .cart-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    .cart-table th {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: var(--surface);
-      color: var(--muted);
-      font-size: clamp(0.75rem, 2.8vw, 0.85rem);
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .cart-table th,
-    .cart-table td {
-      padding: 10px 4px;
-      border-bottom: 1px solid var(--border);
-      text-align: center;
-      font-size: clamp(0.82rem, 3.2vw, 0.95rem);
-      line-height: 1.15;
-      overflow-wrap: anywhere;
-    }
-
-    /* Grocery table column widths (5 columns) */
-    .cart-table:not(.expense-table) th:nth-child(1),
-    .cart-table:not(.expense-table) td:nth-child(1) {
-      width: 25%;
-      text-align: left;
-      padding-left: 6px;
-    }
-    .cart-table:not(.expense-table) th:nth-child(2),
-    .cart-table:not(.expense-table) td:nth-child(2) { width: 18%; }
-    .cart-table:not(.expense-table) th:nth-child(3),
-    .cart-table:not(.expense-table) td:nth-child(3) { width: 23%; }
-    .cart-table:not(.expense-table) th:nth-child(4),
-    .cart-table:not(.expense-table) td:nth-child(4) { width: 22%; }
-    .cart-table:not(.expense-table) th:nth-child(5),
-    .cart-table:not(.expense-table) td:nth-child(5) { width: 12%; }
-
-    /* Expense table: Item 55% | Amount 30% | Remove 15% */
-    .cart-table.expense-table {
-      table-layout: fixed;
-    }
-
-    .cart-table.expense-table th:nth-child(1),
-    .cart-table.expense-table td:nth-child(1) {
-      width: 55%;
-      text-align: left;
-      padding-left: 6px;
-      overflow: hidden;
-    }
-
-    .cart-table.expense-table th:nth-child(2),
-    .cart-table.expense-table td:nth-child(2) {
-      width: 30%;
-      text-align: center;
-      padding: 10px 2px;
-    }
-
-    .cart-table.expense-table th:nth-child(3),
-    .cart-table.expense-table td:nth-child(3) {
-      width: 15%;
-      text-align: center;
-    }
-
-    /* INLINE EDITABLE STYLES */
-    .editable-item-name,
-    .editable-weight,
-    .editable-quote,
-    .editable-amount {
-      display: inline-block;
-      width: 100%;
-      padding: 4px 6px;
-      border-radius: 6px;
-      background: var(--surface-2);
-      border: 1px dashed var(--border);
-      cursor: pointer;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .editable-item-name:hover,
-    .editable-weight:hover,
-    .editable-quote:hover,
-    .editable-amount:hover {
-      border-color: var(--blue);
-    }
-
-    .editable-amount {
-      text-align: center;
-      text-overflow: clip;
-    }
-
-    .item-name-input,
-    .item-weight-input,
-    .quote-price-input,
-    .item-amount-input {
-      width: 100%;
-      min-width: 0;
-      padding: 4px 6px;
-      font-size: inherit;
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--blue);
-      border-radius: 6px;
-      outline: none;
-    }
-
-    .item-amount-input {
-      text-align: center;
-    }
-
-    .quote-edit-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      font-size: inherit;
-    }
-
-    .quote-price-input {
-      width: 55px;
-      text-align: center;
-    }
-
-    .remove-item-btn {
-      min-width: 32px;
-      min-height: 32px;
-      border-radius: 16px;
-      background: transparent;
-      color: var(--red);
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    .remove-item-btn:active {
-      background: rgba(255, 69, 58, 0.16);
-    }
-
-    .cart-empty {
-      padding: 24px 8px;
-      color: var(--muted);
-      text-align: center;
-      font-size: clamp(0.9rem, 3.5vw, 1.05rem);
-    }
-
-    .cart-modal-actions {
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 9px;
-      flex-shrink: 0;
-    }
-
-    .btn-clear-cart,
-    .btn-share-cart,
-    .close-modal-btn {
-      min-height: 48px;
-      border-radius: 13px;
-      cursor: pointer;
-      font-size: clamp(0.88rem, 3.4vw, 1rem);
-      font-weight: 650;
-    }
-
-    .btn-clear-cart {
-      background: var(--red);
-      color: #fff;
-    }
-
-    .btn-share-cart {
-      background: var(--blue);
-      color: #fff;
-    }
-
-    .close-modal-btn {
-      background: var(--surface-2);
-      color: var(--text);
-    }
-
-    .btn-clear-cart:active,
-    .btn-share-cart:active,
-    .close-modal-btn:active {
-      transform: scale(0.97);
-    }
-
-    @media (max-height: 650px) {
-      .top-window-60 {
-        padding-top: 6px;
-        padding-bottom: 6px;
-        gap: 6px;
-      }
-      .display-section { min-height: 75px; }
-      /* [REQ-09] Still larger than the header's vendor price, just tuned
-         for compact heights. */
-      .price-display { font-size: clamp(2.6rem, 12vw, 4rem); }
-      .weight-btn,
-      .base-dropdown-select,
-      .chip-dropdown-select {
-        min-height: 38px;
-        padding-top: 4px;
-        padding-bottom: 4px;
-        font-size: clamp(0.95rem, 3.8vw, 1.1rem);
-      }
-      .custom-inline-btn { font-size: clamp(0.82rem, 3.2vw, 0.95rem); }
-      .selector-group + .selector-group { margin-top: 4px; }
-    }
-
-    @media (min-width: 500px) {
-      .top-window-60,
-      .bottom-numpad-30,
-      .calc-display-container {
-        padding-left: max(20px, var(--page-pad));
-        padding-right: max(20px, var(--page-pad));
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+<meta name="theme-color" content="#0b0f14" />
+<meta name="color-scheme" content="dark" />
+<meta name="description" content="ScanLex — point your camera at a word in a book and get its definition instantly." />
+<title>ScanLex — Visual Scan Dictionary</title>
+
+<style>
+/* ==========================================================================
+   1. DESIGN TOKENS
+   ========================================================================== */
+:root {
+  --bg: #0b0f14;
+  --surface: #111a23;
+  --surface-2: #16212c;
+  --surface-3: #1d2b38;
+  --line: #24323f;
+  --text: #e9f0f7;
+  --muted: #90a4b6;
+  --accent: #4cc9f0;
+  --accent-soft: rgba(76, 201, 240, 0.14);
+  --accent-line: rgba(76, 201, 240, 0.32);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.14);
+  --success: #3ddc97;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --shadow-sheet: 0 -18px 60px rgba(0, 0, 0, 0.65);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ==========================================================================
+   2. RESET & BASE
+   ========================================================================== */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  text-rendering: optimizeLegibility;
+}
+
+button, input { font: inherit; color: inherit; }
+
+button { cursor: pointer; border: 0; background: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   3. APP SHELL
+   ========================================================================== */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.app-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  flex: 0 0 auto;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.app-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: background 0.18s var(--ease-out), transform 0.12s var(--ease-out);
+}
+
+.icon-btn:active { transform: scale(0.94); background: var(--surface-3); }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* ==========================================================================
+   4. OFFLINE BANNER
+   ========================================================================== */
+.offline-banner {
+  flex: 0 0 auto;
+  margin: 0 16px 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 107, 107, 0.32);
+  color: #ffc9c9;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ==========================================================================
+   5. STAGE / VIEWFINDER
+   ========================================================================== */
+.stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 12px calc(var(--safe-bottom) + 12px);
+  gap: 12px;
+}
+
+.viewfinder {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line);
+  isolation: isolate;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+/* ---- Scanning reticle ---------------------------------------------------- */
+.reticle {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  width: min(86%, 520px);
+  height: clamp(84px, 22vh, 170px);
+  border-radius: var(--radius-md);
+  border: 1.5px dashed rgba(76, 201, 240, 0.55);
+  background: rgba(76, 201, 240, 0.05);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 22px; height: 22px;
+  border: 3px solid var(--accent);
+  border-radius: 4px;
+}
+.corner.tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
+.corner.tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
+.corner.bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
+.corner.br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
+
+.reticle-label {
+  position: absolute;
+  left: 50%;
+  bottom: -32px;
+  transform: translateX(-50%);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(233, 240, 247, 0.82);
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* ---- Busy overlay -------------------------------------------------------- */
+.ocr-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(6, 10, 14, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: fade-in 0.18s var(--ease-out);
+}
+
+.ocr-overlay p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.spinner {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(76, 201, 240, 0.18);
+  border-top-color: var(--accent);
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- Camera error panel -------------------------------------------------- */
+.camera-error {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 22px;
+  text-align: center;
+  background: linear-gradient(160deg, #101a24 0%, #0b1219 100%);
+}
+
+.camera-error h2 { margin: 0; font-size: 1.1rem; }
+.camera-error p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
+.camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+
+/* ==========================================================================
+   6. CONTROLS
+   ========================================================================== */
+.controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.capture-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  height: 62px;
+  border-radius: 31px;
+  font-size: 1rem;
+  font-weight: 640;
+  letter-spacing: 0.01em;
+  color: #04121a;
+  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 45%, #3aa8d8 100%);
+  box-shadow: 0 10px 30px rgba(76, 201, 240, 0.28);
+  transition: transform 0.12s var(--ease-out), box-shadow 0.2s var(--ease-out), opacity 0.2s;
+}
+
+.capture-btn:active:not(:disabled) { transform: scale(0.975); }
+
+.capture-btn:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.capture-ring {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16);
+  flex: 0 0 auto;
+}
+
+.status-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+  min-height: 1.2em;
+  max-width: 42ch;
+}
+
+/* ==========================================================================
+   7. BUTTONS
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  transition: transform 0.12s var(--ease-out), background 0.18s, opacity 0.18s;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%);
+  color: #04121a;
+}
+
+.btn-ghost {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.btn-block { width: 100%; }
+
+/* ==========================================================================
+   8. SCRIM + BOTTOM SHEETS
+   ========================================================================== */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(3, 7, 11, 0.66);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s var(--ease-out), visibility 0s linear 0.3s;
+}
+
+.scrim.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s var(--ease-out), visibility 0s;
+}
+
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 50;
+  max-height: 84vh;
+  max-height: 84dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px calc(20px + var(--safe-right)) calc(24px + var(--safe-bottom))
+           calc(20px + var(--safe-left));
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-top: 1px solid var(--line);
+  box-shadow: var(--shadow-sheet);
+  transform: translateY(110%);
+  visibility: hidden;
+  transition: transform 0.36s var(--ease-out), visibility 0s linear 0.36s;
+}
+
+.sheet.is-open {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform 0.36s var(--ease-out), visibility 0s;
+}
+
+.sheet-handle {
+  width: 44px; height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin: 4px auto 14px;
+}
+
+.sheet-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 40px; height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.sheet-close:active { background: var(--line); }
+
+.sheet-title {
+  margin: 0 44px 6px 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.sheet-sub {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* ---- Text input ---------------------------------------------------------- */
+.text-input {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  color: var(--text);
+  font-size: 1rem;
+  transition: border-color 0.18s;
+}
+
+.text-input::placeholder { color: #62788b; }
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.text-input[aria-invalid="true"] { border-color: var(--danger); }
+
+.input-error {
+  margin: 8px 2px 12px;
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+
+#manualForm .btn { margin-top: 14px; }
+
+/* ==========================================================================
+   9. RESULT CARD
+   ========================================================================== */
+.result-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 44px;
+  margin-bottom: 6px;
+}
+
+.result-word {
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.result-phonetic {
+  margin: 6px 0 0;
+  color: var(--accent);
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+}
+
+.audio-btn {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  transition: transform 0.12s var(--ease-out), background 0.18s;
+}
+
+.audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
+
+.meaning {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.pos-badge {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.def-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  list-style: decimal;
+}
+
+.def-list li {
+  margin-bottom: 12px;
+  line-height: 1.55;
+  font-size: 0.96rem;
+  padding-left: 4px;
+}
+
+.def-list li::marker { color: var(--accent); font-weight: 600; }
+
+.example {
+  display: block;
+  margin-top: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.89rem;
+  font-style: italic;
+}
+
+.result-empty {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.result-actions .btn { flex: 1 1 0; }
+
+/* ==========================================================================
+   10. ERROR MODAL
+   ========================================================================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 7, 11, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fade-in 0.2s var(--ease-out);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 26px 22px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  animation: pop-in 0.24s var(--ease-out);
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.modal-icon {
+  width: 52px; height: 52px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: var(--danger);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+
+.modal-text {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.modal-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* ==========================================================================
+   11. TOAST
+   ========================================================================== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(28px + var(--safe-bottom));
+  transform: translate(-50%, 20px);
+  z-index: 80;
+  max-width: min(90vw, 420px);
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 0.87rem;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out),
+    visibility 0s linear 0.24s;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
+  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out), visibility 0s;
+}
+
+/* ==========================================================================
+   12. RESPONSIVE / LANDSCAPE / MOTION
+   ========================================================================== */
+@media (min-width: 720px) {
+  .stage { padding: 0 24px calc(var(--safe-bottom) + 20px); }
+  .app-bar { padding-left: 24px; padding-right: 24px; }
+  .sheet {
+    left: 50%;
+    right: auto;
+    width: min(560px, 100%);
+    transform: translate(-50%, 110%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .sheet.is-open { transform: translate(-50%, 0); }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .reticle { height: clamp(64px, 30vh, 110px); top: 42%; }
+  .capture-btn { height: 54px; }
+  .app-bar { padding-top: calc(var(--safe-top) + 8px); padding-bottom: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+</style>
 </head>
 
 <body>
-
-  <!-- VIEW 1: HOME MAIN POS SCREEN -->
-  <div class="view-container" id="homeView">
-
-    <nav class="vendor-switcher-bar">
-      <select class="vendor-select-btn" id="vendorSelectDropdown" aria-label="Select Vendor">
-        <option value="1" selected>Vendor 1</option>
-        <option value="2">Vendor 2</option>
-        <option value="3">Vendor 3</option>
-        <option value="4">Vendor 4</option>
-        <option value="5">Vendor 5</option>
-        <option value="6">Vendor 6</option>
-      </select>
-
-      <div class="mode-toggle" role="group" aria-label="Entry mode">
-        <button class="mode-btn mode-btn-active" data-mode="grocery" id="groceryModeBtn" type="button">Grocery</button>
-        <button class="mode-btn" data-mode="expense" id="expenseModeBtn" type="button">Expense</button>
-      </div>
-    </nav>
-
-    <header class="top-cart-bar" id="topHeader">
-      <div class="vendor-mini">
-        <div class="vendor-quote-label" id="vendorQuoteLabel">Vendor 1 Price</div>
-        <div class="vendor-quote-price" id="headerVendorQuote">₹0</div>
-      </div>
-
-      <button class="view-cart-btn" id="openCartBtn" type="button" aria-label="Open purchase dashboard">
-        <span class="cart-btn-title" id="cartBtnTitle">Vendor 1 (0) · ₹0.00</span>
-        <span class="cart-btn-sub" id="cartBtnSub">Total: 0.00 Kg</span>
+<div class="app">
+  <!-- ===================== HEADER ===================== -->
+  <header class="app-bar">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <h1>ScanLex</h1>
+    </div>
+    <div class="app-actions">
+      <button id="btnSwitch" class="icon-btn" type="button" aria-label="Switch camera" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 12a8 8 0 0 1-13.7 5.6L3 14" />
+          <path d="M4 12a8 8 0 0 1 13.7-5.6L21 10" />
+          <path d="M21 4v6h-6" />
+          <path d="M3 20v-6h6" />
+        </svg>
       </button>
-    </header>
+      <button id="btnManual" class="icon-btn" type="button" aria-label="Type a word instead">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
+          <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" />
+        </svg>
+      </button>
+    </div>
+  </header>
 
-    <main class="top-window-60" id="homeDisplayContainer">
-
-      <section class="display-section">
-        <div class="section-label" id="displaySectionLabel">Price</div>
-
-        <div class="main-display">
-          <div class="price-display" id="displayCurrentItemPrice">₹0</div>
-
-          <div class="display-meta">
-            <div class="formula-display" id="displayMathFormula">Equation: --</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="selection-area" id="grocerySelectionArea">
-
-        <div class="selector-group">
-          <div class="section-label">Quote Base Weight</div>
-
-          <div class="base-weight-row-updated" id="baseWeightRow">
-            <div class="weight-btn base-btn base-selected" data-weight="0.25">250g</div>
-            <div class="weight-btn base-btn" data-weight="0.5">1/2kg</div>
-            <div class="weight-btn base-btn" data-weight="1">1Kg</div>
-          </div>
-        </div>
-
-        <div class="selector-group">
-          <div class="section-label">Buying Weight</div>
-
-          <div class="target-weight-row-custom" id="targetWeightRow">
-            <div class="weight-btn target-btn" data-weight="0.25">250g</div>
-            <div class="weight-btn target-btn" data-weight="0.5">1/2kg</div>
-            <div class="weight-btn target-btn" data-weight="1">1Kg</div>
-            <div class="weight-btn custom-inline-btn" id="openCustomWtBtn">Custom/🟰</div>
-          </div>
-        </div>
-
-      </section>
-
-      <section class="expense-selection-area" id="expenseSelectionArea" style="display: none;">
-        <button class="btn-add-expense" id="addExpenseBtn" type="button">+ Add Expense</button>
-      </section>
-
-    </main>
-
-    <section class="bottom-numpad-30" aria-label="Number keypad">
-      <div class="keypad-container" id="homeKeypad">
-        <button class="key num-key" type="button">7</button>
-        <button class="key num-key" type="button">8</button>
-        <button class="key num-key" type="button">9</button>
-
-        <button class="key num-key" type="button">4</button>
-        <button class="key num-key" id="keyFive" type="button">5☼</button>
-        <button class="key num-key" type="button">6</button>
-
-        <button class="key num-key" type="button">1</button>
-        <button class="key num-key" type="button">2</button>
-        <button class="key num-key" type="button">3</button>
-
-        <button class="key action-clear-all" id="homeClearEntryBtn" type="button">C</button>
-        <button class="key num-key" type="button">0</button>
-        <button class="key action-backspace" id="homeBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
-      </div>
-    </section>
+  <!-- ===================== OFFLINE BANNER ===================== -->
+  <div class="offline-banner" id="offlineBanner" role="status" hidden>
+    You're offline — definitions can't be loaded right now.
   </div>
 
+  <!-- ===================== STAGE ===================== -->
+  <main class="stage">
+    <section class="viewfinder" id="viewfinder" aria-label="Camera viewfinder">
+      <video id="video" class="video" playsinline autoplay muted
+             aria-label="Live camera preview"></video>
 
-  <!-- VIEW 2: CUSTOM WEIGHT SCREEN -->
-  <div class="view-container" id="customWeightView">
-
-    <section class="custom-top-60" id="customDisplayContainer">
-
-      <div class="custom-display-group">
-        <div class="custom-title">Enter Custom Weight</div>
-        <div class="custom-display" id="customDisplay">0 Kg</div>
-        <div class="custom-subdisplay" id="customSubDisplay">Equivalent: 0g</div>
+      <!-- Scanning reticle / bounding box -->
+      <div class="reticle" id="reticle" aria-hidden="true">
+        <i class="corner tl"></i>
+        <i class="corner tr"></i>
+        <i class="corner bl"></i>
+        <i class="corner br"></i>
+        <span class="reticle-label">Align the word here</span>
       </div>
 
-      <div class="custom-action-row">
-        <button class="btn-cancel" id="cancelCustomBtn" type="button">Cancel</button>
-        <button class="btn-add-cart" id="addCustomToCartBtn" type="button">Add to Cart</button>
+      <!-- Busy overlay -->
+      <div class="ocr-overlay" id="ocrOverlay" hidden>
+        <div class="spinner" role="progressbar" aria-label="Processing"></div>
+        <p id="ocrLabel">Reading…</p>
       </div>
 
+      <!-- Camera failure fallback -->
+      <div class="camera-error" id="cameraError" hidden>
+        <h2>Camera unavailable</h2>
+        <p id="cameraErrorText">We couldn't start your camera.</p>
+        <div class="row">
+          <button id="btnCameraRetry" class="btn btn-ghost" type="button">Try again</button>
+          <button id="btnCameraManual" class="btn btn-primary" type="button">Type a word</button>
+        </div>
+      </div>
+
+      <!-- Offscreen crop target -->
+      <canvas id="cropCanvas" hidden aria-hidden="true"></canvas>
     </section>
 
-    <section class="bottom-numpad-30" aria-label="Custom weight keypad">
-      <div class="keypad-container" id="customKeypad">
-        <button class="key c-num-key" type="button">7</button>
-        <button class="key c-num-key" type="button">8</button>
-        <button class="key c-num-key" type="button">9</button>
+    <div class="controls">
+      <button id="btnCapture" class="capture-btn" type="button">
+        <span class="capture-ring" aria-hidden="true"></span>
+        Capture &amp; Look Up
+      </button>
+      <p class="status-hint" id="statusHint" role="status" aria-live="polite">
+        Starting camera…
+      </p>
+    </div>
+  </main>
+</div>
 
-        <button class="key c-num-key" type="button">4</button>
-        <button class="key c-num-key" type="button">5</button>
-        <button class="key c-num-key" type="button">6</button>
+<!-- ===================== SCRIM ===================== -->
+<div class="scrim" id="scrim" aria-hidden="true"></div>
 
-        <button class="key c-num-key" type="button">1</button>
-        <button class="key c-num-key" type="button">2</button>
-        <button class="key c-num-key" type="button">3</button>
+<!-- ===================== RESULT SHEET ===================== -->
+<section class="sheet" id="resultSheet" role="dialog" aria-modal="true"
+         aria-labelledby="resultTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnResultClose" type="button" aria-label="Close definition">×</button>
+  <div class="result-body" id="resultBody"></div>
+</section>
 
-        <button class="key c-num-key" type="button">.</button>
-        <button class="key c-num-key" type="button">0</button>
-        <button class="key action-backspace" id="customBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
-      </div>
-    </section>
-  </div>
+<!-- ===================== MANUAL ENTRY SHEET ===================== -->
+<section class="sheet" id="manualSheet" role="dialog" aria-modal="true"
+         aria-labelledby="manualTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnManualClose" type="button" aria-label="Close manual entry">×</button>
+  <h2 class="sheet-title" id="manualTitle">Type a word</h2>
+  <p class="sheet-sub">Camera not available? Enter the word manually and we'll look it up.</p>
+  <form id="manualForm" novalidate>
+    <label class="sr-only" for="manualInput">Word to look up</label>
+    <input id="manualInput" class="text-input" type="text" inputmode="text"
+           autocomplete="off" autocapitalize="none" spellcheck="false"
+           maxlength="45" placeholder="e.g. serendipity" data-autofocus />
+    <p class="input-error" id="manualError" role="alert" hidden></p>
+    <button class="btn btn-primary btn-block" type="submit" id="btnManualSubmit">
+      Look up definition
+    </button>
+  </form>
+</section>
 
-
-  <!-- VIEW 3: ISOLATED CALCULATOR WINDOW -->
-  <div class="view-container" id="calculatorView">
-    <header class="calc-top-bar">
-      <button class="calc-back-btn" id="closeCalcBtn" type="button">← Back</button>
-      <div class="calc-title">Calculator</div>
-    </header>
-
-    <section class="calc-display-container">
-      <div class="calc-history-display" id="calcHistoryDisplay"></div>
-      <div class="calc-main-display" id="calcMainDisplay">0</div>
-    </section>
-
-    <section class="bottom-numpad-30" aria-label="Calculator keypad">
-      <div class="calc-keypad-container" id="calcKeypad">
-        <button class="key calc-action-clear" id="calcClearBtn" type="button">C</button>
-        <button class="key op-key" data-op="%" type="button">%</button>
-        <button class="key action-backspace" id="calcBackspaceBtn" type="button" aria-label="Backspace">⌫</button>
-        <button class="key op-key" data-op="÷" type="button">÷</button>
-
-        <button class="key calc-num-key" type="button">7</button>
-        <button class="key calc-num-key" type="button">8</button>
-        <button class="key calc-num-key" type="button">9</button>
-        <button class="key op-key" data-op="×" type="button">×</button>
-
-        <button class="key calc-num-key" type="button">4</button>
-        <button class="key calc-num-key" type="button">5</button>
-        <button class="key calc-num-key" type="button">6</button>
-        <button class="key op-key" data-op="-" type="button">-</button>
-
-        <button class="key calc-num-key" type="button">1</button>
-        <button class="key calc-num-key" type="button">2</button>
-        <button class="key calc-num-key" type="button">3</button>
-        <button class="key op-key" data-op="+" type="button">+</button>
-
-        <button class="key calc-num-key" type="button">0</button>
-        <button class="key calc-num-key" type="button">00</button>
-        <button class="key calc-num-key" type="button">.</button>
-        <button class="key calc-equals" id="calcEqualsBtn" type="button">=</button>
-      </div>
-    </section>
-  </div>
-
-
-  <!-- QUICK-NAME PROMPT MODAL (dual chip sets) -->
-  <div class="modal" id="itemNameModal" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <div class="cart-title">Item Name (Optional)</div>
-      
-      <input 
-        type="text" 
-        id="itemNameInput" 
-        class="name-input-field" 
-        placeholder="e.g. Tomato, Onion, Apple..." 
-        readonly 
-      />
-
-      <div class="quick-chips-row" id="quickChipsContainer">
-        <button class="chip-btn" type="button" data-name="Tomato">Tomato</button>
-        <button class="chip-btn" type="button" data-name="Potato">Potato</button>
-        <button class="chip-btn" type="button" data-name="Onion">Onion</button>
-        
-        <select class="chip-dropdown-select" id="moreItemsDropdown" aria-label="More grocery items">
-          <option value="" disabled selected hidden>More...</option>
-          <option value="Garlic">Garlic</option>
-          <option value="Green Garlic">Green Garlic</option>
-          <option value="Green Onion">Green Onion</option>
-          <option value="Gobhi">Gobhi</option>
-          <option value="Cabbge">Cabbge</option>
-          <option value="Palak">Palak</option>
-          <option value="Saag">Saag</option>
-          <option value="Carrot">Carrot</option>
-          <option value="Bengan">Bengan</option>
-          <option value="Bhindi">Bhindi</option>
-          <option value="Ghiya">Ghiya</option>
-          <option value="Tori">Tori</option>
-          <option value="Radish">Radish</option>
-          <option value="Kathal">Kathal</option>
-          <option value="Beans">Beans</option>
-          <option value="Green Chilli">Green Chilli</option>
-          <option value="Lemon">Lemon</option>
-          <option value="Apple">Apple</option>
-          <option value="Papaya">Papaya</option>
-          <option value="Amrud">Amrud</option>
-          <option value="Anaar">Anaar</option>
-        </select>
-      </div>
-
-      <div class="quick-chips-row" id="expenseChipsContainer" style="display: none;">
-        <button class="chip-btn" type="button" data-name="Cab">Cab</button>
-        <button class="chip-btn" type="button" data-name="Auto">Auto</button>
-        <button class="chip-btn" type="button" data-name="Food">Food</button>
-
-        <select class="chip-dropdown-select" id="moreExpenseDropdown" aria-label="More expense categories">
-          <option value="" disabled selected hidden>More...</option>
-          <option value="Stationery">Stationery</option>
-          <option value="Cosmetics">Cosmetics</option>
-          <option value="Medicine">Medicine</option>
-          <option value="Snacks">Snacks</option>
-          <option value="Tea/Coffee">Tea/Coffee</option>
-          <option value="Parking">Parking</option>
-          <option value="Toll">Toll</option>
-          <option value="Misc">Misc</option>
-        </select>
-      </div>
-
-      <div class="modal-action-row">
-        <button class="btn-cancel" id="skipItemNameBtn" type="button">Skip</button>
-        <button class="btn-add-cart" id="confirmItemNameBtn" type="button">Add</button>
-      </div>
+<!-- ===================== ERROR MODAL ===================== -->
+<div class="modal" id="errorModal" role="alertdialog" aria-modal="true"
+     aria-labelledby="errorTitle" aria-describedby="errorText" hidden>
+  <div class="modal-card">
+    <div class="modal-icon" aria-hidden="true">!</div>
+    <h2 class="modal-title" id="errorTitle">Something went wrong</h2>
+    <p class="modal-text" id="errorText"></p>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-block" type="button" id="errorRetry" hidden>Retry</button>
+      <button class="btn btn-ghost btn-block" type="button" id="errorDismiss">Dismiss</button>
     </div>
   </div>
+</div>
 
+<!-- ===================== TOAST ===================== -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- CART & VENDOR DASHBOARD MODAL -->
-  <div class="modal" id="cartModal" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
-    <div class="modal-content">
+<script type="module">
+/* ==========================================================================
+ * ScanLex — Visual Scan Dictionary
+ * --------------------------------------------------------------------------
+ * Layered architecture:
+ *   CONFIG        → single source of truth (selectors, endpoints, limits)
+ *   UI            → DOM rendering, overlays, sheets, modals, toasts
+ *   CameraService → MediaDevices lifecycle & hardware fallbacks
+ *   OCRService    → Tesseract.js worker, frame cropping, text sanitisation
+ *   DictionarySvc → Free Dictionary API client with timeout + typed errors
+ *   App           → orchestrator / state machine
+ * ========================================================================== */
 
-      <div class="cart-title-row">
-        <h3 class="cart-title" id="cartTitle">Purchase Dashboard</h3>
-        <span class="cart-count" id="cartCountLabel">0 items</span>
-      </div>
+/* ==========================================================================
+ * 1. CONFIGURATION — no magic strings or endpoints anywhere else
+ * ========================================================================== */
+const CONFIG = Object.freeze({
+  API: Object.freeze({
+    BASE_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
+    TIMEOUT_MS: 8000,
+    HEADERS: Object.freeze({ Accept: 'application/json' })
+  }),
 
-      <div class="cart-scroll-container">
+  CAMERA: Object.freeze({
+    IDEAL_WIDTH: 1920,
+    IDEAL_HEIGHT: 1080,
+    DEFAULT_FACING: 'environment',
+    ALTERNATE_FACING: 'user'
+  }),
 
-        <div class="dashboard-container">
-          <div class="dashboard-title">Vendor Summary Dashboard</div>
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th style="text-align: center;">Items</th>
-                <th style="text-align: center;">Total Wt</th>
-                <th style="text-align: right;">Total Price</th>
-              </tr>
-            </thead>
-            <tbody id="dashboardTableBody">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
+  OCR: Object.freeze({
+    CDN_URL: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+    LANGUAGE: 'eng',
+    OEM: 1,                 // LSTM only — fastest & most accurate for books
+    PAGE_SEG_MODE: '6',     // Assume a single uniform block of text
+    TARGET_CROP_WIDTH: 900, // Upscale small crops for better recognition
+    MAX_CROP_WIDTH: 2000,
+    MIN_WORD_LENGTH: 2,
+    MAX_WORD_LENGTH: 45
+  }),
 
-        <div id="vendorCartList"></div>
-        <div id="expenseListContainer"></div>
+  UI: Object.freeze({
+    MAX_MEANINGS: 3,
+    MAX_DEFINITIONS_PER_MEANING: 3,
+    MAX_SYNONYMS: 4,
+    TOAST_MS: 2600
+  }),
 
-        <div class="cart-empty" id="cartEmptyMessage">
-          Your cart is empty.
-        </div>
-      </div>
+  SELECTORS: Object.freeze({
+    viewfinder:     '#viewfinder',
+    video:          '#video',
+    reticle:        '#reticle',
+    cropCanvas:     '#cropCanvas',
+    ocrOverlay:     '#ocrOverlay',
+    ocrLabel:       '#ocrLabel',
+    cameraError:    '#cameraError',
+    cameraErrorText:'#cameraErrorText',
+    btnCameraRetry: '#btnCameraRetry',
+    btnCameraManual:'#btnCameraManual',
+    btnCapture:     '#btnCapture',
+    btnSwitch:      '#btnSwitch',
+    btnManual:      '#btnManual',
+    statusHint:     '#statusHint',
+    scrim:          '#scrim',
+    resultSheet:    '#resultSheet',
+    resultBody:     '#resultBody',
+    btnResultClose: '#btnResultClose',
+    manualSheet:    '#manualSheet',
+    manualForm:     '#manualForm',
+    manualInput:    '#manualInput',
+    manualError:    '#manualError',
+    btnManualClose: '#btnManualClose',
+    errorModal:     '#errorModal',
+    errorTitle:     '#errorTitle',
+    errorText:      '#errorText',
+    errorRetry:     '#errorRetry',
+    errorDismiss:   '#errorDismiss',
+    toast:          '#toast',
+    offlineBanner:  '#offlineBanner'
+  }),
 
-      <div class="cart-modal-actions">
-        <button class="btn-clear-cart" id="clearAllCartBtn" type="button">Clear Cart</button>
-        <button class="btn-share-cart" id="shareDashboardBtn" type="button">Share Image</button>
-        <button class="close-modal-btn" id="closeCartBtn" type="button">Back</button>
-      </div>
+  STORAGE_KEYS: Object.freeze({
+    LAST_WORD: 'scanlex.lastWord'
+  })
+});
 
-    </div>
-  </div>
+/* ==========================================================================
+ * 2. ERROR MODEL & USER-FACING COPY
+ * ========================================================================== */
+class AppError extends Error {
+  /**
+   * @param {string} code    Machine-readable error code.
+   * @param {string} message Human-readable message.
+   * @param {{retryable?: boolean, cause?: unknown}} [options]
+   */
+  constructor(code, message, options = {}) {
+    super(message);
+    this.name = 'AppError';
+    this.code = code;
+    this.retryable = Boolean(options.retryable);
+    this.cause = options.cause;
+  }
+}
 
+const MESSAGES = Object.freeze({
+  CAMERA_INSECURE:  'Camera access requires a secure (HTTPS) connection.',
+  CAMERA_UNSUPPORTED: 'This browser does not support camera capture.',
+  CAMERA_DENIED:    'Camera permission was denied. You can still type a word manually.',
+  CAMERA_NOT_FOUND: 'No camera was found on this device.',
+  CAMERA_BUSY:      'The camera is being used by another app. Close it and try again.',
+  CAMERA_FAILED:    'The camera could not be started.',
+  CAMERA_NOT_READY: 'The camera is still warming up. Give it a moment and try again.',
+  OCR_LIB:          'The text-recognition engine could not be loaded. Check your connection.',
+  OCR_FAILED:       'Text recognition failed. Try again with steadier lighting.',
+  OCR_EMPTY:        'No readable text was found in the frame. Line up a word and try again.',
+  OFFLINE:          'You appear to be offline. Reconnect to look up definitions.',
+  TIMEOUT:          'The dictionary request timed out. Please try again.',
+  NETWORK:          'A network error occurred while contacting the dictionary.',
+  NOT_FOUND:        'No definition was found for that word.',
+  HTTP_ERROR:       'The dictionary service returned an unexpected response.',
+  BAD_WORD:         'Please enter a single word using letters only.'
+});
 
-  <script>
-    /* STORAGE KEYS */
-    const STORAGE_KEY = "grocery_calc_pos_data_v1";
+/* ==========================================================================
+ * 3. SMALL UTILITIES
+ * ========================================================================== */
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    /* CORE STATE */
-    let appMode = "grocery";
-    let activeVendor = 1;
-    let priceInput = "";
-    let customWeightInput = "";
-    let baseWeight = 0.25;
-    let pendingTargetWeight = null;
-    let pendingExpenseAmount = null;
-    let itemCounter = 1;
-    let isLightTheme = false;
-    let cart = [];
+/**
+ * Minimal hyperscript helper — safe by construction (never injects HTML).
+ * @param {string} tag
+ * @param {Object} [props]
+ * @param {...(Node|string|null|Array)} children
+ * @returns {HTMLElement}
+ */
+function h(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
 
-    /* DOM REFERENCES */
-    const homeView = document.getElementById("homeView");
-    const customWeightView = document.getElementById("customWeightView");
-    const calculatorView = document.getElementById("calculatorView");
+  for (const [key, value] of Object.entries(props)) {
+    if (value === null || value === undefined || value === false) continue;
 
-    const displayCurrentItemPrice = document.getElementById("displayCurrentItemPrice");
-    const displayMathFormula = document.getElementById("displayMathFormula");
-    const displaySectionLabel = document.getElementById("displaySectionLabel");
-    const headerVendorQuote = document.getElementById("headerVendorQuote");
-    const vendorQuoteLabel = document.getElementById("vendorQuoteLabel");
-    const vendorSelectDropdown = document.getElementById("vendorSelectDropdown");
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = String(value);
+    else if (key === 'dataset') Object.assign(node.dataset, value);
+    else if (key.startsWith('on') && typeof value === 'function') {
+      node.addEventListener(key.slice(2).toLowerCase(), value);
+    } else {
+      node.setAttribute(key, value === true ? '' : String(value));
+    }
+  }
 
-    const groceryModeBtn = document.getElementById("groceryModeBtn");
-    const expenseModeBtn = document.getElementById("expenseModeBtn");
-    const grocerySelectionArea = document.getElementById("grocerySelectionArea");
-    const expenseSelectionArea = document.getElementById("expenseSelectionArea");
-    const addExpenseBtn = document.getElementById("addExpenseBtn");
+  for (const child of children.flat(Infinity)) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
 
-    const homeKeypad = document.getElementById("homeKeypad");
-    const keyFive = document.getElementById("keyFive");
-    const homeBackspaceBtn = document.getElementById("homeBackspaceBtn");
-    const homeClearEntryBtn = document.getElementById("homeClearEntryBtn");
+  return node;
+}
 
-    const openCustomWtBtn = document.getElementById("openCustomWtBtn");
-    const baseWeightRow = document.getElementById("baseWeightRow");
-    const targetWeightRow = document.getElementById("targetWeightRow");
+/** Inline SVG icon set (static, trusted markup). */
+const ICONS = Object.freeze({
+  speaker:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>' +
+    '<path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+});
 
-    const customDisplay = document.getElementById("customDisplay");
-    const customSubDisplay = document.getElementById("customSubDisplay");
-    const customKeypad = document.getElementById("customKeypad");
-    const customBackspaceBtn = document.getElementById("customBackspaceBtn");
-    const cancelCustomBtn = document.getElementById("cancelCustomBtn");
-    const addCustomToCartBtn = document.getElementById("addCustomToCartBtn");
+/** DOM cache — populated once during init, then locked. */
+const DOM = {};
 
-    const closeCalcBtn = document.getElementById("closeCalcBtn");
-    const calcHistoryDisplay = document.getElementById("calcHistoryDisplay");
-    const calcMainDisplay = document.getElementById("calcMainDisplay");
-    const calcKeypad = document.getElementById("calcKeypad");
-    const calcClearBtn = document.getElementById("calcClearBtn");
-    const calcBackspaceBtn = document.getElementById("calcBackspaceBtn");
-    const calcEqualsBtn = document.getElementById("calcEqualsBtn");
+function cacheDom() {
+  for (const [key, selector] of Object.entries(CONFIG.SELECTORS)) {
+    const node = document.querySelector(selector);
+    if (!node) throw new Error(`[ScanLex] Missing DOM node "${key}" (${selector})`);
+    DOM[key] = node;
+  }
+  Object.freeze(DOM); // Lock AFTER population to prevent accidental re-assignment.
+}
 
-    const cartBtnTitle = document.getElementById("cartBtnTitle");
-    const cartBtnSub = document.getElementById("cartBtnSub");
-    const cartCountLabel = document.getElementById("cartCountLabel");
-    const openCartBtn = document.getElementById("openCartBtn");
-    const cartModal = document.getElementById("cartModal");
-    const closeCartBtn = document.getElementById("closeCartBtn");
-    const clearAllCartBtn = document.getElementById("clearAllCartBtn");
-    const shareDashboardBtn = document.getElementById("shareDashboardBtn");
-    const cartEmptyMessage = document.getElementById("cartEmptyMessage");
-    const dashboardTableBody = document.getElementById("dashboardTableBody");
-    const vendorCartList = document.getElementById("vendorCartList");
-    const expenseListContainer = document.getElementById("expenseListContainer");
+/* ==========================================================================
+ * 4. UI LAYER — all DOM mutation lives here
+ * ========================================================================== */
+const UI = (() => {
+  let toastTimer = null;
+  let lastFocused = null;
+  let retryHandler = null;
 
-    const itemNameModal = document.getElementById("itemNameModal");
-    const itemNameInput = document.getElementById("itemNameInput");
-    const quickChipsContainer = document.getElementById("quickChipsContainer");
-    const expenseChipsContainer = document.getElementById("expenseChipsContainer");
-    const moreItemsDropdown = document.getElementById("moreItemsDropdown");
-    const moreExpenseDropdown = document.getElementById("moreExpenseDropdown");
-    const skipItemNameBtn = document.getElementById("skipItemNameBtn");
-    const confirmItemNameBtn = document.getElementById("confirmItemNameBtn");
+  /* ---- Status ---------------------------------------------------------- */
+  function setStatus(text) {
+    DOM.statusHint.textContent = text;
+  }
 
-    /* PERSISTENCE HELPERS */
-    function saveStateToStorage() {
+  /* ---- Busy overlay ---------------------------------------------------- */
+  function setBusy(isBusy, label) {
+    DOM.ocrOverlay.hidden = !isBusy;
+    if (label) DOM.ocrLabel.textContent = label;
+    DOM.btnCapture.disabled = isBusy;
+    DOM.btnCapture.setAttribute('aria-busy', String(isBusy));
+  }
+
+  /* ---- Overlay awareness ----------------------------------------------- */
+  function isOverlayOpen() {
+    return (
+      DOM.resultSheet.classList.contains('is-open') ||
+      DOM.manualSheet.classList.contains('is-open') ||
+      !DOM.errorModal.hidden
+    );
+  }
+
+  function updateScrim() {
+    const open = DOM.resultSheet.classList.contains('is-open') ||
+                 DOM.manualSheet.classList.contains('is-open');
+    DOM.scrim.classList.toggle('is-open', open);
+  }
+
+  /* ---- Sheets ---------------------------------------------------------- */
+  function openSheet(sheet) {
+    lastFocused = document.activeElement;
+    sheet.classList.add('is-open');
+    updateScrim();
+
+    const focusTarget =
+      sheet.querySelector('[data-autofocus]') ||
+      sheet.querySelector('.sheet-close');
+    // Defer so the CSS transition isn't interrupted by scrolling.
+    requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
+  }
+
+  function closeSheet(sheet) {
+    sheet.classList.remove('is-open');
+    updateScrim();
+    if (lastFocused && typeof lastFocused.focus === 'function') {
+      lastFocused.focus({ preventScroll: true });
+      lastFocused = null;
+    }
+  }
+
+  function closeAllSheets() {
+    [DOM.resultSheet, DOM.manualSheet].forEach((sheet) => {
+      if (sheet.classList.contains('is-open')) closeSheet(sheet);
+    });
+  }
+
+  /* ---- Toast ----------------------------------------------------------- */
+  function toast(message) {
+    if (!message) return;
+    DOM.toast.textContent = message;
+    DOM.toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      DOM.toast.classList.remove('is-visible');
+    }, CONFIG.UI.TOAST_MS);
+  }
+
+  /* ---- Error modal ----------------------------------------------------- */
+  /**
+   * @param {{title: string, message: string, retryLabel?: string,
+   *          onRetry?: (() => void)|null}} params
+   */
+  function showError({ title, message, retryLabel, onRetry }) {
+    DOM.errorTitle.textContent = title;
+    DOM.errorText.textContent = message;
+
+    retryHandler = typeof onRetry === 'function' ? onRetry : null;
+    DOM.errorRetry.hidden = !retryHandler;
+    if (retryHandler) DOM.errorRetry.textContent = retryLabel || 'Retry';
+
+    DOM.errorModal.hidden = false;
+    updateScrim();
+
+    requestAnimationFrame(() => {
+      (retryHandler ? DOM.errorRetry : DOM.errorDismiss).focus({ preventScroll: true });
+    });
+  }
+
+  function hideError() {
+    DOM.errorModal.hidden = true;
+    retryHandler = null;
+    updateScrim();
+  }
+
+  function triggerRetry() {
+    const handler = retryHandler;
+    hideError();
+    if (handler) handler();
+  }
+
+  /* ---- Camera error panel ---------------------------------------------- */
+  function showCameraError(message) {
+    DOM.cameraErrorText.textContent = message;
+    DOM.cameraError.hidden = false;
+  }
+
+  function hideCameraError() {
+    DOM.cameraError.hidden = true;
+  }
+
+  /* ---- Offline banner -------------------------------------------------- */
+  function setOffline(isOffline) {
+    DOM.offlineBanner.hidden = !isOffline;
+  }
+
+  /* ---- Manual entry ---------------------------------------------------- */
+  function showInputError(message) {
+    DOM.manualError.textContent = message;
+    DOM.manualError.hidden = false;
+    DOM.manualInput.setAttribute('aria-invalid', 'true');
+    DOM.manualInput.focus({ preventScroll: true });
+  }
+
+  function clearInputError() {
+    DOM.manualError.hidden = true;
+    DOM.manualError.textContent = '';
+    DOM.manualInput.removeAttribute('aria-invalid');
+  }
+
+  /* ---- Result rendering ------------------------------------------------ */
+  function playAudio(url) {
+    try {
+      const audio = new Audio(url);
+      const promise = audio.play();
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(() => toast('Pronunciation is unavailable right now.'));
+      }
+    } catch {
+      toast('Pronunciation is unavailable right now.');
+    }
+  }
+
+  /**
+   * Renders a normalised dictionary entry into the result sheet.
+   * @param {{word: string, phonetic: string, audio: string, meanings: Array}} entry
+   * @param {{onScanAnother: Function, onTypeWord: Function}} actions
+   */
+  function renderResult(entry, actions) {
+    const nodes = [];
+
+    /* Header: word + phonetics + pronunciation button */
+    const headText = h('div', { class: 'result-head-text' },
+      h('h2', { class: 'result-word', id: 'resultTitle', text: entry.word }),
+      entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null
+    );
+
+    const head = h('div', { class: 'result-head' }, headText);
+
+    if (entry.audio) {
+      const audioBtn = h('button', {
+        class: 'audio-btn',
+        type: 'button',
+        'aria-label': `Play pronunciation of ${entry.word}`,
+        onClick: () => playAudio(entry.audio)
+      });
+      audioBtn.innerHTML = ICONS.speaker; // static, trusted markup
+      head.append(audioBtn);
+    }
+    nodes.push(head);
+
+    /* Meanings */
+    if (!entry.meanings.length) {
+      nodes.push(h('p', {
+        class: 'result-empty',
+        text: 'No definitions were returned for this word.'
+      }));
+    }
+
+    for (const meaning of entry.meanings) {
+      nodes.push(
+        h('section', { class: 'meaning' },
+          h('span', { class: 'pos-badge', text: meaning.partOfSpeech || 'definition' }),
+          h('ol', { class: 'def-list' },
+            ...meaning.definitions.map((def) =>
+              h('li', {},
+                h('span', { class: 'def-text', text: def.definition }),
+                def.example ? h('em', { class: 'example', text: `“${def.example}”` }) : null
+              )
+            )
+          )
+        )
+      );
+    }
+
+    /* Actions */
+    nodes.push(
+      h('div', { class: 'result-actions' },
+        h('button', {
+          class: 'btn btn-ghost',
+          type: 'button',
+          text: 'Scan another',
+          onClick: actions.onScanAnother
+        }),
+        h('button', {
+          class: 'btn btn-ghost',
+          type: 'button',
+          text: 'Type a word',
+          onClick: actions.onTypeWord
+        })
+      )
+    );
+
+    DOM.resultBody.replaceChildren(...nodes);
+  }
+
+  /* ---- Bindings --------------------------------------------------------- */
+  function bindEvents(handlers) {
+    DOM.btnCapture.addEventListener('click', handlers.onCapture);
+    DOM.btnManual.addEventListener('click', handlers.onManualRequest);
+    DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
+    DOM.btnCameraRetry.addEventListener('click', handlers.onCameraRetry);
+    DOM.btnSwitch.addEventListener('click', handlers.onSwitchCamera);
+
+    DOM.btnResultClose.addEventListener('click', handlers.onCloseResult);
+    DOM.btnManualClose.addEventListener('click', handlers.onCloseManual);
+    DOM.scrim.addEventListener('click', handlers.onScrimClick);
+
+    DOM.manualForm.addEventListener('submit', handlers.onManualSubmit);
+    DOM.manualInput.addEventListener('input', clearInputError);
+
+    DOM.errorRetry.addEventListener('click', triggerRetry);
+    DOM.errorDismiss.addEventListener('click', () => {
+      hideError();
+      handlers.onErrorDismissed?.();
+    });
+
+    // Keyboard affordances for dialogs.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!DOM.errorModal.hidden) {
+        hideError();
+        handlers.onErrorDismissed?.();
+      } else if (DOM.manualSheet.classList.contains('is-open')) {
+        handlers.onCloseManual();
+      } else if (DOM.resultSheet.classList.contains('is-open')) {
+        handlers.onCloseResult();
+      }
+    });
+  }
+
+  return {
+    setStatus,
+    setBusy,
+    isOverlayOpen,
+    openSheet,
+    closeSheet,
+    closeAllSheets,
+    toast,
+    showError,
+    hideError,
+    showCameraError,
+    hideCameraError,
+    setOffline,
+    showInputError,
+    clearInputError,
+    renderResult,
+    bindEvents
+  };
+})();
+
+/* ==========================================================================
+ * 5. CAMERA SERVICE
+ * ========================================================================== */
+const CameraService = (() => {
+  /** @type {MediaStream|null} */
+  let stream = null;
+  /** @type {HTMLVideoElement|null} */
+  let videoEl = null;
+  let facingMode = CONFIG.CAMERA.DEFAULT_FACING;
+  let paused = false;
+
+  /** Translates a DOMException from getUserMedia into an AppError. */
+  function translateError(error) {
+    const name = error && error.name;
+
+    switch (name) {
+      case 'NotAllowedError':
+      case 'PermissionDeniedError':
+      case 'SecurityError':
+        return new AppError('CAMERA_DENIED', MESSAGES.CAMERA_DENIED, { cause: error });
+      case 'NotFoundError':
+      case 'DevicesNotFoundError':
+      case 'OverconstrainedError':
+        return new AppError('CAMERA_NOT_FOUND', MESSAGES.CAMERA_NOT_FOUND, { cause: error });
+      case 'NotReadableError':
+      case 'TrackStartError':
+      case 'AbortError':
+        return new AppError('CAMERA_BUSY', MESSAGES.CAMERA_BUSY, { cause: error });
+      default:
+        return new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED, { cause: error });
+    }
+  }
+
+  /** Resolves once the video element knows its intrinsic dimensions. */
+  function waitForMetadata(video) {
+    if (video.readyState >= 1 && video.videoWidth > 0) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY));
+      }, 10000);
+
+      function onLoaded() {
+        cleanup();
+        resolve();
+      }
+
+      function cleanup() {
+        clearTimeout(timeout);
+        video.removeEventListener('loadedmetadata', onLoaded);
+        video.removeEventListener('error', onError);
+      }
+
+      function onError() {
+        cleanup();
+        reject(new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED));
+      }
+
+      video.addEventListener('loadedmetadata', onLoaded, { once: true });
+      video.addEventListener('error', onError, { once: true });
+    });
+  }
+
+  /**
+   * Starts (or restarts) the camera stream.
+   * @param {HTMLVideoElement} video
+   * @returns {Promise<MediaStream>}
+   */
+  async function start(video) {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      throw new AppError(
+        window.isSecureContext ? 'CAMERA_UNSUPPORTED' : 'CAMERA_INSECURE',
+        window.isSecureContext ? MESSAGES.CAMERA_UNSUPPORTED : MESSAGES.CAMERA_INSECURE
+      );
+    }
+
+    videoEl = video;
+    await stop(); // Never leak an existing stream.
+
+    const preferredConstraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH },
+        height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT }
+      }
+    };
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
+    } catch (error) {
+      // Graceful degradation: retry without the ideal constraints.
       try {
-        const payload = {
-          cart,
-          itemCounter,
-          activeVendor,
-          baseWeight,
-          priceInput,
-          isLightTheme
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      } catch (e) {
-        console.error("Failed to save state to localStorage:", e);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+      } catch {
+        throw translateError(error);
       }
     }
 
-    function loadStateFromStorage() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          applyTheme();
-          return;
-        }
+    videoEl.srcObject = stream;
+    videoEl.setAttribute('playsinline', '');
+    videoEl.muted = true;
 
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.cart)) {
-          cart = data.cart.map(item => {
-            if (item.isExpense) return item;
-
-            if (item.quotePrice === undefined && item.quote) {
-              const match = item.quote.match(/₹([\d.]+)\/(.+)/);
-              if (match) {
-                const price = parseFloat(match[1]);
-                const baseLabel = match[2];
-                let baseWeightParsed = 0.25;
-                if (baseLabel.endsWith('g') && !baseLabel.endsWith('kg')) {
-                  baseWeightParsed = parseFloat(baseLabel) / 1000;
-                } else if (baseLabel.endsWith('Kg') || baseLabel.endsWith('kg')) {
-                  baseWeightParsed = parseFloat(baseLabel);
-                }
-                return { ...item, quotePrice: price, baseWeight: baseWeightParsed };
-              }
-            }
-            if (item.quotePrice === undefined) item.quotePrice = 0;
-            if (item.baseWeight === undefined) item.baseWeight = 0.25;
-            return item;
-          });
-        }
-        if (typeof data.itemCounter === "number") itemCounter = data.itemCounter;
-        if (typeof data.activeVendor === "number") activeVendor = data.activeVendor;
-        if (typeof data.baseWeight === "number") baseWeight = data.baseWeight;
-        if (typeof data.priceInput === "string") priceInput = data.priceInput;
-        if (typeof data.isLightTheme === "boolean") isLightTheme = data.isLightTheme;
-
-        if (![0.25, 0.5, 1].includes(baseWeight)) {
-          baseWeight = 0.25;
-        }
-
-        applyTheme();
-
-        if (vendorSelectDropdown) {
-          vendorSelectDropdown.value = activeVendor.toString();
-        }
-
-        syncBaseWeightUI();
-
-      } catch (e) {
-        console.error("Failed to restore state from localStorage:", e);
-        applyTheme();
-      }
+    try {
+      await videoEl.play();
+    } catch {
+      /* Autoplay may be deferred — metadata wait below handles readiness. */
     }
 
-    /* THEME SWITCHER LOGIC (LONG PRESS ON '5') */
-    function applyTheme() {
-      const metaTheme = document.getElementById("metaThemeColor");
-      if (isLightTheme) {
-        document.body.classList.add("light-theme");
-        if (metaTheme) metaTheme.setAttribute("content", "#f2f2f7");
-        keyFive.textContent = "5☀︎";
-      } else {
-        document.body.classList.remove("light-theme");
-        if (metaTheme) metaTheme.setAttribute("content", "#000000");
-        keyFive.textContent = "5☼";
-      }
-    }
+    await waitForMetadata(videoEl);
 
-    function toggleTheme() {
-      isLightTheme = !isLightTheme;
-      applyTheme();
-      saveStateToStorage();
-      showTemporaryMessage(`Switched to ${isLightTheme ? 'Light' : 'Dark'} Mode`);
-    }
-
-    let pressTimer = null;
-    let isLongPress = false;
-
-    function startPress() {
-      isLongPress = false;
-      pressTimer = setTimeout(() => {
-        isLongPress = true;
-        toggleTheme();
-      }, 600);
-    }
-
-    function cancelPress() {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    }
-
-    keyFive.addEventListener("pointerdown", startPress);
-    keyFive.addEventListener("pointerup", cancelPress);
-    keyFive.addEventListener("pointerleave", cancelPress);
-    keyFive.addEventListener("pointercancel", cancelPress);
-
-    /* LONG PRESS ON CUSTOM BUTTON → CALCULATOR */
-    let customPressTimer = null;
-    let isCustomLongPress = false;
-
-    function startCustomPress() {
-      isCustomLongPress = false;
-      customPressTimer = setTimeout(() => {
-        isCustomLongPress = true;
-        openCalculatorWindow();
-      }, 600);
-    }
-
-    function cancelCustomPress() {
-      if (customPressTimer) {
-        clearTimeout(customPressTimer);
-        customPressTimer = null;
-      }
-    }
-
-    openCustomWtBtn.addEventListener("pointerdown", startCustomPress);
-    openCustomWtBtn.addEventListener("pointerup", cancelCustomPress);
-    openCustomWtBtn.addEventListener("pointerleave", cancelCustomPress);
-    openCustomWtBtn.addEventListener("pointercancel", cancelCustomPress);
-
-    function syncBaseWeightUI() {
-      document.querySelectorAll(".base-btn").forEach((b) => {
-        b.classList.remove("base-selected");
-        if (parseFloat(b.dataset.weight) === baseWeight) {
-          b.classList.add("base-selected");
+    paused = false;
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = true;
+      // Release hardware resources when the track ends unexpectedly.
+      track.addEventListener('ended', () => {
+        if (stream && stream.getVideoTracks().every((t) => t.readyState === 'ended')) {
+          stream = null;
         }
       });
+    });
+
+    return stream;
+  }
+
+  /** Fully stops the stream and releases hardware. */
+  async function stop() {
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch { /* noop */ }
+      });
+      stream = null;
     }
-
-    /* DISPLAY HELPERS */
-    function formatWeight(weightKg) {
-      if (weightKg < 1) return `${Math.round(weightKg * 1000)}g`;
-      return `${weightKg.toFixed(2)}Kg`;
+    if (videoEl) {
+      videoEl.pause();
+      videoEl.srcObject = null;
     }
+    paused = false;
+  }
 
-    function formatBaseWeight(weightKg) {
-      return weightKg >= 1 ? `${weightKg}Kg` : `${Math.round(weightKg * 1000)}g`;
+  /** Temporarily disables the track (battery / thermal protection). */
+  function pause() {
+    if (!stream || paused) return;
+    stream.getVideoTracks().forEach((track) => { track.enabled = false; });
+    if (videoEl) videoEl.pause();
+    paused = true;
+  }
+
+  /** Re-enables a paused track. */
+  function resume() {
+    if (!stream || !paused) return;
+    stream.getVideoTracks().forEach((track) => { track.enabled = true; });
+    if (videoEl) videoEl.play().catch(() => { /* ignore */ });
+    paused = false;
+  }
+
+  /** Flips between the rear and front camera. */
+  async function switchCamera() {
+    if (!videoEl) return;
+    facingMode = facingMode === CONFIG.CAMERA.DEFAULT_FACING
+      ? CONFIG.CAMERA.ALTERNATE_FACING
+      : CONFIG.CAMERA.DEFAULT_FACING;
+    await start(videoEl);
+  }
+
+  /** @returns {boolean} */
+  function isActive() {
+    return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+
+  /** @returns {Promise<number>} number of available video inputs */
+  async function countCameras() {
+    try {
+      if (!navigator.mediaDevices?.enumerateDevices) return 0;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'videoinput').length;
+    } catch {
+      return 0;
     }
-
-    function formatWeightForEdit(weightKg) {
-      if (weightKg < 1) return `${Math.round(weightKg * 1000)}g`;
-      return `${parseFloat(weightKg.toFixed(2))}Kg`;
-    }
-
-    function parseWeightInput(str) {
-      str = str.trim().toLowerCase();
-      if (!str) return null;
-
-      if (str.endsWith('g') && !str.endsWith('kg')) {
-        const num = parseFloat(str.slice(0, -1));
-        if (isNaN(num)) return null;
-        return num / 1000;
-      }
-      if (str.endsWith('kg')) {
-        const num = parseFloat(str.slice(0, -2));
-        if (isNaN(num)) return null;
-        return num;
-      }
-      const num = parseFloat(str);
-      if (isNaN(num)) return null;
-      return num >= 10 ? num / 1000 : num;
-    }
-
-    /* MODE TOGGLE */
-    function setAppMode(mode) {
-      appMode = mode;
-
-      if (mode === "grocery") {
-        groceryModeBtn.classList.add("mode-btn-active");
-        expenseModeBtn.classList.remove("mode-btn-active");
-        grocerySelectionArea.style.display = "";
-        expenseSelectionArea.style.display = "none";
-        displaySectionLabel.textContent = "Price";
-      } else {
-        expenseModeBtn.classList.add("mode-btn-active");
-        groceryModeBtn.classList.remove("mode-btn-active");
-        grocerySelectionArea.style.display = "none";
-        expenseSelectionArea.style.display = "";
-        displaySectionLabel.textContent = "Expense Amount";
-      }
-
-      updateHomeDisplay();
-      renderCart();
-    }
-
-    groceryModeBtn.addEventListener("click", () => setAppMode("grocery"));
-    expenseModeBtn.addEventListener("click", () => setAppMode("expense"));
-
-    /* VENDOR SWITCH */
-    vendorSelectDropdown.addEventListener("change", (e) => {
-      activeVendor = parseInt(e.target.value, 10);
-      vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
-      
-      priceInput = "";
-      displayCurrentItemPrice.textContent = "₹0";
-      displayCurrentItemPrice.classList.remove("has-input");
-
-      updateHomeDisplay();
-      renderCart();
-      saveStateToStorage();
-      
-      showTemporaryMessage(`Switched to Vendor ${activeVendor}`);
-    });
-
-    function updateHomeDisplay() {
-      if (appMode === "grocery") {
-        vendorQuoteLabel.textContent = `Vendor ${activeVendor} Price`;
-        headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
-
-        if (priceInput && parseFloat(priceInput) > 0) {
-          const val = parseFloat(priceInput);
-          const bLabel = formatBaseWeight(baseWeight);
-          displayCurrentItemPrice.textContent = `₹${val}`;
-          displayCurrentItemPrice.classList.add("has-input");
-          displayMathFormula.textContent = `(₹${val} ÷ ${bLabel}) × Target Wt`;
-        } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
-          displayMathFormula.textContent = `Equation: (Price ÷ ${formatBaseWeight(baseWeight)}) × Wt`;
-        }
-      } else {
-        vendorQuoteLabel.textContent = `Daily Expense Amount`;
-        headerVendorQuote.textContent = priceInput ? `₹${priceInput}` : "₹0";
-
-        if (priceInput && parseFloat(priceInput) > 0) {
-          displayCurrentItemPrice.textContent = `₹${priceInput}`;
-          displayCurrentItemPrice.classList.add("has-input");
-          displayMathFormula.textContent = `Tap "+ Add Expense" to record`;
-        } else if (!displayCurrentItemPrice.classList.contains("has-input")) {
-          displayMathFormula.textContent = `Enter amount, then tap "+ Add Expense"`;
-        }
-      }
-    }
-
-    /* MAIN KEYPAD */
-    homeKeypad.addEventListener("click", (e) => {
-      if (isLongPress) {
-        isLongPress = false;
-        return;
-      }
-
-      const key = e.target.closest(".num-key");
-      if (!key || !homeKeypad.contains(key)) return;
-
-      const rawVal = key.textContent.trim();
-      const val = rawVal.charAt(0);
-
-      if (priceInput === "0" && val === "0") return;
-      if (priceInput === "0" && val !== "0") {
-        priceInput = val;
-        updateHomeDisplay();
-        saveStateToStorage();
-        return;
-      }
-      if (priceInput.length >= 6) return;
-
-      priceInput += val;
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    homeBackspaceBtn.addEventListener("click", () => {
-      priceInput = priceInput.slice(0, -1);
-      if (!priceInput) {
-        displayCurrentItemPrice.textContent = "₹0";
-        displayCurrentItemPrice.classList.remove("has-input");
-      }
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    homeClearEntryBtn.addEventListener("click", () => {
-      priceInput = "";
-      displayCurrentItemPrice.textContent = "₹0";
-      displayCurrentItemPrice.classList.remove("has-input");
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    /* BASE WEIGHT SELECTOR */
-    baseWeightRow.addEventListener("click", (e) => {
-      const button = e.target.closest(".base-btn");
-      if (!button || !baseWeightRow.contains(button)) return;
-
-      document.querySelectorAll(".base-btn").forEach((b) => b.classList.remove("base-selected"));
-      button.classList.add("base-selected");
-      baseWeight = parseFloat(button.dataset.weight);
-      updateHomeDisplay();
-      saveStateToStorage();
-    });
-
-    /* GROCERY TARGET WEIGHT */
-    targetWeightRow.addEventListener("click", (e) => {
-      const button = e.target.closest(".target-btn");
-      if (!button || !targetWeightRow.contains(button)) return;
-
-      const priceVal = parseFloat(priceInput);
-      if (isNaN(priceVal) || priceVal <= 0) {
-        showTemporaryMessage("Enter a price first.");
-        return;
-      }
-
-      pendingTargetWeight = parseFloat(button.dataset.weight);
-      promptItemName();
-    });
-
-    /* ADD EXPENSE */
-    addExpenseBtn.addEventListener("click", () => {
-      const amountVal = parseFloat(priceInput);
-      if (isNaN(amountVal) || amountVal <= 0) {
-        showTemporaryMessage("Enter an amount first.");
-        return;
-      }
-
-      pendingExpenseAmount = amountVal;
-      promptItemName();
-    });
-
-    /* NAME PROMPT MODAL */
-    function promptItemName() {
-      itemNameInput.value = "";
-      itemNameInput.readOnly = true;
-
-      if (appMode === "grocery") {
-        quickChipsContainer.style.display = "grid";
-        expenseChipsContainer.style.display = "none";
-        moreItemsDropdown.selectedIndex = 0;
-      } else {
-        quickChipsContainer.style.display = "none";
-        expenseChipsContainer.style.display = "grid";
-        moreExpenseDropdown.selectedIndex = 0;
-      }
-
-      itemNameModal.style.display = "flex";
-    }
-
-    itemNameInput.addEventListener("focus", () => {
-      itemNameInput.readOnly = false;
-    });
-
-    itemNameInput.addEventListener("touchstart", () => {
-      itemNameInput.readOnly = false;
-    }, { passive: true });
-
-    quickChipsContainer.addEventListener("click", (e) => {
-      const chip = e.target.closest(".chip-btn");
-      if (!chip) return;
-      itemNameInput.readOnly = true;
-      itemNameInput.value = chip.dataset.name;
-    });
-
-    expenseChipsContainer.addEventListener("click", (e) => {
-      const chip = e.target.closest(".chip-btn");
-      if (!chip) return;
-      itemNameInput.readOnly = true;
-      itemNameInput.value = chip.dataset.name;
-    });
-
-    moreItemsDropdown.addEventListener("change", (e) => {
-      if (e.target.value) {
-        itemNameInput.readOnly = true;
-        itemNameInput.value = e.target.value;
-      }
-    });
-
-    moreExpenseDropdown.addEventListener("change", (e) => {
-      if (e.target.value) {
-        itemNameInput.readOnly = true;
-        itemNameInput.value = e.target.value;
-      }
-    });
-
-    skipItemNameBtn.addEventListener("click", () => finalizeAddToCart(""));
-    confirmItemNameBtn.addEventListener("click", () => finalizeAddToCart(itemNameInput.value.trim()));
-
-    itemNameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") finalizeAddToCart(itemNameInput.value.trim());
-    });
-
-    function finalizeAddToCart(nameVal) {
-      itemNameModal.style.display = "none";
-
-      if (pendingTargetWeight !== null) {
-        processAddToCart(pendingTargetWeight, nameVal);
-        pendingTargetWeight = null;
-      } else if (pendingExpenseAmount !== null) {
-        processAddExpense(pendingExpenseAmount, nameVal);
-        pendingExpenseAmount = null;
-      }
-    }
-
-    /* CUSTOM WEIGHT SCREEN */
-    openCustomWtBtn.addEventListener("click", (e) => {
-      if (isCustomLongPress) {
-        isCustomLongPress = false;
-        return;
-      }
-
-      const priceVal = parseFloat(priceInput);
-      if (isNaN(priceVal) || priceVal <= 0) {
-        showTemporaryMessage("Enter a price first.");
-        return;
-      }
-
-      customWeightInput = "";
-      updateCustomDisplay();
-      homeView.style.display = "none";
-      customWeightView.style.display = "grid";
-    });
-
-    cancelCustomBtn.addEventListener("click", () => {
-      customWeightView.style.display = "none";
-      homeView.style.display = "grid";
-    });
-
-    customKeypad.addEventListener("click", (e) => {
-      const key = e.target.closest(".c-num-key");
-      if (!key || !customKeypad.contains(key)) return;
-
-      const val = key.textContent.trim();
-      if (val === ".") {
-        if (customWeightInput.includes(".")) return;
-        if (customWeightInput === "") customWeightInput = "0";
-        customWeightInput += ".";
-        updateCustomDisplay();
-        return;
-      }
-
-      if (customWeightInput === "0" && val === "0") return;
-      if (customWeightInput === "0" && val !== "0") {
-        customWeightInput = val;
-        updateCustomDisplay();
-        return;
-      }
-      if (customWeightInput.length >= 6) return;
-
-      customWeightInput += val;
-      updateCustomDisplay();
-    });
-
-    customBackspaceBtn.addEventListener("click", () => {
-      customWeightInput = customWeightInput.slice(0, -1);
-      updateCustomDisplay();
-    });
-
-    function updateCustomDisplay() {
-      if (!customWeightInput) {
-        customDisplay.textContent = "0 Kg";
-        customSubDisplay.textContent = "Equivalent: 0g";
-        return;
-      }
-      if (customWeightInput === ".") {
-        customDisplay.textContent = "0. Kg";
-        customSubDisplay.textContent = "Equivalent: 0g";
-        return;
-      }
-      customDisplay.textContent = `${customWeightInput} Kg`;
-      const numericVal = parseFloat(customWeightInput);
-      if (isNaN(numericVal)) {
-        customSubDisplay.textContent = "Equivalent: 0g";
-        return;
-      }
-      const calculatedGrams = Math.round(numericVal * 1000);
-      customSubDisplay.textContent = `Equivalent: ${calculatedGrams}g`;
-    }
-
-    addCustomToCartBtn.addEventListener("click", () => {
-      const finalWeightInKg = parseFloat(customWeightInput);
-      if (isNaN(finalWeightInKg) || finalWeightInKg <= 0) {
-        showTemporaryMessage("Type a valid weight.");
-        return;
-      }
-      pendingTargetWeight = finalWeightInKg;
-      customWeightView.style.display = "none";
-      homeView.style.display = "grid";
-      promptItemName();
-    });
-
-    /* CALCULATOR */
-    let calcExpression = "";
-    let isCalculated = false;
-
-    function openCalculatorWindow() {
-      resetCalculator();
-      homeView.style.display = "none";
-      customWeightView.style.display = "none";
-      calculatorView.style.display = "grid";
-    }
-
-    closeCalcBtn.addEventListener("click", () => {
-      calculatorView.style.display = "none";
-      homeView.style.display = "grid";
-    });
-
-    function resetCalculator() {
-      calcExpression = "";
-      isCalculated = false;
-      updateCalcDisplay();
-    }
-
-    function updateCalcDisplay() {
-      calcHistoryDisplay.textContent = calcExpression;
-      if (!calcExpression) {
-        calcMainDisplay.textContent = "0";
-        return;
-      }
-      calcHistoryDisplay.scrollLeft = calcHistoryDisplay.scrollWidth;
-
-      const tokens = calcExpression.split(/[\+\-\×\÷]/);
-      const currentToken = tokens[tokens.length - 1];
-
-      if (currentToken === "" && calcExpression.length > 0) {
-        const lastChar = calcExpression.slice(-1);
-        calcMainDisplay.textContent = isOperators(lastChar) ? lastChar : "0";
-      } else {
-        calcMainDisplay.textContent = currentToken;
-      }
-    }
-
-    function isOperators(char) {
-      return ["+", "-", "×", "÷"].includes(char);
-    }
-
-    calcKeypad.addEventListener("click", (e) => {
-      const numKey = e.target.closest(".calc-num-key");
-      const opKey = e.target.closest(".op-key");
-
-      if (numKey) {
-        const val = numKey.textContent.trim();
-
-        if (isCalculated) {
-          calcExpression = val === "." ? "0." : (val === "00" ? "0" : val);
-          isCalculated = false;
-          updateCalcDisplay();
-          return;
-        }
-
-        const tokens = calcExpression.split(/[\+\-\×\÷]/);
-        const lastToken = tokens[tokens.length - 1];
-
-        if (val === ".") {
-          if (lastToken.includes(".")) return;
-          if (!lastToken || isOperators(calcExpression.slice(-1))) {
-            calcExpression += "0.";
-          } else {
-            calcExpression += ".";
-          }
-        } else if (val === "00") {
-          if (!lastToken || lastToken === "0" || isOperators(calcExpression.slice(-1))) return;
-          calcExpression += "00";
-        } else {
-          if (lastToken === "0") {
-            calcExpression = calcExpression.slice(0, -1) + val;
-          } else {
-            calcExpression += val;
-          }
-        }
-        updateCalcDisplay();
-        return;
-      }
-
-      if (opKey) {
-        const op = opKey.dataset.op;
-
-        if (op === "%") {
-          if (!calcExpression) return;
-          if (isCalculated) {
-            let val = parseFloat(calcMainDisplay.textContent);
-            if (!isNaN(val)) {
-              let res = val / 100;
-              calcMainDisplay.textContent = Math.round(res * 100000) / 100000;
-              calcExpression = calcMainDisplay.textContent;
-            }
-            return;
-          }
-          const lastChar = calcExpression.slice(-1);
-          if (!isOperators(lastChar) && lastChar !== "%") {
-            calcExpression += "%";
-            updateCalcDisplay();
-          }
-          return;
-        }
-
-        if (isCalculated) {
-          calcExpression = calcMainDisplay.textContent + op;
-          isCalculated = false;
-          updateCalcDisplay();
-          return;
-        }
-
-        if (!calcExpression) {
-          if (op === "-") {
-            calcExpression = "-";
-            updateCalcDisplay();
-          }
-          return;
-        }
-
-        const lastChar = calcExpression.slice(-1);
-        if (isOperators(lastChar)) {
-          calcExpression = calcExpression.slice(0, -1) + op;
-        } else {
-          calcExpression += op;
-        }
-        updateCalcDisplay();
-      }
-    });
-
-    calcBackspaceBtn.addEventListener("click", () => {
-      if (isCalculated) {
-        resetCalculator();
-        return;
-      }
-      if (calcExpression.length > 0) {
-        calcExpression = calcExpression.slice(0, -1);
-      }
-      updateCalcDisplay();
-    });
-
-    calcClearBtn.addEventListener("click", resetCalculator);
-
-    calcEqualsBtn.addEventListener("click", () => {
-      if (!calcExpression) return;
-
-      let expr = calcExpression;
-      while (expr.length > 0 && isOperators(expr.slice(-1))) {
-        expr = expr.slice(0, -1);
-      }
-      if (!expr) return;
-      calcExpression = expr;
-
-      try {
-        let sanitized = expr.replace(/×/g, "*").replace(/÷/g, "/");
-        sanitized = sanitized.replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
-
-        let result = Function(`'use strict'; return (${sanitized})`)();
-
-        if (typeof result === "number" && !isNaN(result) && isFinite(result)) {
-          result = Math.round(result * 100000) / 100000;
-          calcMainDisplay.textContent = result.toString();
-          calcHistoryDisplay.textContent = expr;
-          isCalculated = true;
-        } else {
-          calcMainDisplay.textContent = "Error";
-        }
-      } catch (err) {
-        calcMainDisplay.textContent = "Error";
-      }
-    });
-
-    /* GROCERY ADD TO CART */
-    function processAddToCart(targetWeight, customName = "") {
-      const priceVal = parseFloat(priceInput);
-      if (isNaN(priceVal) || priceVal <= 0) {
-        showTemporaryMessage("Enter a price first.");
-        return false;
-      }
-
-      const calculatedPrice = ((priceVal / baseWeight) * targetWeight).toFixed(2);
-      const baseLabel = formatBaseWeight(baseWeight);
-      const targetLabel = formatWeight(targetWeight);
-
-      const newItem = {
-        id: itemCounter++,
-        vendorId: activeVendor,
-        name: customName || `Item #${itemCounter - 1}`,
-        weight: targetWeight,
-        baseWeight: baseWeight,
-        quotePrice: priceVal,
-        price: parseFloat(calculatedPrice)
+  }
+
+  return { start, stop, pause, resume, switchCamera, isActive, countCameras };
+})();
+
+/* ==========================================================================
+ * 6. OCR SERVICE
+ * ========================================================================== */
+const OCRService = (() => {
+  /** @type {Promise<any>|null} */
+  let workerPromise = null;
+  /** @type {Promise<any>|null} */
+  let libraryPromise = null;
+
+  /* ---- Library loading --------------------------------------------------- */
+  function loadLibrary() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (libraryPromise) return libraryPromise;
+
+    libraryPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = CONFIG.OCR.CDN_URL;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+
+      script.onload = () => {
+        if (window.Tesseract) resolve(window.Tesseract);
+        else reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
       };
 
-      cart.push(newItem);
-
-      displayCurrentItemPrice.textContent = `₹${newItem.price.toFixed(2)}`;
-      displayCurrentItemPrice.classList.add("has-input");
-
-      displayMathFormula.textContent =
-        `(₹${priceVal} ÷ ${baseLabel}) × ${targetLabel} = ₹${newItem.price.toFixed(2)}`;
-
-      renderCart();
-
-      priceInput = "";
-      headerVendorQuote.textContent = "₹0";
-
-      saveStateToStorage();
-      return true;
-    }
-
-    /* EXPENSE ADD TO CART */
-    function processAddExpense(amount, customName = "") {
-      if (isNaN(amount) || amount <= 0) {
-        showTemporaryMessage("Enter a valid amount.");
-        return false;
-      }
-
-      const newItem = {
-        id: itemCounter++,
-        isExpense: true,
-        name: customName || `Expense #${itemCounter - 1}`,
-        amount: parseFloat(amount.toFixed(2))
+      script.onerror = () => {
+        libraryPromise = null;
+        reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
       };
 
-      cart.push(newItem);
-
-      displayCurrentItemPrice.textContent = `₹${newItem.amount.toFixed(2)}`;
-      displayCurrentItemPrice.classList.add("has-input");
-      displayMathFormula.textContent = `Recorded: ${newItem.name} — ₹${newItem.amount.toFixed(2)}`;
-
-      renderCart();
-
-      priceInput = "";
-      headerVendorQuote.textContent = "₹0";
-
-      saveStateToStorage();
-      return true;
-    }
-
-    /* CART & DASHBOARD RENDERING */
-    function renderCart() {
-      dashboardTableBody.innerHTML = "";
-      vendorCartList.innerHTML = "";
-      expenseListContainer.innerHTML = "";
-
-      let groceryTotal = 0;
-      let groceryWeight = 0;
-      let expenseTotal = 0;
-      let groceryCount = 0;
-      let expenseCount = 0;
-
-      const vendorStats = {};
-      for (let v = 1; v <= 6; v++) {
-        vendorStats[v] = { items: [], totalWeight: 0, totalPrice: 0 };
-      }
-
-      const expenseItems = [];
-
-      cart.forEach((item) => {
-        if (item.isExpense) {
-          expenseTotal += item.amount;
-          expenseCount++;
-          expenseItems.push(item);
-        } else {
-          groceryTotal += item.price;
-          groceryWeight += item.weight;
-          groceryCount++;
-          vendorStats[item.vendorId].items.push(item);
-          vendorStats[item.vendorId].totalWeight += item.weight;
-          vendorStats[item.vendorId].totalPrice += item.price;
-        }
-      });
-
-      const grandTotal = groceryTotal + expenseTotal;
-
-      /* Dashboard summary rows */
-      for (let v = 1; v <= 6; v++) {
-        const stats = vendorStats[v];
-        if (stats.items.length > 0) {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>Vendor ${v}</td>
-            <td style="text-align: center;">${stats.items.length}</td>
-            <td style="text-align: center;">${stats.totalWeight.toFixed(2)} Kg</td>
-            <td style="text-align: right;">₹${stats.totalPrice.toFixed(2)}</td>
-          `;
-          dashboardTableBody.appendChild(row);
-        }
-      }
-
-      if (expenseCount > 0) {
-        const row = document.createElement("tr");
-        row.className = "expense-row";
-        row.innerHTML = `
-          <td>Daily Expenses</td>
-          <td style="text-align: center;">${expenseCount}</td>
-          <td style="text-align: center;">—</td>
-          <td style="text-align: right;">₹${expenseTotal.toFixed(2)}</td>
-        `;
-        dashboardTableBody.appendChild(row);
-      }
-
-      if (cart.length > 0) {
-        const totalRow = document.createElement("tr");
-        totalRow.className = "total-row";
-        totalRow.innerHTML = `
-          <td>TOTAL</td>
-          <td style="text-align: center;">${cart.length}</td>
-          <td style="text-align: center;">${groceryWeight.toFixed(2)} Kg</td>
-          <td style="text-align: right;">₹${grandTotal.toFixed(2)}</td>
-        `;
-        dashboardTableBody.appendChild(totalRow);
-      }
-
-      /* Itemized grocery list grouped by vendor */
-      for (let v = 1; v <= 6; v++) {
-        const stats = vendorStats[v];
-        if (stats.items.length > 0) {
-          const sectionHeader = document.createElement("div");
-          sectionHeader.className = "vendor-section-header";
-          sectionHeader.textContent = `Vendor ${v} (${stats.items.length} items · ₹${stats.totalPrice.toFixed(2)})`;
-          vendorCartList.appendChild(sectionHeader);
-
-          const table = document.createElement("table");
-          table.className = "cart-table";
-          table.innerHTML = `
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Weight</th>
-                <th>Quote</th>
-                <th>Price</th>
-                <th class="no-pdf"></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          `;
-
-          const tbody = table.querySelector("tbody");
-
-          stats.items.forEach((item) => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-              <td>
-                <div class="editable-item-name" data-id="${item.id}" title="Tap to edit item name">${item.name || '(No Name)'}</div>
-              </td>
-              <td>
-                <div class="editable-weight" data-id="${item.id}" title="Tap to edit weight">${formatWeight(item.weight)}</div>
-              </td>
-              <td>
-                <div class="editable-quote" data-id="${item.id}" title="Tap to edit quote price">₹${item.quotePrice}/${formatBaseWeight(item.baseWeight)}</div>
-              </td>
-              <td>₹${item.price.toFixed(2)}</td>
-              <td class="no-pdf">
-                <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove item">×</button>
-              </td>
-            `;
-          });
-
-          vendorCartList.appendChild(table);
-        }
-      }
-
-      /* Itemized Daily Expenses list */
-      if (expenseItems.length > 0) {
-        const sectionHeader = document.createElement("div");
-        sectionHeader.className = "expense-section-header";
-        sectionHeader.textContent = `Daily Expenses (${expenseItems.length} items · ₹${expenseTotal.toFixed(2)})`;
-        expenseListContainer.appendChild(sectionHeader);
-
-        const table = document.createElement("table");
-        table.className = "cart-table expense-table";
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Amount</th>
-              <th class="no-pdf"></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        `;
-
-        const tbody = table.querySelector("tbody");
-
-        expenseItems.forEach((item) => {
-          const row = tbody.insertRow();
-          row.innerHTML = `
-            <td>
-              <div class="editable-item-name" data-id="${item.id}" title="Tap to edit name">${item.name || '(No Name)'}</div>
-            </td>
-            <td>
-              <div class="editable-amount" data-id="${item.id}" title="Tap to edit amount">₹${item.amount.toFixed(2)}</div>
-            </td>
-            <td class="no-pdf">
-              <button class="remove-item-btn" type="button" data-id="${item.id}" aria-label="Remove expense">×</button>
-            </td>
-          `;
-        });
-
-        expenseListContainer.appendChild(table);
-      }
-
-      /* Cart button label per mode */
-      if (appMode === "grocery") {
-        const activeStats = vendorStats[activeVendor];
-        cartBtnTitle.textContent = `Vendor ${activeVendor} (${activeStats.items.length}) · ₹${activeStats.totalPrice.toFixed(2)}`;
-        cartBtnSub.textContent = `Total: ${activeStats.totalWeight.toFixed(2)} Kg`;
-      } else {
-        cartBtnTitle.textContent = `Expenses (${expenseCount}) · ₹${expenseTotal.toFixed(2)}`;
-        cartBtnSub.textContent = `Daily: ₹${expenseTotal.toFixed(2)}`;
-      }
-
-      cartCountLabel.textContent = `${cart.length} ${cart.length === 1 ? "item" : "items"}`;
-      cartEmptyMessage.style.display = cart.length === 0 ? "block" : "none";
-
-      if (cart.length === 0 && !priceInput) {
-        displayCurrentItemPrice.textContent = "₹0";
-        displayCurrentItemPrice.classList.remove("has-input");
-        updateHomeDisplay();
-      }
-    }
-
-    /* INLINE EDITING & REMOVAL */
-    function handleListClick(e) {
-      // --- 1. EDIT NAME ---
-      const editableDiv = e.target.closest(".editable-item-name");
-      if (editableDiv) {
-        const itemId = parseInt(editableDiv.dataset.id, 10);
-        const item = cart.find(i => i.id === itemId);
-        if (!item) return;
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "item-name-input";
-        input.value = item.name;
-
-        editableDiv.replaceWith(input);
-        input.focus();
-        input.select();
-
-        const saveInlineEdit = () => {
-          const newName = input.value.trim();
-          item.name = newName || `Item #${item.id}`;
-          saveStateToStorage();
-          renderCart();
-        };
-        input.addEventListener("blur", saveInlineEdit);
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") input.blur();
-        });
-        return;
-      }
-
-      // --- 2. EDIT GROCERY WEIGHT ---
-      const weightDiv = e.target.closest(".editable-weight");
-      if (weightDiv) {
-        const itemId = parseInt(weightDiv.dataset.id, 10);
-        const item = cart.find(i => i.id === itemId);
-        if (!item) return;
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "item-weight-input";
-        input.value = formatWeightForEdit(item.weight);
-
-        weightDiv.replaceWith(input);
-        input.focus();
-        input.select();
-
-        const saveWeightEdit = () => {
-          const newWeight = parseWeightInput(input.value);
-          if (newWeight !== null && newWeight > 0) {
-            item.weight = newWeight;
-            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
-            saveStateToStorage();
-          }
-          renderCart();
-        };
-        input.addEventListener("blur", saveWeightEdit);
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") input.blur();
-        });
-        return;
-      }
-
-      // --- 3. EDIT GROCERY QUOTE ---
-      const quoteDiv = e.target.closest(".editable-quote");
-      if (quoteDiv) {
-        const itemId = parseInt(quoteDiv.dataset.id, 10);
-        const item = cart.find(i => i.id === itemId);
-        if (!item) return;
-
-        const container = document.createElement("div");
-        container.className = "quote-edit-container";
-        container.innerHTML = `₹<input type="text" class="quote-price-input" value="${item.quotePrice}" /> / ${formatBaseWeight(item.baseWeight)}`;
-
-        quoteDiv.replaceWith(container);
-        const input = container.querySelector(".quote-price-input");
-        input.focus();
-        input.select();
-
-        const saveQuoteEdit = () => {
-          const newPrice = parseFloat(input.value);
-          if (!isNaN(newPrice) && newPrice > 0) {
-            item.quotePrice = newPrice;
-            item.price = parseFloat(((item.quotePrice / item.baseWeight) * item.weight).toFixed(2));
-            saveStateToStorage();
-          }
-          renderCart();
-        };
-        input.addEventListener("blur", saveQuoteEdit);
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") input.blur();
-        });
-        return;
-      }
-
-      // --- 4. EDIT EXPENSE AMOUNT ---
-      const amountDiv = e.target.closest(".editable-amount");
-      if (amountDiv) {
-        const itemId = parseInt(amountDiv.dataset.id, 10);
-        const item = cart.find(i => i.id === itemId);
-        if (!item) return;
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "item-amount-input";
-        input.value = item.amount;
-
-        amountDiv.replaceWith(input);
-        input.focus();
-        input.select();
-
-        const saveAmountEdit = () => {
-          const newAmount = parseFloat(input.value);
-          if (!isNaN(newAmount) && newAmount > 0) {
-            item.amount = parseFloat(newAmount.toFixed(2));
-            saveStateToStorage();
-          }
-          renderCart();
-        };
-        input.addEventListener("blur", saveAmountEdit);
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") input.blur();
-        });
-        return;
-      }
-
-      // --- 5. REMOVE ITEM ---
-      const button = e.target.closest(".remove-item-btn");
-      if (!button) return;
-
-      const itemId = parseInt(button.dataset.id, 10);
-      if (Number.isNaN(itemId)) return;
-
-      cart = cart.filter(item => item.id !== itemId);
-      renderCart();
-      saveStateToStorage();
-    }
-
-    vendorCartList.addEventListener("click", handleListClick);
-    expenseListContainer.addEventListener("click", handleListClick);
-
-    /* CLEAR CART */
-    clearAllCartBtn.addEventListener("click", () => {
-      if (cart.length === 0) return;
-
-      if (window.confirm("Clear all items (grocery + expenses)?")) {
-        cart = [];
-        itemCounter = 1;
-        priceInput = "";
-
-        displayCurrentItemPrice.textContent = "₹0";
-        displayCurrentItemPrice.classList.remove("has-input");
-
-        updateHomeDisplay();
-        renderCart();
-
-        localStorage.removeItem(STORAGE_KEY);
-        cartModal.style.display = "none";
-      }
+      document.head.appendChild(script);
     });
 
-    /* SHARE DASHBOARD */
-    shareDashboardBtn.addEventListener("click", async () => {
-      if (cart.length === 0) {
-        showTemporaryMessage("Cart is empty.");
-        return;
+    return libraryPromise;
+  }
+
+  /* ---- Worker (created once, reused for every scan) ---------------------- */
+  function getWorker() {
+    if (workerPromise) return workerPromise;
+
+    workerPromise = (async () => {
+      const Tesseract = await loadLibrary();
+
+      const worker = await Tesseract.createWorker(CONFIG.OCR.LANGUAGE, CONFIG.OCR.OEM, {
+        logger: (message) => {
+          if (message && message.status === 'recognizing text') {
+            const pct = Math.round((message.progress || 0) * 100);
+            UI.setStatus(`Reading text… ${pct}%`);
+          }
+        },
+        errorHandler: (error) => console.error('[ScanLex][OCR]', error)
+      });
+
+      // Single uniform block → best fit for a reticle-cropped word/line.
+      try {
+        await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PAGE_SEG_MODE });
+      } catch {
+        /* Non-fatal: defaults are acceptable. */
       }
 
-      showTemporaryMessage("Generating image...");
+      return worker;
+    })().catch((error) => {
+      workerPromise = null;
+      if (error instanceof AppError) throw error;
+      throw new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true, cause: error });
+    });
 
-      const scrollContainer = document.querySelector(".cart-scroll-container");
-      if (!scrollContainer) return;
+    return workerPromise;
+  }
 
-      const captureWrapper = document.createElement("div");
-      const bgColor = isLightTheme ? "#ffffff" : "#1c1c1e";
-      const textColor = isLightTheme ? "#000000" : "#ffffff";
-      const borderColor = isLightTheme ? "#e5e5ea" : "#38383a";
+  /* ---- Frame cropping ---------------------------------------------------- */
+  /**
+   * Copies the region of the video covered by the reticle into a canvas,
+   * correctly compensating for `object-fit: cover` letterboxing.
+   *
+   * @param {HTMLVideoElement} video
+   * @param {HTMLElement} reticleEl
+   * @param {HTMLCanvasElement} canvas
+   * @returns {HTMLCanvasElement}
+   */
+  function grabFrame(video, reticleEl, canvas) {
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
 
-      Object.assign(captureWrapper.style, {
-        padding: "20px",
-        background: bgColor,
-        color: textColor,
-        width: "480px",
-        position: "fixed",
-        left: "0",
-        top: "0",
-        zIndex: "-9999",
-        boxSizing: "border-box",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    if (!videoWidth || !videoHeight) {
+      throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY, { retryable: true });
+    }
+
+    const videoRect = video.getBoundingClientRect();
+    const reticleRect = reticleEl.getBoundingClientRect();
+    if (!videoRect.width || !videoRect.height) {
+      throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY, { retryable: true });
+    }
+
+    // Scale factor applied by `object-fit: cover`.
+    const scale = Math.max(videoRect.width / videoWidth, videoRect.height / videoHeight);
+    const overflowX = (videoWidth * scale - videoRect.width) / 2;
+    const overflowY = (videoHeight * scale - videoRect.height) / 2;
+
+    // Reticle position relative to the video element.
+    const relX = reticleRect.left - videoRect.left;
+    const relY = reticleRect.top - videoRect.top;
+
+    // Map element coordinates → intrinsic video coordinates.
+    let sourceX = (relX + overflowX) / scale;
+    let sourceY = (relY + overflowY) / scale;
+    let sourceW = reticleRect.width / scale;
+    let sourceH = reticleRect.height / scale;
+
+    // Clamp inside the source frame.
+    sourceX = clamp(sourceX, 0, videoWidth);
+    sourceY = clamp(sourceY, 0, videoHeight);
+    sourceW = clamp(sourceW, 1, videoWidth - sourceX);
+    sourceH = clamp(sourceH, 1, videoHeight - sourceY);
+
+    // Upscale small crops — Tesseract performs far better at ~900px wide.
+    const upscale = clamp(CONFIG.OCR.TARGET_CROP_WIDTH / sourceW, 1, 3);
+    const targetW = Math.min(
+      Math.round(sourceW * upscale),
+      CONFIG.OCR.MAX_CROP_WIDTH
+    );
+    const targetH = Math.max(1, Math.round((targetW / sourceW) * sourceH));
+
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(video, sourceX, sourceY, sourceW, sourceH, 0, 0, targetW, targetH);
+
+    enhanceContrast(canvas, ctx);
+    return canvas;
+  }
+
+  /**
+   * Lightweight grayscale + contrast pass — improves accuracy on
+   * low-contrast book paper without the risk of over-binarisation.
+   * @param {HTMLCanvasElement} canvas
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  function enhanceContrast(canvas, ctx) {
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const contrast = 1.35;
+      const intercept = 128 * (1 - contrast);
+
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        const adjusted = clamp(gray * contrast + intercept, 0, 255);
+        data[i] = adjusted;
+        data[i + 1] = adjusted;
+        data[i + 2] = adjusted;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    } catch {
+      /* Enhancement is best-effort; raw pixels remain usable. */
+    }
+  }
+
+  /* ---- Recognition ------------------------------------------------------- */
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @returns {Promise<{text: string, confidence: number}>}
+   */
+  async function recognize(canvas) {
+    const worker = await getWorker();
+    try {
+      const { data } = await worker.recognize(canvas);
+      return {
+        text: (data && typeof data.text === 'string') ? data.text : '',
+        confidence: (data && typeof data.confidence === 'number') ? data.confidence : 0
+      };
+    } catch (error) {
+      throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED, { retryable: true, cause: error });
+    }
+  }
+
+  /* ---- Text sanitisation -------------------------------------------------- */
+  /**
+   * Normalises raw OCR output into a lowercase, punctuation-free token list.
+   * @param {string} raw
+   * @returns {string[]}
+   */
+  function tokenize(raw) {
+    if (typeof raw !== 'string') return [];
+
+    return raw
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')      // strip diacritics
+      .toLowerCase()
+      .replace(/[^a-z\s'-]+/g, ' ')          // drop punctuation & digits
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .map((token) => token.replace(/^[-']+|[-']+$/g, ''))
+      .filter((token) => {
+        const letters = token.replace(/[^a-z]/g, '');
+        return (
+          letters.length >= CONFIG.OCR.MIN_WORD_LENGTH &&
+          token.length <= CONFIG.OCR.MAX_WORD_LENGTH
+        );
+      });
+  }
+
+  /**
+   * Picks the most probable dictionary word from a block of OCR text.
+   * The longest plausible token wins — OCR noise is usually short.
+   * @param {string} raw
+   * @returns {string}
+   */
+  function extractWord(raw) {
+    const tokens = tokenize(raw);
+    if (!tokens.length) return '';
+    return tokens.slice().sort((a, b) => b.length - a.length)[0];
+  }
+
+  /**
+   * Validates and normalises user-typed input.
+   * @param {string} raw
+   * @returns {string} A clean word, or '' when invalid.
+   */
+  function sanitizeWord(raw) {
+    const tokens = tokenize(raw);
+    return tokens.length ? tokens[0] : '';
+  }
+
+  return { getWorker, grabFrame, recognize, extractWord, sanitizeWord };
+})();
+
+/* ==========================================================================
+ * 7. DICTIONARY API SERVICE
+ * ========================================================================== */
+const DictionaryService = (() => {
+  /**
+   * Collapses the raw API payload into a predictable view model.
+   * @param {Array} payload
+   * @param {string} query
+   */
+  function normalize(payload, query) {
+    const entries = Array.isArray(payload) ? payload : [];
+    const first = entries[0] || {};
+
+    // Collect every phonetic variant to find the best text + audio.
+    const phonetics = entries.flatMap((entry) =>
+      Array.isArray(entry.phonetics) ? entry.phonetics : []
+    );
+    const phonetic =
+      (typeof first.phonetic === 'string' && first.phonetic) ||
+      (phonetics.find((p) => p && p.text)?.text ?? '');
+    const audio = phonetics.find((p) => p && p.audio)?.audio ?? '';
+
+    // Group definitions by part of speech, de-duplicating identical senses.
+    const groups = new Map();
+
+    for (const entry of entries) {
+      for (const meaning of Array.isArray(entry.meanings) ? entry.meanings : []) {
+        const pos = typeof meaning.partOfSpeech === 'string' && meaning.partOfSpeech
+          ? meaning.partOfSpeech
+          : 'definition';
+
+        if (!groups.has(pos)) groups.set(pos, []);
+
+        const bucket = groups.get(pos);
+        for (const def of Array.isArray(meaning.definitions) ? meaning.definitions : []) {
+          if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) break;
+          const text = typeof def?.definition === 'string' ? def.definition.trim() : '';
+          if (!text) continue;
+          if (bucket.some((existing) => existing.definition === text)) continue;
+
+          bucket.push({
+            definition: text,
+            example: typeof def.example === 'string' ? def.example.trim() : '',
+            synonyms: Array.isArray(def.synonyms)
+              ? def.synonyms.slice(0, CONFIG.UI.MAX_SYNONYMS)
+              : []
+          });
+        }
+      }
+    }
+
+    const meanings = [...groups.entries()]
+      .filter(([, definitions]) => definitions.length > 0)
+      .slice(0, CONFIG.UI.MAX_MEANINGS)
+      .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
+
+    return {
+      word: typeof first.word === 'string' && first.word ? first.word : query,
+      phonetic,
+      audio,
+      meanings
+    };
+  }
+
+  /**
+   * Looks up a word with an enforced network timeout.
+   * @param {string} word
+   * @returns {Promise<ReturnType<typeof normalize>>}
+   */
+  async function lookup(word) {
+    if (!navigator.onLine) {
+      throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+
+    const url = `${CONFIG.API.BASE_URL}/${encodeURIComponent(word)}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: CONFIG.API.HEADERS,
+        signal: controller.signal,
+        cache: 'no-store'
       });
 
-      const now = new Date();
-      const dateStamp = now.toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short"
-      });
+      if (response.status === 404) {
+        throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      }
 
-      const headerEl = document.createElement("div");
-      headerEl.style.marginBottom = "16px";
-      headerEl.style.fontSize = "18px";
-      headerEl.style.fontWeight = "bold";
-      headerEl.style.color = isLightTheme ? "#8e24aa" : "#bf5af2";
-      headerEl.style.borderBottom = `1px solid ${borderColor}`;
-      headerEl.style.paddingBottom = "8px";
-      headerEl.textContent = "Purchase Summary Report";
-      captureWrapper.appendChild(headerEl);
-
-      const clone = scrollContainer.cloneNode(true);
-      clone.style.overflow = "visible";
-      clone.style.maxHeight = "none";
-      clone.style.height = "auto";
-
-      clone.querySelectorAll(".no-pdf").forEach(el => el.remove());
-
-      clone.querySelectorAll("th, td, div, span, h3").forEach(el => {
-        el.style.color = textColor;
-      });
-
-      captureWrapper.appendChild(clone);
-
-      const timestampEl = document.createElement("div");
-      timestampEl.style.marginTop = "20px";
-      timestampEl.style.fontSize = "12px";
-      timestampEl.style.color = "#8e8e93";
-      timestampEl.style.textAlign = "right";
-      timestampEl.textContent = `Generated: ${dateStamp}`;
-      captureWrapper.appendChild(timestampEl);
-
-      document.body.appendChild(captureWrapper);
-
-      try {
-        const canvas = await html2canvas(captureWrapper, {
-          backgroundColor: bgColor,
-          scale: 2,
-          useCORS: true,
-          logging: false
+      if (!response.ok) {
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
+          retryable: response.status >= 500 || response.status === 429
         });
+      }
 
-        const filename = `purchase-summary-${Date.now()}.png`;
-
-        canvas.toBlob(async (blob) => {
-          if (!blob) {
-            showTemporaryMessage("Failed to generate image.");
-            return;
-          }
-
-          const file = new File([blob], filename, { type: "image/png" });
-
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({
-                title: "Purchase Dashboard",
-                text: `Purchase Summary Report - ${dateStamp}`,
-                files: [file]
-              });
-              return;
-            } catch (shareErr) {
-              if (shareErr.name === "AbortError") return;
-            }
-          }
-
-          const link = document.createElement("a");
-          link.download = filename;
-          link.href = canvas.toDataURL("image/png");
-          link.click();
-          showTemporaryMessage("Image downloaded.");
-
-        }, "image/png");
-
+      let payload;
+      try {
+        payload = await response.json();
       } catch (error) {
-        console.error("PNG generation failed:", error);
-        showTemporaryMessage("Failed to generate image.");
-      } finally {
-        if (document.body.contains(captureWrapper)) {
-          document.body.removeChild(captureWrapper);
-        }
-      }
-    });
-
-    /* CART MODAL SHOW/HIDE */
-    openCartBtn.addEventListener("click", () => {
-      renderCart();
-      cartModal.style.display = "flex";
-    });
-
-    closeCartBtn.addEventListener("click", () => {
-      cartModal.style.display = "none";
-    });
-
-    cartModal.addEventListener("click", (e) => {
-      if (e.target === cartModal) cartModal.style.display = "none";
-    });
-
-    /* TOAST */
-    let messageTimer = null;
-    function showTemporaryMessage(message) {
-      let toast = document.getElementById("appToast");
-
-      if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "appToast";
-
-        Object.assign(toast.style, {
-          position: "fixed",
-          left: "50%",
-          bottom: "calc(30dvh + 14px)",
-          transform: "translateX(-50%)",
-          zIndex: "3000",
-          maxWidth: "calc(100vw - 32px)",
-          padding: "10px 15px",
-          borderRadius: "16px",
-          background: "var(--surface-3)",
-          color: "var(--text)",
-          fontSize: "0.88rem",
-          fontWeight: "650",
-          textAlign: "center",
-          boxShadow: "0 8px 30px rgba(0,0,0,.35)",
-          pointerEvents: "none",
-          transition: "opacity .18s ease, transform .18s ease"
-        });
-
-        document.body.appendChild(toast);
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: error });
       }
 
-      toast.textContent = message;
-      toast.style.opacity = "1";
-      toast.style.transform = "translateX(-50%) translateY(0)";
+      const normalized = normalize(payload, word);
+      if (!normalized.meanings.length) {
+        throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      }
 
-      clearTimeout(messageTimer);
-      messageTimer = setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transform = "translateX(-50%) translateY(6px)";
-      }, 1600);
+      return normalized;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
+      if (error && error.name === 'AbortError') {
+        throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: error });
+      }
+
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: error });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return { lookup };
+})();
+
+/* ==========================================================================
+ * 8. APP CONTROLLER — state machine & orchestration
+ * ========================================================================== */
+const App = (() => {
+  const state = {
+    busy: false,
+    cameraReady: false,
+    lastWord: '',
+    ocrWarmedUp: false
+  };
+
+  /* ---- Camera / overlay synchronisation --------------------------------- */
+  function refreshCameraState() {
+    if (state.busy || UI.isOverlayOpen() || document.hidden) {
+      CameraService.pause();
+    } else if (state.cameraReady) {
+      CameraService.resume();
+    }
+  }
+
+  function setBusy(isBusy, label) {
+    state.busy = isBusy;
+    UI.setBusy(isBusy, label);
+    refreshCameraState();
+  }
+
+  /* ---- Camera bootstrap -------------------------------------------------- */
+  async function startCamera() {
+    try {
+      await CameraService.start(DOM.video);
+      state.cameraReady = true;
+
+      UI.hideCameraError();
+      UI.setStatus('Align a word inside the frame, then capture.');
+
+      const cameraCount = await CameraService.countCameras();
+      DOM.btnSwitch.hidden = cameraCount < 2;
+
+      warmUpOcr();
+      refreshCameraState();
+    } catch (error) {
+      state.cameraReady = false;
+      const message = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(message);
+      UI.setStatus('Camera unavailable — type a word instead.');
+      DOM.btnCapture.disabled = true;
+    }
+  }
+
+  /* ---- Background OCR warm-up -------------------------------------------- */
+  function warmUpOcr() {
+    if (state.ocrWarmedUp) return;
+    state.ocrWarmedUp = true;
+
+    const run = () => {
+      OCRService.getWorker().catch(() => {
+        // Silent: the user will see a proper error if they actually scan.
+        state.ocrWarmedUp = false;
+      });
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(run, { timeout: 4000 });
+    } else {
+      setTimeout(run, 1200);
+    }
+  }
+
+  /* ---- Capture → OCR → Lookup -------------------------------------------- */
+  async function onCapture() {
+    if (state.busy) return;
+
+    if (!state.cameraReady || !CameraService.isActive()) {
+      openManualSheet(state.lastWord);
+      return;
     }
 
-    /* INITIALIZATION */
-    loadStateFromStorage();
-    setAppMode("grocery");
-    updateHomeDisplay();
-    renderCart();
-  </script>
+    // Grab the frame *before* pausing so the current pixels are guaranteed.
+    let canvas;
+    try {
+      canvas = OCRService.grabFrame(DOM.video, DOM.reticle, DOM.cropCanvas);
+    } catch (error) {
+      handleError(error);
+      return;
+    }
 
+    setBusy(true, 'Reading text…');
+    UI.setStatus('Reading text from the page…');
+
+    try {
+      const { text } = await OCRService.recognize(canvas);
+      const word = OCRService.extractWord(text);
+
+      if (!word) {
+        throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
+      }
+
+      await runLookup(word);
+      UI.setStatus('Definition ready.');
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ---- Lookup orchestration ---------------------------------------------- */
+  /**
+   * @param {string} rawWord
+   */
+  async function runLookup(rawWord) {
+    const word = OCRService.sanitizeWord(rawWord);
+
+    if (!word) {
+      throw new AppError('BAD_WORD', MESSAGES.BAD_WORD);
+    }
+
+    state.lastWord = word;
+    setBusy(true, 'Looking up…');
+
+    try {
+      const entry = await DictionaryService.lookup(word);
+
+      UI.renderResult(entry, {
+        onScanAnother: () => {
+          UI.closeSheet(DOM.resultSheet);
+          refreshCameraState();
+          UI.setStatus('Align a word inside the frame, then capture.');
+        },
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          openManualSheet('');
+        }
+      });
+
+      UI.openSheet(DOM.resultSheet);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ---- Error translation --------------------------------------------------- */
+  function describeError(error) {
+    const code = error instanceof AppError ? error.code : 'UNKNOWN';
+    const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
+
+    switch (code) {
+      case 'NOT_FOUND':
+        return {
+          title: 'Word not found',
+          message: `We couldn't find a definition for “${state.lastWord}”. Check the spelling or try another word.`,
+          retryLabel: 'Try another word',
+          onRetry: () => openManualSheet(state.lastWord)
+        };
+
+      case 'OFFLINE':
+        return {
+          title: "You're offline",
+          message: MESSAGES.OFFLINE,
+          retryLabel: 'Retry',
+          onRetry: () => retryLastLookup()
+        };
+
+      case 'TIMEOUT':
+        return {
+          title: 'Request timed out',
+          message: MESSAGES.TIMEOUT,
+          retryLabel: 'Retry',
+          onRetry: () => retryLastLookup()
+        };
+
+      case 'NETWORK':
+        return {
+          title: 'Connection problem',
+          message: MESSAGES.NETWORK,
+          retryLabel: 'Retry',
+          onRetry: () => retryLastLookup()
+        };
+
+      case 'HTTP_ERROR':
+        return {
+          title: 'Dictionary unavailable',
+          message: MESSAGES.HTTP_ERROR,
+          retryLabel: 'Retry',
+          onRetry: () => retryLastLookup()
+        };
+
+      case 'OCR_EMPTY':
+      case 'OCR_FAILED':
+        return {
+          title: 'Could not read the text',
+          message: fallback,
+          retryLabel: 'Scan again',
+          onRetry: () => onCapture()
+        };
+
+      case 'OCR_LIB':
+        return {
+          title: 'Scanner unavailable',
+          message: MESSAGES.OCR_LIB,
+          retryLabel: 'Retry',
+          onRetry: () => {
+            OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB));
+          }
+        };
+
+      case 'BAD_WORD':
+        return {
+          title: 'Invalid word',
+          message: MESSAGES.BAD_WORD,
+          retryLabel: 'Type a word',
+          onRetry: () => openManualSheet('')
+        };
+
+      case 'CAMERA_NOT_READY':
+        return {
+          title: 'Camera not ready',
+          message: MESSAGES.CAMERA_NOT_READY,
+          retryLabel: 'Try again',
+          onRetry: () => onCapture()
+        };
+
+      default:
+        return {
+          title: 'Something went wrong',
+          message: fallback,
+          retryLabel: null,
+          onRetry: null
+        };
+    }
+  }
+
+  function handleError(error) {
+    console.error('[ScanLex]', error);
+    UI.showError(describeError(error));
+    refreshCameraState();
+  }
+
+  async function retryLastLookup() {
+    if (!state.lastWord) {
+      openManualSheet('');
+      return;
+    }
+    try {
+      await runLookup(state.lastWord);
+    } catch (error) {
+      handleError(error);
+    }
+  }
+
+  /* ---- Manual entry -------------------------------------------------------- */
+  function openManualSheet(prefill = '') {
+    UI.closeAllSheets();
+    UI.clearInputError();
+    DOM.manualInput.value = prefill || '';
+    UI.openSheet(DOM.manualSheet);
+    refreshCameraState();
+  }
+
+  function closeManualSheet() {
+    UI.closeSheet(DOM.manualSheet);
+    refreshCameraState();
+  }
+
+  async function onManualSubmit(event) {
+    event.preventDefault();
+
+    const raw = DOM.manualInput.value;
+    const word = OCRService.sanitizeWord(raw);
+
+    if (!word) {
+      UI.showInputError(MESSAGES.BAD_WORD);
+      return;
+    }
+
+    UI.clearInputError();
+    UI.closeSheet(DOM.manualSheet);
+
+    try {
+      await runLookup(word);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      refreshCameraState();
+    }
+  }
+
+  /* ---- Camera switching ---------------------------------------------------- */
+  async function onSwitchCamera() {
+    if (state.busy) return;
+
+    try {
+      await CameraService.switchCamera();
+      state.cameraReady = true;
+      UI.hideCameraError();
+      UI.setStatus('Camera switched. Align a word and capture.');
+    } catch (error) {
+      state.cameraReady = false;
+      const message = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(message);
+      UI.setStatus('Camera unavailable — type a word instead.');
+    } finally {
+      refreshCameraState();
+    }
+  }
+
+  /* ---- Network awareness ---------------------------------------------------- */
+  function syncOnlineState() {
+    const offline = !navigator.onLine;
+    UI.setOffline(offline);
+    if (offline) UI.setStatus('You are offline — reconnect to look up words.');
+  }
+
+  /* ---- Init ---------------------------------------------------------------- */
+  function init() {
+    cacheDom();
+
+    UI.bindEvents({
+      onCapture,
+      onManualRequest: () => openManualSheet(state.lastWord),
+      onCameraRetry: () => startCamera(),
+      onSwitchCamera,
+      onCloseResult: () => {
+        UI.closeSheet(DOM.resultSheet);
+        refreshCameraState();
+      },
+      onCloseManual: closeManualSheet,
+      onScrimClick: () => {
+        UI.closeAllSheets();
+        refreshCameraState();
+      },
+      onManualSubmit,
+      onErrorDismissed: () => refreshCameraState()
+    });
+
+    // Connectivity
+    window.addEventListener('online', syncOnlineState);
+    window.addEventListener('offline', syncOnlineState);
+    syncOnlineState();
+
+    // Release the camera when the tab is backgrounded; restore on return.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) CameraService.pause();
+      else refreshCameraState();
+    });
+
+    // Final resource cleanup.
+    window.addEventListener('pagehide', () => { CameraService.stop(); });
+
+    // Kick everything off.
+    startCamera();
+  }
+
+  return { init, onCapture };
+})();
+
+/* ==========================================================================
+ * 9. BOOTSTRAP
+ * ========================================================================== */
+try {
+  App.init();
+} catch (error) {
+  console.error('[ScanLex] Fatal initialisation error', error);
+  document.body.textContent =
+    'ScanLex failed to start. Please reload the page.';
+}
+</script>
 </body>
 </html>
