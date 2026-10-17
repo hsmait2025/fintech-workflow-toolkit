@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
 <meta name="theme-color" content="#0b0f14" />
 <meta name="color-scheme" content="dark" />
-<meta name="description" content="ScanLex — capture a page, select the word, get its definition." />
+<meta name="description" content="ScanLex — tap any word in a photo to see its definition." />
 <title>ScanLex — Visual Scan Dictionary</title>
 
 <style>
@@ -124,7 +124,6 @@ button { cursor: pointer; border: 0; background: none; }
   transform-origin: center center;
 }
 
-/* Zoom bar (top-right pill) */
 .zoom-bar {
   position: absolute; top: 12px; right: 12px; z-index: 6;
   display: flex; align-items: center; gap: 6px;
@@ -148,7 +147,6 @@ button { cursor: pointer; border: 0; background: none; }
   color: var(--text); font-variant-numeric: tabular-nums;
 }
 
-/* Tap-to-focus pulse */
 .focus-ring {
   position: absolute; width: 64px; height: 64px;
   border: 2px solid var(--accent); border-radius: 50%;
@@ -161,7 +159,6 @@ button { cursor: pointer; border: 0; background: none; }
   100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.5); }
 }
 
-/* Busy overlay */
 .ocr-overlay {
   position: absolute; inset: 0; z-index: 3;
   display: flex; flex-direction: column; align-items: center;
@@ -179,7 +176,6 @@ button { cursor: pointer; border: 0; background: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* Camera error */
 .camera-error {
   position: absolute; inset: 0; z-index: 4;
   display: flex; flex-direction: column; align-items: center;
@@ -190,55 +186,93 @@ button { cursor: pointer; border: 0; background: none; }
 .camera-error p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
 
-/* ---- Selection view ---------------------------------------------------- */
-.selection-view {
-  flex: 1 1 auto; min-height: 0;
+/* ---- Analyze view (frozen image + tappable word overlays) -------------- */
+.analyze-view {
+  position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-lg);
-  background: #000;
-  border: 1px solid var(--line);
+  background: #000; border: 1px solid var(--line);
   overflow: hidden;
-  padding: 0;
 }
 .frozen-wrap {
   position: relative;
-  overflow: hidden;
+  /* width/height set by JS to preserve aspect */
 }
 .frozen-canvas {
   width: 100%; height: 100%; display: block;
   user-select: none; -webkit-user-select: none;
   pointer-events: none;
 }
-.selection-rect {
-  position: absolute;
-  border: 2px dashed var(--accent);
-  background: rgba(76, 201, 240, 0.08);
-  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
-  cursor: move;
-  touch-action: none;
-  will-change: left, top, width, height;
-}
-.selection-rect::after {
-  content: ''; position: absolute;
-  left: 12%; right: 12%; top: 50%; height: 1px;
-  background: rgba(76, 201, 240, 0.4);
-  transform: translateY(-50%);
+
+/* Tappable word overlays */
+.word-layer {
+  position: absolute; inset: 0;
   pointer-events: none;
 }
-.handle {
-  position: absolute; width: 36px; height: 36px;
-  background: transparent; touch-action: none; cursor: pointer;
+.word-tap {
+  position: absolute;
+  padding: 0; margin: 0; border: 0;
+  background: transparent;
+  border-radius: 4px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  /* subtle underline to indicate tappability */
 }
-.handle::after {
-  content: ''; position: absolute; inset: 9px;
-  border-radius: 50%; background: var(--accent);
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+.word-tap::after {
+  content: '';
+  position: absolute;
+  left: 15%; right: 15%; bottom: 1px;
+  height: 1px;
+  background: rgba(76, 201, 240, 0.45);
+  border-radius: 1px;
+  pointer-events: none;
 }
-.handle.h-tl { top: -18px; left: -18px; cursor: nwse-resize; }
-.handle.h-tr { top: -18px; right: -18px; cursor: nesw-resize; }
-.handle.h-bl { bottom: -18px; left: -18px; cursor: nesw-resize; }
-.handle.h-br { bottom: -18px; right: -18px; cursor: nwse-resize; }
+.word-tap:active,
+.word-tap.is-active {
+  background: rgba(76, 201, 240, 0.28);
+  box-shadow: 0 0 0 1.5px rgba(76, 201, 240, 0.75);
+}
+
+/* Scanning progress bar during OCR */
+.scan-progress {
+  position: absolute; left: 16px; right: 16px; bottom: 18px;
+  z-index: 8;
+  padding: 12px 16px;
+  background: rgba(8, 14, 20, 0.82);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.scan-progress p {
+  margin: 0 0 8px 0; font-size: 0.86rem; color: var(--text);
+  display: flex; justify-content: space-between;
+}
+.scan-progress .pct {
+  color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650;
+}
+.progress-bar {
+  height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #6ee7ff, #4cc9f0);
+  transition: width 0.25s var(--ease-out);
+}
+
+/* "No text" overlay */
+.no-text {
+  position: absolute; inset: 0; z-index: 9;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 32px 24px;
+  text-align: center;
+  background: rgba(8, 14, 20, 0.9);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.no-text h2 { margin: 0; font-size: 1.1rem; }
+.no-text p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
 
 /* ==========================================================================
    6. CONTROLS
@@ -262,10 +296,10 @@ button { cursor: pointer; border: 0; background: none; }
   border: 2.5px solid currentColor;
   box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16);
 }
-.selection-actions {
+.analyze-actions {
   display: flex; gap: 10px; width: 100%; max-width: 440px;
 }
-.selection-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.98rem; }
+.analyze-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.96rem; }
 .status-hint {
   margin: 0; font-size: 0.82rem; color: var(--muted);
   text-align: center; min-height: 1.2em; max-width: 44ch;
@@ -517,16 +551,21 @@ button { cursor: pointer; border: 0; background: none; }
       <canvas id="cropCanvas" hidden aria-hidden="true"></canvas>
     </section>
 
-    <!-- ============ SELECTION VIEW ============ -->
-    <section class="selection-view" id="selectionView" hidden aria-label="Select text region">
+    <!-- ============ ANALYZE VIEW (frozen image + tap-to-lookup) ============ -->
+    <section class="analyze-view" id="analyzeView" hidden aria-label="Detected text">
       <div class="frozen-wrap" id="frozenWrap">
         <canvas id="frozenCanvas" class="frozen-canvas"></canvas>
-        <div class="selection-rect" id="selectionRect">
-          <div class="handle h-tl" data-handle="tl"></div>
-          <div class="handle h-tr" data-handle="tr"></div>
-          <div class="handle h-bl" data-handle="bl"></div>
-          <div class="handle h-br" data-handle="br"></div>
-        </div>
+        <div class="word-layer" id="wordLayer"></div>
+      </div>
+
+      <div class="scan-progress" id="scanProgress" hidden>
+        <p>Scanning text… <span class="pct" id="scanPct">0%</span></p>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <div class="no-text" id="noText" hidden>
+        <h2>No text detected</h2>
+        <p>Try again with better lighting, or zoom in closer before capturing.</p>
       </div>
     </section>
 
@@ -541,13 +580,13 @@ button { cursor: pointer; border: 0; background: none; }
       </p>
     </div>
 
-    <!-- ============ CONTROLS: SELECTION ============ -->
-    <div class="controls" id="selectionControls" hidden>
-      <div class="selection-actions">
+    <!-- ============ CONTROLS: ANALYZE ============ -->
+    <div class="controls" id="analyzeControls" hidden>
+      <div class="analyze-actions">
         <button id="btnRetake" class="btn btn-ghost" type="button">Retake</button>
-        <button id="btnLookUp" class="btn btn-primary" type="button">Look Up</button>
+        <button id="btnManualFromAnalyze" class="btn btn-ghost" type="button">Type word</button>
       </div>
-      <p class="status-hint">Drag the box to fit the word or line, then tap Look Up</p>
+      <p class="status-hint" id="analyzeHint">Tap any word to look it up</p>
     </div>
   </main>
 </div>
@@ -596,8 +635,8 @@ button { cursor: pointer; border: 0; background: none; }
 /* ==========================================================================
  * ScanLex — Visual Scan Dictionary
  * --------------------------------------------------------------------------
- * Flow:
- *   Camera  →  Capture full frame  →  Select region  →  OCR  →  Lookup
+ * Flow:  Camera  →  Capture  →  OCR whole frame  →  tap any word  →  lookup
+ * No rectangle dragging. No reticle. Just like Google Lens.
  * ========================================================================== */
 
 /* ==========================================================================
@@ -616,20 +655,20 @@ const CONFIG = Object.freeze({
     IDEAL_HEIGHT: 1080,
     DEFAULT_FACING: 'environment',
     ALTERNATE_FACING: 'user',
-    FOCUS_SETTLE_MS: 550,
-    ZOOM_STEP_FRACTION: 0.15   // 15 % of range per button tap
+    FOCUS_SETTLE_MS: 500,
+    ZOOM_STEP_FRACTION: 0.15
   }),
 
   OCR: Object.freeze({
     CDN_URL: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
     LANGUAGE: 'eng',
     OEM: 1,
-    DEFAULT_PSM: '6',
-    PSM_LINE: '7',
-    PSM_BLOCK: '6',
+    PSM: '6',                  // uniform block of text
+    MIN_WORD_CONFIDENCE: 30,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
-    MIN_CONFIDENCE_EARLY: 70
+    MAX_EDGE_PX: 1600,         // cap OCR input resolution for speed
+    WORD_TAP_PADDING: 8        // extra px around each word to enlarge tap target
   }),
 
   UI: Object.freeze({
@@ -640,49 +679,54 @@ const CONFIG = Object.freeze({
   }),
 
   SELECTORS: Object.freeze({
-    cameraView:     '#cameraView',
-    selectionView:  '#selectionView',
-    video:          '#video',
-    focusRing:      '#focusRing',
-    zoomBar:        '#zoomBar',
-    zoomValue:      '#zoomValue',
-    btnZoomIn:      '#btnZoomIn',
-    btnZoomOut:     '#btnZoomOut',
-    frozenCanvas:   '#frozenCanvas',
-    frozenWrap:     '#frozenWrap',
-    selectionRect:  '#selectionRect',
-    cropCanvas:     '#cropCanvas',
-    ocrOverlay:     '#ocrOverlay',
-    ocrLabel:       '#ocrLabel',
-    cameraError:    '#cameraError',
-    cameraErrorText:'#cameraErrorText',
-    btnCameraRetry: '#btnCameraRetry',
-    btnCameraManual:'#btnCameraManual',
-    btnCapture:     '#btnCapture',
-    btnRetake:      '#btnRetake',
-    btnLookUp:      '#btnLookUp',
-    cameraControls: '#cameraControls',
-    selectionCtrls: '#selectionControls',
-    btnSwitch:      '#btnSwitch',
-    btnTorch:       '#btnTorch',
-    btnManual:      '#btnManual',
-    statusHint:     '#statusHint',
-    scrim:          '#scrim',
-    resultSheet:    '#resultSheet',
-    resultBody:     '#resultBody',
-    btnResultClose: '#btnResultClose',
-    manualSheet:    '#manualSheet',
-    manualForm:     '#manualForm',
-    manualInput:    '#manualInput',
-    manualError:    '#manualError',
-    btnManualClose: '#btnManualClose',
-    errorModal:     '#errorModal',
-    errorTitle:     '#errorTitle',
-    errorText:      '#errorText',
-    errorRetry:     '#errorRetry',
-    errorDismiss:   '#errorDismiss',
-    toast:          '#toast',
-    offlineBanner:  '#offlineBanner'
+    cameraView:      '#cameraView',
+    analyzeView:     '#analyzeView',
+    video:           '#video',
+    focusRing:       '#focusRing',
+    zoomBar:         '#zoomBar',
+    zoomValue:       '#zoomValue',
+    btnZoomIn:       '#btnZoomIn',
+    btnZoomOut:      '#btnZoomOut',
+    frozenCanvas:    '#frozenCanvas',
+    frozenWrap:      '#frozenWrap',
+    wordLayer:       '#wordLayer',
+    scanProgress:    '#scanProgress',
+    scanPct:         '#scanPct',
+    progressFill:    '#progressFill',
+    noText:          '#noText',
+    cropCanvas:      '#cropCanvas',
+    ocrOverlay:      '#ocrOverlay',
+    ocrLabel:        '#ocrLabel',
+    cameraError:     '#cameraError',
+    cameraErrorText: '#cameraErrorText',
+    btnCameraRetry:  '#btnCameraRetry',
+    btnCameraManual: '#btnCameraManual',
+    btnCapture:      '#btnCapture',
+    btnRetake:       '#btnRetake',
+    btnManualFromAnalyze: '#btnManualFromAnalyze',
+    cameraControls:  '#cameraControls',
+    analyzeControls: '#analyzeControls',
+    btnSwitch:       '#btnSwitch',
+    btnTorch:        '#btnTorch',
+    btnManual:       '#btnManual',
+    statusHint:      '#statusHint',
+    analyzeHint:     '#analyzeHint',
+    scrim:           '#scrim',
+    resultSheet:     '#resultSheet',
+    resultBody:      '#resultBody',
+    btnResultClose:  '#btnResultClose',
+    manualSheet:     '#manualSheet',
+    manualForm:      '#manualForm',
+    manualInput:     '#manualInput',
+    manualError:     '#manualError',
+    btnManualClose:  '#btnManualClose',
+    errorModal:      '#errorModal',
+    errorTitle:      '#errorTitle',
+    errorText:       '#errorText',
+    errorRetry:      '#errorRetry',
+    errorDismiss:    '#errorDismiss',
+    toast:           '#toast',
+    offlineBanner:   '#offlineBanner'
   })
 });
 
@@ -709,8 +753,7 @@ const MESSAGES = Object.freeze({
   CAMERA_NOT_READY: 'The camera is still warming up. Give it a moment and try again.',
   OCR_LIB:          'The text-recognition engine could not be loaded. Check your connection.',
   OCR_FAILED:       'Text recognition failed. Try again with steadier lighting.',
-  OCR_EMPTY:        'No readable text in the selected area. Try zooming in closer on the ' +
-                    'camera, or selecting a tighter area with more of the word visible.',
+  OCR_EMPTY:        'No readable text was found. Try again with better lighting, or zoom in closer before capturing.',
   OFFLINE:          'You appear to be offline. Reconnect to look up definitions.',
   TIMEOUT:          'The dictionary request timed out. Please try again.',
   NETWORK:          'A network error occurred while contacting the dictionary.',
@@ -771,6 +814,7 @@ const UI = (() => {
   let focusRingTimer = null;
 
   function setStatus(text) { DOM.statusHint.textContent = text; }
+  function setAnalyzeHint(text) { DOM.analyzeHint.textContent = text; }
 
   function setBusy(isBusy, label) {
     DOM.ocrOverlay.hidden = !isBusy;
@@ -794,8 +838,8 @@ const UI = (() => {
     lastFocused = document.activeElement;
     sheet.classList.add('is-open');
     updateScrim();
-    const focusTarget = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
-    requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
+    const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
+    requestAnimationFrame(() => target?.focus({ preventScroll: true }));
   }
 
   function closeSheet(sheet) {
@@ -878,16 +922,83 @@ const UI = (() => {
   /* ---- View switching ---------------------------------------------------- */
   function showCameraView() {
     DOM.cameraView.hidden = false;
-    DOM.selectionView.hidden = true;
+    DOM.analyzeView.hidden = true;
     DOM.cameraControls.hidden = false;
-    DOM.selectionCtrls.hidden = true;
+    DOM.analyzeControls.hidden = true;
   }
 
-  function showSelectionView() {
+  function showAnalyzeView() {
     DOM.cameraView.hidden = true;
-    DOM.selectionView.hidden = false;
+    DOM.analyzeView.hidden = false;
     DOM.cameraControls.hidden = true;
-    DOM.selectionCtrls.hidden = false;
+    DOM.analyzeControls.hidden = false;
+  }
+
+  /* ---- Scanning progress ------------------------------------------------- */
+  function showScanProgress(show, pct = 0) {
+    DOM.scanProgress.hidden = !show;
+    if (show) {
+      DOM.progressFill.style.width = pct + '%';
+      DOM.scanPct.textContent = pct + '%';
+    }
+  }
+
+  function updateScanProgress(pct) {
+    DOM.progressFill.style.width = pct + '%';
+    DOM.scanPct.textContent = pct + '%';
+  }
+
+  function showNoText(show) {
+    DOM.noText.hidden = !show;
+  }
+
+  /* ---- Word overlay ------------------------------------------------------ */
+  /**
+   * Renders tappable word overlays on the frozen image.
+   * @param {Array<{text:string, bbox:{x0,y0,x1,y1}}>} words in canvas pixels
+   * @param {number} canvasW
+   * @param {number} canvasH
+   * @param {number} displayW
+   * @param {number} displayH
+   * @param {Function} onWordTap  receives the word text
+   */
+  function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
+    DOM.wordLayer.replaceChildren();
+    const sx = displayW / canvasW;
+    const sy = displayH / canvasH;
+    const pad = CONFIG.OCR.WORD_TAP_PADDING;
+
+    const frag = document.createDocumentFragment();
+    for (const w of words) {
+      const { x0, y0, x1, y1 } = w.bbox;
+      const left   = Math.max(0, x0 * sx - pad);
+      const top    = Math.max(0, y0 * sy - pad);
+      const width  = Math.min(displayW - left, (x1 - x0) * sx + pad * 2);
+      const height = Math.min(displayH - top, (y1 - y0) * sy + pad * 2);
+      if (width < 8 || height < 8) continue;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'word-tap';
+      btn.style.left = left + 'px';
+      btn.style.top = top + 'px';
+      btn.style.width = width + 'px';
+      btn.style.height = height + 'px';
+      btn.setAttribute('aria-label', `Look up "${w.text}"`);
+      btn.dataset.word = w.text;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        btn.classList.add('is-active');
+        setTimeout(() => onWordTap(w.text), 120);
+      });
+      frag.appendChild(btn);
+    }
+    DOM.wordLayer.appendChild(frag);
+    DOM.wordLayer.style.pointerEvents = 'auto';
+  }
+
+  function clearWords() {
+    DOM.wordLayer.replaceChildren();
   }
 
   /* ---- Result rendering -------------------------------------------------- */
@@ -954,7 +1065,7 @@ const UI = (() => {
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
-    DOM.btnLookUp.addEventListener('click', handlers.onLookUp);
+    DOM.btnManualFromAnalyze.addEventListener('click', handlers.onManualRequest);
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraRetry.addEventListener('click', handlers.onCameraRetry);
@@ -976,8 +1087,8 @@ const UI = (() => {
 
     // Camera view: pointer interactions (tap-to-focus + pinch-to-zoom).
     const pointerMap = new Map();
-    let pinch = null;  // { startDist, startZoom }
-    let tapCandidate = null;  // { x, y, t }
+    let pinch = null;
+    let tapCandidate = null;
 
     DOM.cameraView.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button')) return;
@@ -1025,7 +1136,6 @@ const UI = (() => {
     DOM.cameraView.addEventListener('pointerup', endPointer);
     DOM.cameraView.addEventListener('pointercancel', endPointer);
 
-    // Escape key closes open dialogs.
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (!DOM.errorModal.hidden) { hideError(); handlers.onErrorDismissed?.(); }
@@ -1035,13 +1145,15 @@ const UI = (() => {
   }
 
   return {
-    setStatus, setBusy, isOverlayOpen,
+    setStatus, setAnalyzeHint, setBusy,
     openSheet, closeSheet, closeAllSheets,
     toast, showError, hideError,
     showCameraError, hideCameraError, setOffline,
     showInputError, clearInputError,
     showFocusRing, setTorchUI, setZoomUI,
-    showCameraView, showSelectionView,
+    showCameraView, showAnalyzeView,
+    showScanProgress, updateScanProgress, showNoText,
+    renderWords, clearWords,
     renderResult, bindEvents
   };
 })();
@@ -1055,11 +1167,8 @@ const CameraService = (() => {
   let facingMode = CONFIG.CAMERA.DEFAULT_FACING;
   let paused = false;
   let torchOn = false;
-
-  /** { min, max, step, native } — native: true when hardware zoom is supported. */
   let zoomInfo = { min: 1, max: 1, step: 0.1, native: false };
   let currentZoom = 1;
-  /** Digital zoom via CSS when native zoom is not available. */
   let digitalZoom = 1;
 
   function translateError(error) {
@@ -1112,13 +1221,11 @@ const CameraService = (() => {
     try { return track.getCapabilities?.() || {}; } catch { return {}; }
   }
 
-  /* ---- Focus ------------------------------------------------------------- */
   async function applyContinuousFocus() {
     const track = getTrack();
     if (!track) return;
     const caps = getCaps();
-    if (!Array.isArray(caps.focusMode)) return;
-    if (!caps.focusMode.includes('continuous')) return;
+    if (!Array.isArray(caps.focusMode) || !caps.focusMode.includes('continuous')) return;
     try {
       await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
     } catch { /* ignore */ }
@@ -1164,7 +1271,6 @@ const CameraService = (() => {
     } catch { /* ignore */ }
   }
 
-  /* ---- Zoom -------------------------------------------------------------- */
   function refreshZoomInfo() {
     const caps = getCaps();
     if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min) {
@@ -1175,7 +1281,6 @@ const CameraService = (() => {
         native: true
       };
     } else {
-      // Digital zoom fallback range (CSS transform).
       zoomInfo = { min: 1, max: 4, step: 0.1, native: false };
     }
     currentZoom = zoomInfo.min;
@@ -1185,11 +1290,7 @@ const CameraService = (() => {
 
   function applyDigitalZoomCSS(scale) {
     if (!videoEl) return;
-    if (zoomInfo.native) {
-      videoEl.style.transform = '';
-    } else {
-      videoEl.style.transform = `scale(${scale})`;
-    }
+    videoEl.style.transform = zoomInfo.native ? '' : `scale(${scale})`;
   }
 
   async function setZoom(value) {
@@ -1207,14 +1308,12 @@ const CameraService = (() => {
       currentZoom = target;
       applyDigitalZoomCSS(digitalZoom);
     }
-    // Re-assert focus — some devices unfocus on zoom changes.
     applyContinuousFocus();
   }
 
   function getZoom() { return currentZoom; }
   function getZoomInfo() { return { ...zoomInfo }; }
 
-  /* ---- Torch ------------------------------------------------------------- */
   function hasTorch() { return getCaps().torch === true; }
   function isTorchOn() { return torchOn; }
 
@@ -1228,10 +1327,9 @@ const CameraService = (() => {
     } catch { return false; }
   }
 
-  /* ---- Capture ----------------------------------------------------------- */
   /**
-   * Draws the current visible viewfinder content to a canvas.
-   * Handles object-fit: cover and digital zoom scaling.
+   * Draws the current viewfinder content (object-fit: cover + digital zoom)
+   * into a target canvas. Caps the long edge at CONFIG.OCR.MAX_EDGE_PX.
    */
   function captureFrame(targetCanvas) {
     if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
@@ -1244,12 +1342,10 @@ const CameraService = (() => {
     const dh = rect.height;
     if (!dw || !dh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
 
-    // object-fit: cover mapping.
     const coverScale = Math.max(dw / vw, dh / vh);
     const scaledW = vw * coverScale;
     const scaledH = vh * coverScale;
 
-    // Digital zoom crops further inside the visible region.
     const dz = zoomInfo.native ? 1 : digitalZoom;
     const visibleW = dw / dz;
     const visibleH = dh / dz;
@@ -1261,18 +1357,22 @@ const CameraService = (() => {
     const sw = visibleW / coverScale;
     const sh = visibleH / coverScale;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    targetCanvas.width = Math.round(dw * dpr);
-    targetCanvas.height = Math.round(dh * dpr);
+    // Cap resolution for OCR speed.
+    const srcLong = Math.max(sw, sh);
+    const cap = Math.min(1, CONFIG.OCR.MAX_EDGE_PX / srcLong);
+    const targetW = Math.max(1, Math.round(sw * cap));
+    const targetH = Math.max(1, Math.round(sh * cap));
+
+    targetCanvas.width = targetW;
+    targetCanvas.height = targetH;
     const ctx = targetCanvas.getContext('2d');
     if (!ctx) throw new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetCanvas.width, targetCanvas.height);
+    ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetW, targetH);
     return targetCanvas;
   }
 
-  /* ---- Lifecycle --------------------------------------------------------- */
   async function start(video) {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new AppError(
@@ -1307,8 +1407,6 @@ const CameraService = (() => {
     try { await videoEl.play(); } catch {}
 
     await waitForMetadata(videoEl);
-
-    // Give the driver a beat, then explicitly force continuous AF.
     await sleep(150);
     await applyContinuousFocus();
 
@@ -1346,11 +1444,8 @@ const CameraService = (() => {
   async function resume() {
     if (!stream || !paused) return;
     stream.getVideoTracks().forEach((t) => { t.enabled = true; });
-    if (videoEl) {
-      try { await videoEl.play(); } catch {}
-    }
+    if (videoEl) { try { await videoEl.play(); } catch {} }
     paused = false;
-    // Re-assert focus on resume.
     applyContinuousFocus();
   }
 
@@ -1386,157 +1481,12 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * 6. SELECTION SERVICE
- * ========================================================================== */
-const SelectionService = (() => {
-  let rect = { x: 0, y: 0, w: 0, h: 0 };
-  let dragMode = null;
-  let dragStart = null;
-  const MIN_SIZE = 40;
-  let imageCanvasRef = null;
-
-  /* ---- Fit the frozen image inside the stage --------------------------- */
-  function layoutFrozenImage() {
-    const stage = DOM.selectionView.getBoundingClientRect();
-    const canvas = DOM.frozenCanvas;
-    const aspect = canvas.width / canvas.height;
-    const stageAspect = stage.width / stage.height;
-
-    let w, h;
-    if (aspect > stageAspect) {
-      w = stage.width; h = stage.width / aspect;
-    } else {
-      h = stage.height; w = stage.height * aspect;
-    }
-    DOM.frozenWrap.style.width = w + 'px';
-    DOM.frozenWrap.style.height = h + 'px';
-  }
-
-  /* ---- Set the frozen image and default selection ---------------------- */
-  function setImage(canvas) {
-    imageCanvasRef = canvas;
-    DOM.frozenCanvas.width = canvas.width;
-    DOM.frozenCanvas.height = canvas.height;
-    const ctx = DOM.frozenCanvas.getContext('2d');
-    ctx.drawImage(canvas, 0, 0);
-
-    requestAnimationFrame(() => {
-      layoutFrozenImage();
-      const wrap = DOM.frozenWrap.getBoundingClientRect();
-      // Default: 80 % width, ~22 % height, centred.
-      const w = wrap.width * 0.8;
-      const h = Math.max(wrap.height * 0.22, 60);
-      rect = { x: (wrap.width - w) / 2, y: (wrap.height - h) / 2, w, h };
-      render();
-    });
-  }
-
-  function render() {
-    const s = DOM.selectionRect.style;
-    s.left = rect.x + 'px';
-    s.top = rect.y + 'px';
-    s.width = rect.w + 'px';
-    s.height = rect.h + 'px';
-  }
-
-  function getRect() { return { ...rect }; }
-
-  /* ---- Pointer handlers ------------------------------------------------- */
-  function onPointerDown(e) {
-    const handleEl = e.target.closest('.handle');
-    if (handleEl) {
-      dragMode = 'resize-' + handleEl.dataset.handle;
-    } else if (e.target === DOM.selectionRect) {
-      dragMode = 'move';
-    } else {
-      return;
-    }
-    dragStart = { x: e.clientX, y: e.clientY, rect: { ...rect } };
-    DOM.selectionRect.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  }
-
-  function onPointerMove(e) {
-    if (!dragMode) return;
-    const wrap = DOM.frozenWrap.getBoundingClientRect();
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    let { x, y, w, h } = dragStart.rect;
-
-    if (dragMode === 'move') {
-      x = clamp(x + dx, 0, wrap.width - w);
-      y = clamp(y + dy, 0, wrap.height - h);
-    } else if (dragMode === 'resize-br') {
-      w = clamp(w + dx, MIN_SIZE, wrap.width - x);
-      h = clamp(h + dy, MIN_SIZE, wrap.height - y);
-    } else if (dragMode === 'resize-tl') {
-      const nx = clamp(x + dx, 0, x + w - MIN_SIZE);
-      const ny = clamp(y + dy, 0, y + h - MIN_SIZE);
-      w = w - (nx - x);
-      h = h - (ny - y);
-      x = nx; y = ny;
-    } else if (dragMode === 'resize-tr') {
-      const ny = clamp(y + dy, 0, y + h - MIN_SIZE);
-      w = clamp(w + dx, MIN_SIZE, wrap.width - x);
-      h = h - (ny - y);
-      y = ny;
-    } else if (dragMode === 'resize-bl') {
-      const nx = clamp(x + dx, 0, x + w - MIN_SIZE);
-      w = w - (nx - x);
-      x = nx;
-      h = clamp(h + dy, MIN_SIZE, wrap.height - y);
-    }
-
-    rect = { x, y, w, h };
-    render();
-  }
-
-  function onPointerUp() {
-    dragMode = null;
-    dragStart = null;
-  }
-
-  /* ---- Produce cropped canvas ------------------------------------------- */
-  function cropSelection() {
-    if (!imageCanvasRef) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
-    const wrap = DOM.frozenWrap.getBoundingClientRect();
-    const scaleX = DOM.frozenCanvas.width / wrap.width;
-    const scaleY = DOM.frozenCanvas.height / wrap.height;
-
-    const sx = clamp(rect.x * scaleX, 0, DOM.frozenCanvas.width - 1);
-    const sy = clamp(rect.y * scaleY, 0, DOM.frozenCanvas.height - 1);
-    const sw = clamp(rect.w * scaleX, 1, DOM.frozenCanvas.width - sx);
-    const sh = clamp(rect.h * scaleY, 1, DOM.frozenCanvas.height - sy);
-
-    // Upscale small regions for OCR accuracy.
-    const minTarget = 800;
-    const upscale = clamp(minTarget / sw, 1, 4);
-    const targetW = Math.min(Math.round(sw * upscale), 2200);
-    const targetH = Math.max(1, Math.round((targetW / sw) * sh));
-
-    const out = DOM.cropCanvas;
-    out.width = targetW;
-    out.height = targetH;
-    const ctx = out.getContext('2d');
-    if (!ctx) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(DOM.frozenCanvas, sx, sy, sw, sh, 0, 0, targetW, targetH);
-    return out;
-  }
-
-  return {
-    setImage, layoutFrozenImage, getRect, cropSelection,
-    onPointerDown, onPointerMove, onPointerUp
-  };
-})();
-
-/* ==========================================================================
- * 7. OCR SERVICE
+ * 6. OCR SERVICE — full-frame recognition with word bounding boxes
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
   let libraryPromise = null;
+  let progressCallback = null;
 
   function loadLibrary() {
     if (window.Tesseract) return Promise.resolve(window.Tesseract);
@@ -1564,13 +1514,13 @@ const OCRService = (() => {
       const Tesseract = await loadLibrary();
       const worker = await Tesseract.createWorker(CONFIG.OCR.LANGUAGE, CONFIG.OCR.OEM, {
         logger: (msg) => {
-          if (msg?.status === 'recognizing text') {
-            UI.setStatus(`Reading… ${Math.round((msg.progress || 0) * 100)}%`);
+          if (msg?.status === 'recognizing text' && progressCallback) {
+            progressCallback(Math.round((msg.progress || 0) * 100));
           }
         },
         errorHandler: (err) => console.error('[ScanLex][OCR]', err)
       });
-      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM }); } catch {}
+      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM }); } catch {}
       return worker;
     })().catch((err) => {
       workerPromise = null;
@@ -1580,7 +1530,7 @@ const OCRService = (() => {
     return workerPromise;
   }
 
-  /* ---- Otsu binarisation --------------------------------------------- */
+  /* ---- Otsu binarisation (crisper text on book paper) -------------------- */
   function otsuThreshold(gray) {
     const hist = new Array(256).fill(0);
     for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
@@ -1621,47 +1571,119 @@ const OCRService = (() => {
     return out;
   }
 
-  function enhance(src) {
-    const out = document.createElement('canvas');
-    out.width = src.width; out.height = src.height;
-    const ctx = out.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(src, 0, 0);
-    try {
-      const img = ctx.getImageData(0, 0, out.width, out.height);
-      const data = img.data;
-      const c = 1.35, b = 128 * (1 - c);
-      for (let i = 0; i < data.length; i += 4) {
-        const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const v = clamp(g * c + b, 0, 255);
-        data[i] = v; data[i + 1] = v; data[i + 2] = v;
-      }
-      ctx.putImageData(img, 0, 0);
-    } catch {}
-    return out;
-  }
-
-  async function recognizeRobust(canvas) {
-    const worker = await getWorker();
-    const passes = [
-      { canvas: binarize(canvas), psm: CONFIG.OCR.PSM_LINE },
-      { canvas: binarize(canvas), psm: CONFIG.OCR.PSM_BLOCK },
-      { canvas: enhance(canvas),  psm: CONFIG.OCR.PSM_LINE }
-    ];
-    let best = { text: '', confidence: 0 };
-    for (const p of passes) {
-      try {
-        await worker.setParameters({ tessedit_pageseg_mode: p.psm });
-        const { data } = await worker.recognize(p.canvas);
-        const text = typeof data?.text === 'string' ? data.text : '';
-        const conf = typeof data?.confidence === 'number' ? data.confidence : 0;
-        if (conf > best.confidence) best = { text, confidence: conf };
-        if (conf >= CONFIG.OCR.MIN_CONFIDENCE_EARLY && text.replace(/\s/g, '').length >= 3) break;
-      } catch {}
+  /* ---- Extract bboxes from Tesseract's hierarchical output -------------- */
+  function getBBox(node) {
+    const b = node?.bbox || node?.boundingBox || {};
+    if (typeof b.x0 === 'number' && typeof b.x1 === 'number') {
+      return { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 };
     }
-    try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM }); } catch {}
-    return best;
+    if (typeof b.left === 'number' && typeof b.right === 'number') {
+      return { x0: b.left, y0: b.top, x1: b.right, y1: b.bottom };
+    }
+    return null;
   }
 
+  function collectWords(data) {
+    const words = [];
+
+    // Path 1: top-level `data.words` (present in most v5 builds)
+    if (Array.isArray(data.words)) {
+      words.push(...data.words);
+    }
+
+    // Path 2: flatten `data.blocks → paragraphs → lines → words`
+    if (!words.length && Array.isArray(data.blocks)) {
+      for (const block of data.blocks) {
+        for (const para of block?.paragraphs || []) {
+          for (const line of para?.lines || []) {
+            for (const word of line?.words || []) {
+              words.push(word);
+            }
+          }
+        }
+      }
+    }
+
+    // Path 3: `data.lines[].words`
+    if (!words.length && Array.isArray(data.lines)) {
+      for (const line of data.lines) {
+        for (const word of line?.words || []) {
+          words.push(word);
+        }
+      }
+    }
+
+    return words;
+  }
+
+  /**
+   * Recognizes text in the whole canvas and returns word-level bboxes.
+   * @param {HTMLCanvasElement} canvas
+   * @param {(pct:number)=>void} [onProgress]
+   * @returns {Promise<{words: Array<{text:string,confidence:number,bbox:Object}>, fullText: string}>}
+   */
+  async function recognizeWithBoxes(canvas, onProgress) {
+    progressCallback = onProgress || null;
+    const worker = await getWorker();
+    const binary = binarize(canvas);
+
+    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
+
+    let data;
+    try {
+      // Ask for full block structure — that's where bboxes live.
+      const result = await worker.recognize(binary, {}, { text: true, blocks: true });
+      data = result.data;
+    } catch {
+      // Fallback: text-only (no word bboxes) — we'll still return full text.
+      const result = await worker.recognize(binary);
+      data = result.data;
+    }
+
+    const rawWords = collectWords(data);
+    const words = [];
+    for (const w of rawWords) {
+      const text = String(w?.text || '').trim();
+      if (!text) continue;
+      const letters = text.replace(/[^A-Za-z]/g, '');
+      if (letters.length < CONFIG.OCR.MIN_WORD_LENGTH) continue;
+      if (text.length > CONFIG.OCR.MAX_WORD_LENGTH) continue;
+      const confidence = Number(w.confidence) || 0;
+      if (confidence < CONFIG.OCR.MIN_WORD_CONFIDENCE) continue;
+      const bbox = getBBox(w);
+      if (!bbox) continue;
+      if (bbox.x1 - bbox.x0 < 4 || bbox.y1 - bbox.y0 < 4) continue;
+      words.push({ text, confidence, bbox });
+    }
+
+    // Fallback: if we got text but no bboxes, synthesize one big bbox per line
+    if (!words.length && typeof data.text === 'string' && data.text.trim()) {
+      // No bboxes available — offer the longest word as a single button
+      // positioned over the top-left region so the UI remains usable.
+      const tokens = data.text
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z\s'-]+/g, ' ').split(/\s+/)
+        .filter((t) => t.length >= 3);
+      if (tokens.length) {
+        const best = tokens.sort((a, b) => b.length - a.length)[0];
+        words.push({
+          text: best,
+          confidence: 50,
+          bbox: {
+            x0: Math.round(canvas.width * 0.1),
+            y0: Math.round(canvas.height * 0.1),
+            x1: Math.round(canvas.width * 0.9),
+            y1: Math.round(canvas.height * 0.1) + 60
+          }
+        });
+      }
+    }
+
+    progressCallback = null;
+    return { words, fullText: typeof data.text === 'string' ? data.text : '' };
+  }
+
+  /* ---- Word sanitisation ------------------------------------------------- */
   function tokenize(raw) {
     if (typeof raw !== 'string') return [];
     return raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
@@ -1673,22 +1695,16 @@ const OCRService = (() => {
       });
   }
 
-  function extractWord(raw) {
-    const tokens = tokenize(raw);
-    if (!tokens.length) return '';
-    return tokens.slice().sort((a, b) => b.length - a.length)[0];
-  }
-
   function sanitizeWord(raw) {
     const tokens = tokenize(raw);
     return tokens.length ? tokens[0] : '';
   }
 
-  return { getWorker, recognizeRobust, extractWord, sanitizeWord };
+  return { getWorker, recognizeWithBoxes, sanitizeWord };
 })();
 
 /* ==========================================================================
- * 8. DICTIONARY SERVICE
+ * 7. DICTIONARY SERVICE
  * ========================================================================== */
 const DictionaryService = (() => {
   const POS_MAP = Object.freeze({
@@ -1845,25 +1861,25 @@ const DictionaryService = (() => {
 })();
 
 /* ==========================================================================
- * 9. APP CONTROLLER
+ * 8. APP CONTROLLER
  * ========================================================================== */
 const App = (() => {
   const state = {
     busy: false,
-    phase: 'camera',  // 'camera' | 'selecting' | 'processing'
+    phase: 'camera',       // 'camera' | 'analyzing' | 'ready'
     cameraReady: false,
     lastWord: '',
-    ocrWarmedUp: false
+    ocrWarmedUp: false,
+    currentFrozenCanvas: null,
+    currentWords: []
   };
 
-  /* ---- Camera lifecycle -------------------------------------------------- */
   async function startCamera() {
     try {
       await CameraService.start(DOM.video);
       state.cameraReady = true;
       UI.hideCameraError();
       UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
-      DOM.btnCapture.disabled = false;
 
       const count = await CameraService.countCameras();
       DOM.btnSwitch.hidden = count < 2;
@@ -1871,7 +1887,6 @@ const App = (() => {
 
       const zi = CameraService.getZoomInfo();
       UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
-      if (!zi.native && zi.max <= 1.01) DOM.zoomBar.hidden = true;
 
       warmUpOcr();
     } catch (error) {
@@ -1891,7 +1906,7 @@ const App = (() => {
     else setTimeout(run, 1200);
   }
 
-  /* ---- Capture: freeze full frame → show selection --------------------- */
+  /* ---- Capture → freeze → OCR whole frame → word overlays --------------- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -1904,73 +1919,116 @@ const App = (() => {
 
     try {
       await CameraService.triggerAutofocus();
+
+      // Grab the frame while the stream is live.
       const frozen = CameraService.captureFrame(DOM.cropCanvas);
       CameraService.pause();
 
-      // Copy frozen frame into the selection canvas and switch views.
-      SelectionService.setImage(frozen);
-      state.phase = 'selecting';
-      UI.showSelectionView();
+      // Copy frozen frame into display canvas.
+      DOM.frozenCanvas.width = frozen.width;
+      DOM.frozenCanvas.height = frozen.height;
+      const fctx = DOM.frozenCanvas.getContext('2d');
+      fctx.drawImage(frozen, 0, 0);
+
+      // Layout the frozen image on screen (contain-fit).
+      state.phase = 'analyzing';
+      UI.showAnalyzeView();
+      UI.showNoText(false);
+      UI.clearWords();
+      requestAnimationFrame(() => {
+        layoutFrozenImage();
+        startWholeFrameOcr(frozen);
+      });
     } catch (error) {
       handleError(error);
-    } finally {
       state.busy = false;
       DOM.btnCapture.disabled = false;
     }
   }
 
-  /* ---- Retake: back to live camera ------------------------------------- */
+  function layoutFrozenImage() {
+    const stage = DOM.analyzeView.getBoundingClientRect();
+    const canvas = DOM.frozenCanvas;
+    const aspect = canvas.width / canvas.height;
+    const stageAspect = stage.width / stage.height;
+
+    let w, h;
+    if (aspect > stageAspect) {
+      w = stage.width; h = stage.width / aspect;
+    } else {
+      h = stage.height; w = stage.height * aspect;
+    }
+    DOM.frozenWrap.style.width = w + 'px';
+    DOM.frozenWrap.style.height = h + 'px';
+  }
+
+  async function startWholeFrameOcr(frozen) {
+    UI.showScanProgress(true, 0);
+    UI.setAnalyzeHint('Scanning text…');
+
+    let result;
+    try {
+      result = await OCRService.recognizeWithBoxes(frozen, (pct) => {
+        UI.updateScanProgress(pct);
+      });
+    } catch (error) {
+      UI.showScanProgress(false);
+      UI.showNoText(true);
+      UI.setAnalyzeHint('Tap Retake to try again');
+      state.busy = false;
+      state.phase = 'ready';
+      console.error('[ScanLex]', error);
+      return;
+    }
+
+    UI.showScanProgress(false);
+    state.currentWords = result.words;
+    state.busy = false;
+    state.phase = 'ready';
+
+    if (!result.words.length) {
+      UI.showNoText(true);
+      UI.setAnalyzeHint('No text found — tap Retake to try again');
+      return;
+    }
+
+    // Render tappable word overlays.
+    const cw = DOM.frozenCanvas.width;
+    const ch = DOM.frozenCanvas.height;
+    const dw = DOM.frozenWrap.getBoundingClientRect().width;
+    const dh = DOM.frozenWrap.getBoundingClientRect().height;
+    UI.renderWords(result.words, cw, ch, dw, dh, (word) => {
+      lookupWord(word);
+    });
+    UI.setAnalyzeHint(`${result.words.length} word${result.words.length === 1 ? '' : 's'} found — tap one`);
+  }
+
+  /* ---- Retake ------------------------------------------------------------ */
   async function onRetake() {
     if (state.busy) return;
     state.phase = 'camera';
+    state.currentFrozenCanvas = null;
+    state.currentWords = [];
+    UI.clearWords();
+    UI.showScanProgress(false);
+    UI.showNoText(false);
     UI.showCameraView();
     await CameraService.resume();
     UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
   }
 
-  /* ---- Confirm selection → crop → OCR → lookup ------------------------- */
-  async function onLookUp() {
-    if (state.busy || state.phase !== 'selecting') return;
-
-    let crop;
-    try {
-      crop = SelectionService.cropSelection();
-    } catch (error) {
-      handleError(error);
-      return;
-    }
-
-    state.phase = 'processing';
-    state.busy = true;
-    UI.setBusy(true, 'Reading…');
-    UI.setStatus('Reading text from selection…');
-
-    try {
-      const { text, confidence } = await OCRService.recognizeRobust(crop);
-      const word = OCRService.extractWord(text);
-      if (!word) throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
-      if (word.length < 3 && confidence < 55) {
-        throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
-      }
-      await runLookup(word);
-    } catch (error) {
-      handleError(error);
-    } finally {
-      UI.setBusy(false);
-      state.busy = false;
-    }
-  }
-
-  /* ---- Lookup ------------------------------------------------------------ */
-  async function runLookup(rawWord) {
+  /* ---- Word tap → lookup ------------------------------------------------- */
+  async function lookupWord(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
-    if (!word) throw new AppError('BAD_WORD', MESSAGES.BAD_WORD);
+    if (!word) return;
     state.lastWord = word;
-
-    UI.setBusy(true, 'Looking up…');
+    UI.showScanProgress(true, 0);
+    UI.setAnalyzeHint(`Looking up "${word}"…`);
 
     try {
       const entry = await DictionaryService.lookup(word);
+      UI.showScanProgress(false);
+      UI.setAnalyzeHint(`${state.currentWords.length} words found — tap one`);
       UI.renderResult(entry, {
         onScanAnother: () => {
           UI.closeSheet(DOM.resultSheet);
@@ -1982,46 +2040,46 @@ const App = (() => {
         }
       });
       UI.openSheet(DOM.resultSheet);
-    } finally {
-      UI.setBusy(false);
+    } catch (error) {
+      UI.showScanProgress(false);
+      UI.setAnalyzeHint('Tap a word to look it up');
+      handleError(error, word);
     }
   }
 
   /* ---- Error handling ---------------------------------------------------- */
-  function describeError(error) {
+  function describeError(error, attemptedWord) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
+    const w = attemptedWord || state.lastWord;
 
     switch (code) {
       case 'NOT_FOUND':
         return {
           title: 'Word not found',
-          message: `We couldn't find a definition for “${state.lastWord}”. Try adjusting the selection or type a word.`,
-          retryLabel: 'Adjust selection',
-          onRetry: () => onLookUp()
+          message: `We read “${w}” but couldn't find a definition. The OCR may have misread it — try retaking the photo, or type the word.`,
+          retryLabel: 'Type the word',
+          onRetry: () => openManualSheet(w)
         };
       case 'OFFLINE':
         return { title: "You're offline", message: MESSAGES.OFFLINE,
-          retryLabel: 'Retry', onRetry: () => retryLastLookup() };
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
       case 'TIMEOUT':
         return { title: 'Request timed out', message: MESSAGES.TIMEOUT,
-          retryLabel: 'Retry', onRetry: () => retryLastLookup() };
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
       case 'NETWORK':
         return { title: 'Connection problem', message: MESSAGES.NETWORK,
-          retryLabel: 'Retry', onRetry: () => retryLastLookup() };
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
       case 'HTTP_ERROR':
         return { title: 'Dictionary unavailable', message: MESSAGES.HTTP_ERROR,
-          retryLabel: 'Retry', onRetry: () => retryLastLookup() };
+          retryLabel: 'Retry', onRetry: () => lookupWord(w) };
       case 'OCR_EMPTY':
       case 'OCR_FAILED':
         return {
           title: 'Could not read the text',
           message: MESSAGES.OCR_EMPTY,
-          retryLabel: 'Adjust selection',
-          onRetry: () => {
-            state.phase = 'selecting';
-            UI.showSelectionView();
-          }
+          retryLabel: 'Retake',
+          onRetry: () => onRetake()
         };
       case 'OCR_LIB':
         return {
@@ -2041,15 +2099,9 @@ const App = (() => {
     }
   }
 
-  function handleError(error) {
+  function handleError(error, attemptedWord) {
     console.error('[ScanLex]', error);
-    UI.showError(describeError(error));
-  }
-
-  async function retryLastLookup() {
-    if (!state.lastWord) { openManualSheet(''); return; }
-    try { await runLookup(state.lastWord); }
-    catch (error) { handleError(error); }
+    UI.showError(describeError(error, attemptedWord));
   }
 
   /* ---- Manual entry ------------------------------------------------------ */
@@ -2066,8 +2118,24 @@ const App = (() => {
     if (!word) { UI.showInputError(MESSAGES.BAD_WORD); return; }
     UI.clearInputError();
     UI.closeSheet(DOM.manualSheet);
-    try { await runLookup(word); }
-    catch (error) { handleError(error); }
+    state.lastWord = word;
+
+    try {
+      const entry = await DictionaryService.lookup(word);
+      UI.renderResult(entry, {
+        onScanAnother: () => {
+          UI.closeSheet(DOM.resultSheet);
+          onRetake();
+        },
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          openManualSheet('');
+        }
+      });
+      UI.openSheet(DOM.resultSheet);
+    } catch (error) {
+      handleError(error, word);
+    }
   }
 
   /* ---- Camera misc ------------------------------------------------------- */
@@ -2132,7 +2200,6 @@ const App = (() => {
     UI.bindEvents({
       onCapture,
       onRetake,
-      onLookUp,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onSwitchCamera,
@@ -2148,16 +2215,17 @@ const App = (() => {
       onManualSubmit
     });
 
-    // Selection rect pointer handlers (attached once, live throughout).
-    DOM.selectionRect.addEventListener('pointerdown', SelectionService.onPointerDown);
-    DOM.selectionRect.addEventListener('pointermove', SelectionService.onPointerMove);
-    DOM.selectionRect.addEventListener('pointerup', SelectionService.onPointerUp);
-    DOM.selectionRect.addEventListener('pointercancel', SelectionService.onPointerUp);
-
     window.addEventListener('resize', () => {
-      if (state.phase === 'selecting') {
-        SelectionService.layoutFrozenImage();
-        // Rescale selection rect proportionally (best effort).
+      if (state.phase === 'ready' || state.phase === 'analyzing') {
+        layoutFrozenImage();
+        // Re-render word overlays with new display size
+        if (state.currentWords.length) {
+          const cw = DOM.frozenCanvas.width;
+          const ch = DOM.frozenCanvas.height;
+          const dw = DOM.frozenWrap.getBoundingClientRect().width;
+          const dh = DOM.frozenWrap.getBoundingClientRect().height;
+          UI.renderWords(state.currentWords, cw, ch, dw, dh, lookupWord);
+        }
       }
     });
 
@@ -2178,7 +2246,7 @@ const App = (() => {
 })();
 
 /* ==========================================================================
- * 10. BOOTSTRAP
+ * 9. BOOTSTRAP
  * ========================================================================== */
 try { App.init(); }
 catch (error) {
