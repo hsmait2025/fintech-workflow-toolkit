@@ -125,7 +125,6 @@ button { cursor: pointer; border: 0; background: none; }
   transform-origin: center center;
 }
 
-/* Camera status badge (top-left) */
 .cam-badge {
   position: absolute; top: 12px; left: 12px; z-index: 6;
   display: flex; align-items: center; gap: 7px;
@@ -145,7 +144,6 @@ button { cursor: pointer; border: 0; background: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* Zoom bar (top-right) */
 .zoom-bar {
   position: absolute; top: 12px; right: 12px; z-index: 6;
   display: flex; align-items: center; gap: 6px;
@@ -380,7 +378,6 @@ button { cursor: pointer; border: 0; background: none; }
 .input-error { margin: 8px 2px 12px; color: var(--danger); font-size: 0.84rem; }
 #manualForm .btn { margin-top: 14px; }
 
-/* Lens picker */
 .lens-list { display: flex; flex-direction: column; gap: 8px; }
 .lens-item {
   display: flex; align-items: center; gap: 14px;
@@ -640,7 +637,6 @@ button { cursor: pointer; border: 0; background: none; }
 
 <div class="scrim" id="scrim" aria-hidden="true"></div>
 
-<!-- Lens picker -->
 <section class="sheet" id="lensSheet" role="dialog" aria-modal="true" aria-labelledby="lensTitle">
   <div class="sheet-handle" aria-hidden="true"></div>
   <button class="sheet-close" id="btnLensClose" type="button" aria-label="Close">×</button>
@@ -1054,7 +1050,6 @@ const UI = (() => {
 
   function clearWords() { DOM.wordLayer.replaceChildren(); }
 
-  /* ---- Lens list ------------------------------------------------------- */
   function renderLensList(cameras, activeId, onPick) {
     DOM.lensList.replaceChildren();
     for (const cam of cameras) {
@@ -1094,7 +1089,6 @@ const UI = (() => {
     }
   }
 
-  /* ---- Result rendering -------------------------------------------------- */
   function playAudio(url) {
     try {
       const audio = new Audio(url);
@@ -1178,7 +1172,6 @@ const UI = (() => {
       handlers.onErrorDismissed?.();
     });
 
-    // Camera view: tap-to-focus + pinch-to-zoom.
     const pointerMap = new Map();
     let pinch = null;
     let tapCandidate = null;
@@ -1251,13 +1244,9 @@ const UI = (() => {
 })();
 
 /* ==========================================================================
- * 5. CAMERA SELECTION — enumerate + probe + score
+ * 5. CAMERA SELECTION
  * ========================================================================== */
 const CameraSelection = (() => {
-  /**
-   * Opens a short-lived stream on a specific deviceId and reads capabilities.
-   * Does NOT open the camera persistently — closes it immediately.
-   */
   async function probe(deviceId) {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -1281,86 +1270,59 @@ const CameraSelection = (() => {
     return info;
   }
 
-  /**
-   * Scoring heuristic. Goal: prefer the main rear camera over ultra-wide,
-   * prefer cameras that report autofocus modes, penalize depth/IR sensors.
-   */
   function score(cam) {
     let s = 0;
     const L = (cam.label || '').toLowerCase();
 
-    // Front vs rear — heavily prefer rear
     if (/\b(back|rear|environment)\b/.test(L)) s += 150;
     if (/\b(front|user|facetime)\b/.test(L)) s -= 250;
-
-    // Camera type from label — the most reliable signal we have
     if (/\b(main|primary)\b/.test(L)) s += 120;
     if (/\bwide\b/.test(L) && !/ultra/.test(L)) s += 80;
     if (/\btele|telephoto\b/.test(L)) s += 30;
-
-    // Heavy penalty for ultra-wide: almost always fixed-focus
     if (/ultra[\s-]?wide/.test(L)) s -= 250;
     if (/wide[\s-]?angle/.test(L)) s -= 120;
     if (/\bfish/.test(L)) s -= 300;
-
-    // Skip sensors entirely
     if (/\b(depth|mono|tof|ir)\b/.test(L)) s -= 500;
 
-    // Autofocus capability — the single biggest quality signal
-    if (cam.focusModes.length === 0) s -= 60;  // suspicious
+    if (cam.focusModes.length === 0) s -= 60;
     if (cam.focusModes.includes('continuous')) s += 120;
     else if (cam.focusModes.includes('single-shot')) s += 80;
     else if (cam.focusModes.includes('manual')) s += 40;
 
-    // Higher resolution main sensor
     if (cam.maxWidth >= 3000) s += 40;
     else if (cam.maxWidth >= 1900) s += 20;
     else if (cam.maxWidth && cam.maxWidth < 1600) s -= 20;
 
-    // Native zoom range (main cameras usually expose a bigger range)
     if (cam.zoomMax - cam.zoomMin > 5) s += 25;
     else if (cam.zoomMax - cam.zoomMin > 1.5) s += 10;
 
     return s;
   }
 
-  /** Ensures permission has been granted so labels are non-empty. */
   async function ensurePermission() {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } }
-      });
-      s.getTracks().forEach(t => t.stop());
-      await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
-      return true;
-    } catch (e) {
-      throw e;
-    }
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }
+    });
+    s.getTracks().forEach(t => t.stop());
+    await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
   }
 
-  /**
-   * Enumerate all video inputs, probe them sequentially (each opened briefly),
-   * score them, and return the full list sorted best-first.
-   */
   async function probeAll() {
     await ensurePermission();
-
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
     if (!cams.length) return [];
 
-    // Skip obvious junk first — saves probing time
     const toProbe = cams.filter(c => {
       const L = (c.label || '').toLowerCase();
       return !/\b(depth|mono|tof|ir)\b/.test(L);
     });
-    if (!toProbe.length) toProbe.push(...cams); // never probe nothing
+    if (!toProbe.length) toProbe.push(...cams);
 
     const probed = [];
     for (const cam of toProbe) {
       try {
         const info = await probe(cam.deviceId);
-        // Prefer the label from enumerateDevices (probe sometimes gives shorter labels)
         if (cam.label) info.label = cam.label;
         info.score = score(info);
         probed.push(info);
@@ -1370,7 +1332,6 @@ const CameraSelection = (() => {
       }
     }
 
-    // Sort best-first
     probed.sort((a, b) => b.score - a.score);
     return probed;
   }
@@ -1392,8 +1353,8 @@ const CameraService = (() => {
   let currentZoom = 1;
   let digitalZoom = 1;
 
-  let allCameras = [];         // [{deviceId,label,focusModes,...}]
-  let selectedCamera = null;   // one of allCameras
+  let allCameras = [];
+  let selectedCamera = null;
 
   function getTrack() {
     const track = stream?.getVideoTracks()[0];
@@ -1478,7 +1439,6 @@ const CameraService = (() => {
     const caps = getCaps();
     if (!Array.isArray(caps.pointsOfInterest)) return;
 
-    // Use the PARENT rect — video has inset:0 so it equals the layout box.
     const parentRect = DOM.cameraView.getBoundingClientRect();
     const Lw = parentRect.width;
     const Lh = parentRect.height;
@@ -1490,14 +1450,11 @@ const CameraService = (() => {
     const vpY = clamp((clientY - parentRect.top) / Lh, 0, 1);
 
     const S_cover = Math.max(Lw / vw, Lh / vh);
-
     let nx, ny;
     if (zoomInfo.native) {
-      // Sensor is already zoomed. Simple cover-fit mapping.
       nx = (vpX - 0.5) * Lw / (S_cover * vw) + 0.5;
       ny = (vpY - 0.5) * Lh / (S_cover * vh) + 0.5;
     } else {
-      // Digital zoom: undo the transform first (divide by Z).
       const Z = digitalZoom || 1;
       nx = (vpX - 0.5) * Lw / (Z * S_cover * vw) + 0.5;
       ny = (vpY - 0.5) * Lh / (Z * S_cover * vh) + 0.5;
@@ -1570,7 +1527,6 @@ const CameraService = (() => {
     } catch { return false; }
   }
 
-  /** Attempt to open the given device with progressively looser constraints. */
   async function openCamera(deviceId) {
     const attempts = [];
     if (deviceId) {
@@ -1594,15 +1550,9 @@ const CameraService = (() => {
       });
       attempts.push({
         audio: false,
-        video: {
-          deviceId: { exact: deviceId },
-          advanced: [{ focusMode: 'continuous' }]
-        }
+        video: { deviceId: { exact: deviceId }, advanced: [{ focusMode: 'continuous' }] }
       });
-      attempts.push({
-        audio: false,
-        video: { deviceId: { exact: deviceId } }
-      });
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId } } });
     }
     attempts.push({
       audio: false,
@@ -1613,10 +1563,7 @@ const CameraService = (() => {
         advanced: [{ focusMode: 'continuous' }]
       }
     });
-    attempts.push({
-      audio: false,
-      video: { facingMode: { ideal: facingMode } }
-    });
+    attempts.push({ audio: false, video: { facingMode: { ideal: facingMode } } });
     attempts.push({ audio: false, video: true });
 
     let lastErr;
@@ -1638,17 +1585,14 @@ const CameraService = (() => {
     videoEl = video;
     await stop();
 
-    // Probe cameras on first start (or when explicitly refreshing)
     if (!allCameras.length || options.refresh) {
       try {
         allCameras = await CameraSelection.probeAll();
       } catch (e) {
-        // If probing itself fails (e.g. permission), surface the error
         throw translateError(e);
       }
     }
 
-    // Decide which camera to open
     let targetId = options.deviceId || null;
     if (!targetId && allCameras.length) {
       targetId = allCameras[0].deviceId;
@@ -1677,7 +1621,6 @@ const CameraService = (() => {
 
     stream.getVideoTracks().forEach((track) => {
       track.enabled = true;
-      // Refresh selected camera info from the live track (labels from enumeration can be stale)
       const liveLabel = track.label;
       if (selectedCamera && liveLabel) selectedCamera.label = liveLabel;
       track.addEventListener('ended', () => {
@@ -1733,11 +1676,6 @@ const CameraService = (() => {
     };
   }
 
-  /**
-   * Draw the visible viewfinder area to a canvas.
-   * Uses `offsetWidth/Height` (layout size, transform-independent) so digital
-   * zoom via CSS transform doesn't corrupt the math.
-   */
   function captureFrame(targetCanvas) {
     if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
     const vw = videoEl.videoWidth;
@@ -2112,11 +2050,12 @@ const DictionaryService = (() => {
 const App = (() => {
   const state = {
     busy: false,
-    phase: 'camera',
+    phase: 'camera',        // 'camera' | 'analyzing' | 'ready'
     cameraReady: false,
     lastWord: '',
     ocrWarmedUp: false,
-    currentWords: []
+    currentWords: [],
+    ocrRequestId: 0         // incremented to invalidate stale OCR runs
   };
 
   async function startCamera() {
@@ -2133,14 +2072,9 @@ const App = (() => {
       const zi = CameraService.getZoomInfo();
       UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
 
-      // Update badge and status based on the selected camera
       const sel = CameraService.getSelectedCamera();
       const focus = CameraService.getFocusSupport();
-      if (sel) {
-        // Shorten label for the badge
-        const shortLabel = shortenLabel(sel.label);
-        UI.setCamBadge(shortLabel, focus.hasAutoFocus);
-      }
+      if (sel) UI.setCamBadge(shortenLabel(sel.label), focus.hasAutoFocus);
 
       if (focus.hasAutoFocus) {
         UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
@@ -2161,7 +2095,6 @@ const App = (() => {
 
   function shortenLabel(label) {
     if (!label) return 'Camera';
-    // Common label patterns → friendly names
     let L = label.replace(/camera\d*\s*/i, '').trim();
     L = L.replace(/,?\s*facing\s+(back|front|environment|user)/i, '').trim();
     L = L.replace(/\s*\(.*?\)\s*/g, ' ').trim();
@@ -2207,13 +2140,18 @@ const App = (() => {
       UI.showAnalyzeView();
       UI.showNoText(false);
       UI.clearWords();
+
+      // Guard: if the user retakes before rAF fires, don't start OCR.
       requestAnimationFrame(() => {
-        layoutFrozenImage();
+        if (state.phase !== 'analyzing') return;
+        try { layoutFrozenImage(); }
+        catch (e) { console.warn('[ScanLex] layoutFrozenImage failed', e); }
         startWholeFrameOcr(frozen);
       });
     } catch (error) {
       handleError(error);
       state.busy = false;
+      state.phase = 'camera';
       DOM.btnCapture.disabled = false;
     }
   }
@@ -2232,15 +2170,18 @@ const App = (() => {
   }
 
   async function startWholeFrameOcr(frozen) {
+    const myId = ++state.ocrRequestId;
     UI.showScanProgress(true, 0);
     UI.setAnalyzeHint('Scanning text…');
 
     let result;
     try {
       result = await OCRService.recognizeWithBoxes(frozen, (pct) => {
+        if (myId !== state.ocrRequestId) return;
         UI.updateScanProgress(pct);
       });
     } catch (error) {
+      if (myId !== state.ocrRequestId) return;   // stale — user already moved on
       UI.showScanProgress(false);
       UI.showNoText(true);
       UI.setAnalyzeHint('Tap Retake to try again');
@@ -2249,6 +2190,8 @@ const App = (() => {
       console.error('[ScanLex]', error);
       return;
     }
+
+    if (myId !== state.ocrRequestId) return;     // stale — do not touch UI/state
 
     UI.showScanProgress(false);
     state.currentWords = result.words;
@@ -2269,18 +2212,34 @@ const App = (() => {
     UI.setAnalyzeHint(`${result.words.length} word${result.words.length === 1 ? '' : 's'} found — tap one`);
   }
 
+  /* ---- Retake ------------------------------------------------------------ */
   async function onRetake() {
-    if (state.busy) return;
+    // Invalidate any pending OCR (retake during scan is allowed).
+    state.ocrRequestId++;
+
+    state.busy = false;
     state.phase = 'camera';
     state.currentWords = [];
+
     UI.clearWords();
     UI.showScanProgress(false);
     UI.showNoText(false);
     UI.showCameraView();
-    await CameraService.resume();
-    UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+
+    // Disable only while we resume, then re-enable in finally.
+    DOM.btnCapture.disabled = true;
+
+    try {
+      await CameraService.resume();
+    } catch (error) {
+      console.warn('[ScanLex] Camera resume failed on retake', error);
+    } finally {
+      DOM.btnCapture.disabled = false;
+      UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+    }
   }
 
+  /* ---- Lookup ------------------------------------------------------------ */
   async function lookupWord(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) return;
@@ -2304,6 +2263,7 @@ const App = (() => {
     }
   }
 
+  /* ---- Error handling ---------------------------------------------------- */
   function describeError(error, attemptedWord) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
@@ -2380,7 +2340,7 @@ const App = (() => {
     }
   }
 
-  /* ---- Lens picker ----------------------------------------------------- */
+  /* ---- Lens picker ------------------------------------------------------ */
   function openLensPicker() {
     const cams = CameraService.getAllCameras();
     if (cams.length < 2) { UI.toast('Only one camera available.'); return; }
