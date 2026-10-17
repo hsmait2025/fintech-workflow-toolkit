@@ -839,7 +839,7 @@ button { cursor: pointer; border: 0; background: none; }
  *   UI            → DOM rendering, overlays, sheets, modals, toasts
  *   CameraService → MediaDevices lifecycle & hardware fallbacks
  *   OCRService    → Tesseract.js worker, frame cropping, text sanitisation
- *   DictionarySvc → Free Dictionary API client with timeout + typed errors
+ *   DictionarySvc → Primary (dictionaryapi.dev) + Fallback (datamuse.com)
  *   App           → orchestrator / state machine
  * ========================================================================== */
 
@@ -848,8 +848,9 @@ button { cursor: pointer; border: 0; background: none; }
  * ========================================================================== */
 const CONFIG = Object.freeze({
   API: Object.freeze({
-    BASE_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
-    TIMEOUT_MS: 8000,
+    PRIMARY_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
+    FALLBACK_URL: 'https://api.datamuse.com/words',
+    TIMEOUT_MS: 10000,
     HEADERS: Object.freeze({ Accept: 'application/json' })
   }),
 
@@ -1055,7 +1056,6 @@ const UI = (() => {
     const focusTarget =
       sheet.querySelector('[data-autofocus]') ||
       sheet.querySelector('.sheet-close');
-    // Defer so the CSS transition isn't interrupted by scrolling.
     requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
   }
 
@@ -1086,10 +1086,6 @@ const UI = (() => {
   }
 
   /* ---- Error modal ----------------------------------------------------- */
-  /**
-   * @param {{title: string, message: string, retryLabel?: string,
-   *          onRetry?: (() => void)|null}} params
-   */
   function showError({ title, message, retryLabel, onRetry }) {
     DOM.errorTitle.textContent = title;
     DOM.errorText.textContent = message;
@@ -1160,15 +1156,9 @@ const UI = (() => {
     }
   }
 
-  /**
-   * Renders a normalised dictionary entry into the result sheet.
-   * @param {{word: string, phonetic: string, audio: string, meanings: Array}} entry
-   * @param {{onScanAnother: Function, onTypeWord: Function}} actions
-   */
   function renderResult(entry, actions) {
     const nodes = [];
 
-    /* Header: word + phonetics + pronunciation button */
     const headText = h('div', { class: 'result-head-text' },
       h('h2', { class: 'result-word', id: 'resultTitle', text: entry.word }),
       entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null
@@ -1183,12 +1173,11 @@ const UI = (() => {
         'aria-label': `Play pronunciation of ${entry.word}`,
         onClick: () => playAudio(entry.audio)
       });
-      audioBtn.innerHTML = ICONS.speaker; // static, trusted markup
+      audioBtn.innerHTML = ICONS.speaker;
       head.append(audioBtn);
     }
     nodes.push(head);
 
-    /* Meanings */
     if (!entry.meanings.length) {
       nodes.push(h('p', {
         class: 'result-empty',
@@ -1212,7 +1201,6 @@ const UI = (() => {
       );
     }
 
-    /* Actions */
     nodes.push(
       h('div', { class: 'result-actions' },
         h('button', {
@@ -1254,7 +1242,6 @@ const UI = (() => {
       handlers.onErrorDismissed?.();
     });
 
-    // Keyboard affordances for dialogs.
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       if (!DOM.errorModal.hidden) {
@@ -1292,14 +1279,11 @@ const UI = (() => {
  * 5. CAMERA SERVICE
  * ========================================================================== */
 const CameraService = (() => {
-  /** @type {MediaStream|null} */
   let stream = null;
-  /** @type {HTMLVideoElement|null} */
   let videoEl = null;
   let facingMode = CONFIG.CAMERA.DEFAULT_FACING;
   let paused = false;
 
-  /** Translates a DOMException from getUserMedia into an AppError. */
   function translateError(error) {
     const name = error && error.name;
 
@@ -1321,7 +1305,6 @@ const CameraService = (() => {
     }
   }
 
-  /** Resolves once the video element knows its intrinsic dimensions. */
   function waitForMetadata(video) {
     if (video.readyState >= 1 && video.videoWidth > 0) return Promise.resolve();
 
@@ -1331,17 +1314,12 @@ const CameraService = (() => {
         reject(new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY));
       }, 10000);
 
-      function onLoaded() {
-        cleanup();
-        resolve();
-      }
-
+      function onLoaded() { cleanup(); resolve(); }
       function cleanup() {
         clearTimeout(timeout);
         video.removeEventListener('loadedmetadata', onLoaded);
         video.removeEventListener('error', onError);
       }
-
       function onError() {
         cleanup();
         reject(new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED));
@@ -1352,11 +1330,6 @@ const CameraService = (() => {
     });
   }
 
-  /**
-   * Starts (or restarts) the camera stream.
-   * @param {HTMLVideoElement} video
-   * @returns {Promise<MediaStream>}
-   */
   async function start(video) {
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
       throw new AppError(
@@ -1366,7 +1339,7 @@ const CameraService = (() => {
     }
 
     videoEl = video;
-    await stop(); // Never leak an existing stream.
+    await stop();
 
     const preferredConstraints = {
       audio: false,
@@ -1380,7 +1353,6 @@ const CameraService = (() => {
     try {
       stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
     } catch (error) {
-      // Graceful degradation: retry without the ideal constraints.
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
       } catch {
@@ -1392,18 +1364,13 @@ const CameraService = (() => {
     videoEl.setAttribute('playsinline', '');
     videoEl.muted = true;
 
-    try {
-      await videoEl.play();
-    } catch {
-      /* Autoplay may be deferred — metadata wait below handles readiness. */
-    }
+    try { await videoEl.play(); } catch { /* deferred autoplay */ }
 
     await waitForMetadata(videoEl);
 
     paused = false;
     stream.getVideoTracks().forEach((track) => {
       track.enabled = true;
-      // Release hardware resources when the track ends unexpectedly.
       track.addEventListener('ended', () => {
         if (stream && stream.getVideoTracks().every((t) => t.readyState === 'ended')) {
           stream = null;
@@ -1414,7 +1381,6 @@ const CameraService = (() => {
     return stream;
   }
 
-  /** Fully stops the stream and releases hardware. */
   async function stop() {
     if (stream) {
       stream.getTracks().forEach((track) => {
@@ -1429,7 +1395,6 @@ const CameraService = (() => {
     paused = false;
   }
 
-  /** Temporarily disables the track (battery / thermal protection). */
   function pause() {
     if (!stream || paused) return;
     stream.getVideoTracks().forEach((track) => { track.enabled = false; });
@@ -1437,7 +1402,6 @@ const CameraService = (() => {
     paused = true;
   }
 
-  /** Re-enables a paused track. */
   function resume() {
     if (!stream || !paused) return;
     stream.getVideoTracks().forEach((track) => { track.enabled = true; });
@@ -1445,7 +1409,6 @@ const CameraService = (() => {
     paused = false;
   }
 
-  /** Flips between the rear and front camera. */
   async function switchCamera() {
     if (!videoEl) return;
     facingMode = facingMode === CONFIG.CAMERA.DEFAULT_FACING
@@ -1454,12 +1417,10 @@ const CameraService = (() => {
     await start(videoEl);
   }
 
-  /** @returns {boolean} */
   function isActive() {
     return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
   }
 
-  /** @returns {Promise<number>} number of available video inputs */
   async function countCameras() {
     try {
       if (!navigator.mediaDevices?.enumerateDevices) return 0;
@@ -1477,12 +1438,9 @@ const CameraService = (() => {
  * 6. OCR SERVICE
  * ========================================================================== */
 const OCRService = (() => {
-  /** @type {Promise<any>|null} */
   let workerPromise = null;
-  /** @type {Promise<any>|null} */
   let libraryPromise = null;
 
-  /* ---- Library loading --------------------------------------------------- */
   function loadLibrary() {
     if (window.Tesseract) return Promise.resolve(window.Tesseract);
     if (libraryPromise) return libraryPromise;
@@ -1509,7 +1467,6 @@ const OCRService = (() => {
     return libraryPromise;
   }
 
-  /* ---- Worker (created once, reused for every scan) ---------------------- */
   function getWorker() {
     if (workerPromise) return workerPromise;
 
@@ -1526,12 +1483,9 @@ const OCRService = (() => {
         errorHandler: (error) => console.error('[ScanLex][OCR]', error)
       });
 
-      // Single uniform block → best fit for a reticle-cropped word/line.
       try {
         await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PAGE_SEG_MODE });
-      } catch {
-        /* Non-fatal: defaults are acceptable. */
-      }
+      } catch { /* non-fatal */ }
 
       return worker;
     })().catch((error) => {
@@ -1543,16 +1497,6 @@ const OCRService = (() => {
     return workerPromise;
   }
 
-  /* ---- Frame cropping ---------------------------------------------------- */
-  /**
-   * Copies the region of the video covered by the reticle into a canvas,
-   * correctly compensating for `object-fit: cover` letterboxing.
-   *
-   * @param {HTMLVideoElement} video
-   * @param {HTMLElement} reticleEl
-   * @param {HTMLCanvasElement} canvas
-   * @returns {HTMLCanvasElement}
-   */
   function grabFrame(video, reticleEl, canvas) {
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
@@ -1567,33 +1511,25 @@ const OCRService = (() => {
       throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY, { retryable: true });
     }
 
-    // Scale factor applied by `object-fit: cover`.
     const scale = Math.max(videoRect.width / videoWidth, videoRect.height / videoHeight);
     const overflowX = (videoWidth * scale - videoRect.width) / 2;
     const overflowY = (videoHeight * scale - videoRect.height) / 2;
 
-    // Reticle position relative to the video element.
     const relX = reticleRect.left - videoRect.left;
     const relY = reticleRect.top - videoRect.top;
 
-    // Map element coordinates → intrinsic video coordinates.
     let sourceX = (relX + overflowX) / scale;
     let sourceY = (relY + overflowY) / scale;
     let sourceW = reticleRect.width / scale;
     let sourceH = reticleRect.height / scale;
 
-    // Clamp inside the source frame.
     sourceX = clamp(sourceX, 0, videoWidth);
     sourceY = clamp(sourceY, 0, videoHeight);
     sourceW = clamp(sourceW, 1, videoWidth - sourceX);
     sourceH = clamp(sourceH, 1, videoHeight - sourceY);
 
-    // Upscale small crops — Tesseract performs far better at ~900px wide.
     const upscale = clamp(CONFIG.OCR.TARGET_CROP_WIDTH / sourceW, 1, 3);
-    const targetW = Math.min(
-      Math.round(sourceW * upscale),
-      CONFIG.OCR.MAX_CROP_WIDTH
-    );
+    const targetW = Math.min(Math.round(sourceW * upscale), CONFIG.OCR.MAX_CROP_WIDTH);
     const targetH = Math.max(1, Math.round((targetW / sourceW) * sourceH));
 
     canvas.width = targetW;
@@ -1610,12 +1546,6 @@ const OCRService = (() => {
     return canvas;
   }
 
-  /**
-   * Lightweight grayscale + contrast pass — improves accuracy on
-   * low-contrast book paper without the risk of over-binarisation.
-   * @param {HTMLCanvasElement} canvas
-   * @param {CanvasRenderingContext2D} ctx
-   */
   function enhanceContrast(canvas, ctx) {
     try {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1632,16 +1562,9 @@ const OCRService = (() => {
       }
 
       ctx.putImageData(imageData, 0, 0);
-    } catch {
-      /* Enhancement is best-effort; raw pixels remain usable. */
-    }
+    } catch { /* best-effort */ }
   }
 
-  /* ---- Recognition ------------------------------------------------------- */
-  /**
-   * @param {HTMLCanvasElement} canvas
-   * @returns {Promise<{text: string, confidence: number}>}
-   */
   async function recognize(canvas) {
     const worker = await getWorker();
     try {
@@ -1655,20 +1578,14 @@ const OCRService = (() => {
     }
   }
 
-  /* ---- Text sanitisation -------------------------------------------------- */
-  /**
-   * Normalises raw OCR output into a lowercase, punctuation-free token list.
-   * @param {string} raw
-   * @returns {string[]}
-   */
   function tokenize(raw) {
     if (typeof raw !== 'string') return [];
 
     return raw
       .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')      // strip diacritics
+      .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
-      .replace(/[^a-z\s'-]+/g, ' ')          // drop punctuation & digits
+      .replace(/[^a-z\s'-]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .split(' ')
@@ -1682,23 +1599,12 @@ const OCRService = (() => {
       });
   }
 
-  /**
-   * Picks the most probable dictionary word from a block of OCR text.
-   * The longest plausible token wins — OCR noise is usually short.
-   * @param {string} raw
-   * @returns {string}
-   */
   function extractWord(raw) {
     const tokens = tokenize(raw);
     if (!tokens.length) return '';
     return tokens.slice().sort((a, b) => b.length - a.length)[0];
   }
 
-  /**
-   * Validates and normalises user-typed input.
-   * @param {string} raw
-   * @returns {string} A clean word, or '' when invalid.
-   */
   function sanitizeWord(raw) {
     const tokens = tokenize(raw);
     return tokens.length ? tokens[0] : '';
@@ -1709,18 +1615,33 @@ const OCRService = (() => {
 
 /* ==========================================================================
  * 7. DICTIONARY API SERVICE
+ * --------------------------------------------------------------------------
+ * Two sources:
+ *   PRIMARY  — dictionaryapi.dev (rich data: phonetics + audio)
+ *   FALLBACK — datamuse.com (very reliable, definitions only)
  * ========================================================================== */
 const DictionaryService = (() => {
-  /**
-   * Collapses the raw API payload into a predictable view model.
-   * @param {Array} payload
-   * @param {string} query
-   */
-  function normalize(payload, query) {
+  /** Datamuse POS codes → human-readable labels. */
+  const POS_MAP = Object.freeze({
+    n: 'noun',
+    v: 'verb',
+    adj: 'adjective',
+    adv: 'adverb',
+    u: 'undefined',
+    prop: 'proper noun',
+    intj: 'interjection',
+    conj: 'conjunction',
+    pron: 'pronoun',
+    prep: 'preposition',
+    det: 'determiner',
+    num: 'numeral'
+  });
+
+  /* ---- Primary: dictionaryapi.dev ---------------------------------------- */
+  function normalizePrimary(payload, query) {
     const entries = Array.isArray(payload) ? payload : [];
     const first = entries[0] || {};
 
-    // Collect every phonetic variant to find the best text + audio.
     const phonetics = entries.flatMap((entry) =>
       Array.isArray(entry.phonetics) ? entry.phonetics : []
     );
@@ -1729,7 +1650,6 @@ const DictionaryService = (() => {
       (phonetics.find((p) => p && p.text)?.text ?? '');
     const audio = phonetics.find((p) => p && p.audio)?.audio ?? '';
 
-    // Group definitions by part of speech, de-duplicating identical senses.
     const groups = new Map();
 
     for (const entry of entries) {
@@ -1739,8 +1659,8 @@ const DictionaryService = (() => {
           : 'definition';
 
         if (!groups.has(pos)) groups.set(pos, []);
-
         const bucket = groups.get(pos);
+
         for (const def of Array.isArray(meaning.definitions) ? meaning.definitions : []) {
           if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) break;
           const text = typeof def?.definition === 'string' ? def.definition.trim() : '';
@@ -1771,32 +1691,116 @@ const DictionaryService = (() => {
     };
   }
 
-  /**
-   * Looks up a word with an enforced network timeout.
-   * @param {string} word
-   * @returns {Promise<ReturnType<typeof normalize>>}
-   */
-  async function lookup(word) {
-    if (!navigator.onLine) {
-      throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
-    }
-
+  async function fetchPrimary(word) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
 
-    const url = `${CONFIG.API.BASE_URL}/${encodeURIComponent(word)}`;
-
     try {
+      const url = `${CONFIG.API.PRIMARY_URL}/${encodeURIComponent(word)}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: CONFIG.API.HEADERS,
-        signal: controller.signal,
-        cache: 'no-store'
+        signal: controller.signal
       });
 
       if (response.status === 404) {
         throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
       }
+      if (!response.ok) {
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
+          retryable: response.status >= 500 || response.status === 429
+        });
+      }
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch (error) {
+        throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: error });
+      }
+
+      const normalized = normalizePrimary(payload, word);
+      if (!normalized.meanings.length) {
+        throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      }
+      return normalized;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error && error.name === 'AbortError') {
+        throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: error });
+      }
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: error });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ---- Fallback: Datamuse ------------------------------------------------- */
+  function normalizeFallback(payload, word) {
+    if (!Array.isArray(payload) || !payload.length) return null;
+
+    const lower = word.toLowerCase();
+    const exact = payload.find((e) =>
+      e && typeof e.word === 'string' &&
+      e.word.toLowerCase() === lower &&
+      Array.isArray(e.defs) && e.defs.length > 0
+    );
+    const withDefs = payload.find((e) =>
+      e && Array.isArray(e.defs) && e.defs.length > 0
+    );
+    const match = exact || withDefs;
+    if (!match) return null;
+
+    const groups = new Map();
+
+    for (const rawDef of match.defs) {
+      if (typeof rawDef !== 'string') continue;
+
+      const tabIdx = rawDef.indexOf('\t');
+      let pos = 'definition';
+      let text = rawDef;
+
+      if (tabIdx >= 0) {
+        const code = rawDef.slice(0, tabIdx).trim().toLowerCase();
+        text = rawDef.slice(tabIdx + 1).trim();
+        pos = POS_MAP[code] || 'definition';
+      }
+
+      if (!text) continue;
+      if (!groups.has(pos)) groups.set(pos, []);
+      const bucket = groups.get(pos);
+      if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) continue;
+      if (bucket.some((d) => d.definition === text)) continue;
+
+      bucket.push({ definition: text, example: '', synonyms: [] });
+    }
+
+    const meanings = [...groups.entries()]
+      .filter(([, defs]) => defs.length > 0)
+      .slice(0, CONFIG.UI.MAX_MEANINGS)
+      .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
+
+    if (!meanings.length) return null;
+
+    return {
+      word: typeof match.word === 'string' && match.word ? match.word : word,
+      phonetic: '',
+      audio: '',
+      meanings
+    };
+  }
+
+  async function fetchFallback(word) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+
+    try {
+      const url =
+        `${CONFIG.API.FALLBACK_URL}?sp=${encodeURIComponent(word)}&md=d&max=5`;
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal
+      });
 
       if (!response.ok) {
         throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
@@ -1811,22 +1815,53 @@ const DictionaryService = (() => {
         throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: error });
       }
 
-      const normalized = normalize(payload, word);
-      if (!normalized.meanings.length) {
+      const normalized = normalizeFallback(payload, word);
+      if (!normalized) {
         throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
       }
-
       return normalized;
     } catch (error) {
       if (error instanceof AppError) throw error;
-
       if (error && error.name === 'AbortError') {
         throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: error });
       }
-
       throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: error });
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  /* ---- Public entry point ------------------------------------------------- */
+  async function lookup(word) {
+    if (!navigator.onLine) {
+      throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
+    }
+
+    let primaryError = null;
+
+    try {
+      return await fetchPrimary(word);
+    } catch (error) {
+      primaryError = error;
+      const code = error instanceof AppError ? error.code : 'UNKNOWN';
+
+      // Terminal errors — do NOT fall back.
+      if (!['NOT_FOUND', 'TIMEOUT', 'NETWORK', 'HTTP_ERROR'].includes(code)) {
+        throw error;
+      }
+    }
+
+    try {
+      const result = await fetchFallback(word);
+      UI.toast('Primary dictionary was slow — loaded from backup source.');
+      return result;
+    } catch (fallbackError) {
+      if (fallbackError instanceof AppError && fallbackError.code === 'NOT_FOUND') {
+        // Fallback genuinely has nothing — surface its NOT_FOUND.
+        throw fallbackError;
+      }
+      // Both failed — surface the primary error (most meaningful).
+      throw primaryError || fallbackError;
     }
   }
 
@@ -1844,7 +1879,6 @@ const App = (() => {
     ocrWarmedUp: false
   };
 
-  /* ---- Camera / overlay synchronisation --------------------------------- */
   function refreshCameraState() {
     if (state.busy || UI.isOverlayOpen() || document.hidden) {
       CameraService.pause();
@@ -1859,7 +1893,6 @@ const App = (() => {
     refreshCameraState();
   }
 
-  /* ---- Camera bootstrap -------------------------------------------------- */
   async function startCamera() {
     try {
       await CameraService.start(DOM.video);
@@ -1882,14 +1915,12 @@ const App = (() => {
     }
   }
 
-  /* ---- Background OCR warm-up -------------------------------------------- */
   function warmUpOcr() {
     if (state.ocrWarmedUp) return;
     state.ocrWarmedUp = true;
 
     const run = () => {
       OCRService.getWorker().catch(() => {
-        // Silent: the user will see a proper error if they actually scan.
         state.ocrWarmedUp = false;
       });
     };
@@ -1901,7 +1932,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Capture → OCR → Lookup -------------------------------------------- */
   async function onCapture() {
     if (state.busy) return;
 
@@ -1910,7 +1940,6 @@ const App = (() => {
       return;
     }
 
-    // Grab the frame *before* pausing so the current pixels are guaranteed.
     let canvas;
     try {
       canvas = OCRService.grabFrame(DOM.video, DOM.reticle, DOM.cropCanvas);
@@ -1939,10 +1968,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Lookup orchestration ---------------------------------------------- */
-  /**
-   * @param {string} rawWord
-   */
   async function runLookup(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
 
@@ -1974,7 +1999,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Error translation --------------------------------------------------- */
   function describeError(error) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
@@ -2083,7 +2107,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Manual entry -------------------------------------------------------- */
   function openManualSheet(prefill = '') {
     UI.closeAllSheets();
     UI.clearInputError();
@@ -2120,7 +2143,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Camera switching ---------------------------------------------------- */
   async function onSwitchCamera() {
     if (state.busy) return;
 
@@ -2139,14 +2161,12 @@ const App = (() => {
     }
   }
 
-  /* ---- Network awareness ---------------------------------------------------- */
   function syncOnlineState() {
     const offline = !navigator.onLine;
     UI.setOffline(offline);
     if (offline) UI.setStatus('You are offline — reconnect to look up words.');
   }
 
-  /* ---- Init ---------------------------------------------------------------- */
   function init() {
     cacheDom();
 
@@ -2168,21 +2188,17 @@ const App = (() => {
       onErrorDismissed: () => refreshCameraState()
     });
 
-    // Connectivity
     window.addEventListener('online', syncOnlineState);
     window.addEventListener('offline', syncOnlineState);
     syncOnlineState();
 
-    // Release the camera when the tab is backgrounded; restore on return.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) CameraService.pause();
       else refreshCameraState();
     });
 
-    // Final resource cleanup.
     window.addEventListener('pagehide', () => { CameraService.stop(); });
 
-    // Kick everything off.
     startCamera();
   }
 
