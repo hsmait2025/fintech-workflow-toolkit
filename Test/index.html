@@ -25,6 +25,7 @@
   --accent-line: rgba(76, 201, 240, 0.32);
   --danger: #ff6b6b;
   --danger-soft: rgba(255, 107, 107, 0.14);
+  --success: #3ddc97;
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
@@ -124,6 +125,27 @@ button { cursor: pointer; border: 0; background: none; }
   transform-origin: center center;
 }
 
+/* Camera status badge (top-left) */
+.cam-badge {
+  position: absolute; top: 12px; left: 12px; z-index: 6;
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 11px; border-radius: 999px;
+  background: rgba(8, 14, 20, 0.72);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem; font-weight: 600; color: var(--text);
+  max-width: 62%;
+}
+.cam-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+  flex: 0 0 auto;
+}
+.cam-badge .dot.warn { background: var(--danger); }
+.cam-badge-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Zoom bar (top-right) */
 .zoom-bar {
   position: absolute; top: 12px; right: 12px; z-index: 6;
   display: flex; align-items: center; gap: 6px;
@@ -186,7 +208,7 @@ button { cursor: pointer; border: 0; background: none; }
 .camera-error p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
 
-/* ---- Analyze view (frozen image + tappable word overlays) -------------- */
+/* ---- Analyze view ------------------------------------------------------ */
 .analyze-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
@@ -194,31 +216,20 @@ button { cursor: pointer; border: 0; background: none; }
   background: #000; border: 1px solid var(--line);
   overflow: hidden;
 }
-.frozen-wrap {
-  position: relative;
-  /* width/height set by JS to preserve aspect */
-}
+.frozen-wrap { position: relative; }
 .frozen-canvas {
   width: 100%; height: 100%; display: block;
   user-select: none; -webkit-user-select: none;
   pointer-events: none;
 }
 
-/* Tappable word overlays */
-.word-layer {
-  position: absolute; inset: 0;
-  pointer-events: none;
-}
+.word-layer { position: absolute; inset: 0; pointer-events: none; }
 .word-tap {
-  position: absolute;
-  padding: 0; margin: 0; border: 0;
-  background: transparent;
-  border-radius: 4px;
-  pointer-events: auto;
-  cursor: pointer;
+  position: absolute; padding: 0; margin: 0; border: 0;
+  background: transparent; border-radius: 4px;
+  pointer-events: auto; cursor: pointer;
   transition: background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
   -webkit-tap-highlight-color: transparent;
-  /* subtle underline to indicate tappability */
 }
 .word-tap::after {
   content: '';
@@ -226,24 +237,19 @@ button { cursor: pointer; border: 0; background: none; }
   left: 15%; right: 15%; bottom: 1px;
   height: 1px;
   background: rgba(76, 201, 240, 0.45);
-  border-radius: 1px;
-  pointer-events: none;
+  border-radius: 1px; pointer-events: none;
 }
-.word-tap:active,
-.word-tap.is-active {
+.word-tap:active, .word-tap.is-active {
   background: rgba(76, 201, 240, 0.28);
   box-shadow: 0 0 0 1.5px rgba(76, 201, 240, 0.75);
 }
 
-/* Scanning progress bar during OCR */
 .scan-progress {
   position: absolute; left: 16px; right: 16px; bottom: 18px;
-  z-index: 8;
-  padding: 12px 16px;
+  z-index: 8; padding: 12px 16px;
   background: rgba(8, 14, 20, 0.82);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  border: 1px solid var(--line); border-radius: 14px;
 }
 .scan-progress p {
   margin: 0 0 8px 0; font-size: 0.86rem; color: var(--text);
@@ -262,7 +268,6 @@ button { cursor: pointer; border: 0; background: none; }
   transition: width 0.25s var(--ease-out);
 }
 
-/* "No text" overlay */
 .no-text {
   position: absolute; inset: 0; z-index: 9;
   display: flex; flex-direction: column; align-items: center;
@@ -374,6 +379,47 @@ button { cursor: pointer; border: 0; background: none; }
 .text-input[aria-invalid="true"] { border-color: var(--danger); }
 .input-error { margin: 8px 2px 12px; color: var(--danger); font-size: 0.84rem; }
 #manualForm .btn { margin-top: 14px; }
+
+/* Lens picker */
+.lens-list { display: flex; flex-direction: column; gap: 8px; }
+.lens-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; width: 100%; text-align: left;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lens-item.is-active {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.lens-item:active { background: var(--surface-3); }
+.lens-icon {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--surface-3); color: var(--accent);
+  display: grid; place-items: center;
+  flex: 0 0 auto;
+  font-weight: 700; font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+.lens-item.is-active .lens-icon { background: var(--accent); color: #04121a; }
+.lens-body { flex: 1; min-width: 0; }
+.lens-name {
+  font-weight: 600; font-size: 0.94rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lens-meta {
+  margin-top: 4px; font-size: 0.76rem; color: var(--muted);
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.lens-badge {
+  display: inline-block; padding: 2px 7px; border-radius: 6px;
+  background: var(--surface-3); color: var(--muted);
+  font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
+.lens-badge.nofocus { background: rgba(255, 107, 107, 0.18); color: #ffb4b4; }
 
 /* ==========================================================================
    9. RESULT
@@ -497,7 +543,7 @@ button { cursor: pointer; border: 0; background: none; }
           <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
       </button>
-      <button id="btnSwitch" class="icon-btn" type="button" aria-label="Switch camera" hidden>
+      <button id="btnLens" class="icon-btn" type="button" aria-label="Change lens" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 12a8 8 0 0 1-13.7 5.6L3 14" />
@@ -521,10 +567,14 @@ button { cursor: pointer; border: 0; background: none; }
   </div>
 
   <main class="stage">
-    <!-- ============ CAMERA VIEW ============ -->
     <section class="camera-view" id="cameraView" aria-label="Camera viewfinder">
       <video id="video" class="video" playsinline autoplay muted
              aria-label="Live camera preview"></video>
+
+      <div class="cam-badge" id="camBadge" hidden>
+        <span class="dot" id="camBadgeDot"></span>
+        <span class="cam-badge-text" id="camBadgeText">Camera</span>
+      </div>
 
       <div class="zoom-bar" id="zoomBar" hidden>
         <button id="btnZoomOut" class="zoom-btn" type="button" aria-label="Zoom out">−</button>
@@ -551,7 +601,6 @@ button { cursor: pointer; border: 0; background: none; }
       <canvas id="cropCanvas" hidden aria-hidden="true"></canvas>
     </section>
 
-    <!-- ============ ANALYZE VIEW (frozen image + tap-to-lookup) ============ -->
     <section class="analyze-view" id="analyzeView" hidden aria-label="Detected text">
       <div class="frozen-wrap" id="frozenWrap">
         <canvas id="frozenCanvas" class="frozen-canvas"></canvas>
@@ -569,7 +618,6 @@ button { cursor: pointer; border: 0; background: none; }
       </div>
     </section>
 
-    <!-- ============ CONTROLS: CAMERA ============ -->
     <div class="controls" id="cameraControls">
       <button id="btnCapture" class="capture-btn" type="button">
         <span class="capture-ring" aria-hidden="true"></span>
@@ -580,7 +628,6 @@ button { cursor: pointer; border: 0; background: none; }
       </p>
     </div>
 
-    <!-- ============ CONTROLS: ANALYZE ============ -->
     <div class="controls" id="analyzeControls" hidden>
       <div class="analyze-actions">
         <button id="btnRetake" class="btn btn-ghost" type="button">Retake</button>
@@ -592,6 +639,15 @@ button { cursor: pointer; border: 0; background: none; }
 </div>
 
 <div class="scrim" id="scrim" aria-hidden="true"></div>
+
+<!-- Lens picker -->
+<section class="sheet" id="lensSheet" role="dialog" aria-modal="true" aria-labelledby="lensTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnLensClose" type="button" aria-label="Close">×</button>
+  <h2 class="sheet-title" id="lensTitle">Choose camera</h2>
+  <p class="sheet-sub">Pick the lens that gives the sharpest close-up view. Lenses marked "Autofocus" work best for reading text.</p>
+  <div class="lens-list" id="lensList"></div>
+</section>
 
 <section class="sheet" id="resultSheet" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
   <div class="sheet-handle" aria-hidden="true"></div>
@@ -634,9 +690,6 @@ button { cursor: pointer; border: 0; background: none; }
 <script type="module">
 /* ==========================================================================
  * ScanLex — Visual Scan Dictionary
- * --------------------------------------------------------------------------
- * Flow:  Camera  →  Capture  →  OCR whole frame  →  tap any word  →  lookup
- * No rectangle dragging. No reticle. Just like Google Lens.
  * ========================================================================== */
 
 /* ==========================================================================
@@ -653,22 +706,23 @@ const CONFIG = Object.freeze({
   CAMERA: Object.freeze({
     IDEAL_WIDTH: 1920,
     IDEAL_HEIGHT: 1080,
-    DEFAULT_FACING: 'environment',
-    ALTERNATE_FACING: 'user',
+    HIGH_WIDTH: 3840,
+    HIGH_HEIGHT: 2160,
     FOCUS_SETTLE_MS: 500,
-    ZOOM_STEP_FRACTION: 0.15
+    ZOOM_STEP_FRACTION: 0.15,
+    PROBE_DELAY_MS: 100
   }),
 
   OCR: Object.freeze({
     CDN_URL: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
     LANGUAGE: 'eng',
     OEM: 1,
-    PSM: '6',                  // uniform block of text
+    PSM: '6',
     MIN_WORD_CONFIDENCE: 30,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
-    MAX_EDGE_PX: 1600,         // cap OCR input resolution for speed
-    WORD_TAP_PADDING: 8        // extra px around each word to enlarge tap target
+    MAX_EDGE_PX: 1600,
+    WORD_TAP_PADDING: 8
   }),
 
   UI: Object.freeze({
@@ -682,6 +736,9 @@ const CONFIG = Object.freeze({
     cameraView:      '#cameraView',
     analyzeView:     '#analyzeView',
     video:           '#video',
+    camBadge:        '#camBadge',
+    camBadgeDot:     '#camBadgeDot',
+    camBadgeText:    '#camBadgeText',
     focusRing:       '#focusRing',
     zoomBar:         '#zoomBar',
     zoomValue:       '#zoomValue',
@@ -706,12 +763,15 @@ const CONFIG = Object.freeze({
     btnManualFromAnalyze: '#btnManualFromAnalyze',
     cameraControls:  '#cameraControls',
     analyzeControls: '#analyzeControls',
-    btnSwitch:       '#btnSwitch',
+    btnLens:         '#btnLens',
     btnTorch:        '#btnTorch',
     btnManual:       '#btnManual',
     statusHint:      '#statusHint',
     analyzeHint:     '#analyzeHint',
     scrim:           '#scrim',
+    lensSheet:       '#lensSheet',
+    lensList:        '#lensList',
+    btnLensClose:    '#btnLensClose',
     resultSheet:     '#resultSheet',
     resultBody:      '#resultBody',
     btnResultClose:  '#btnResultClose',
@@ -825,12 +885,14 @@ const UI = (() => {
   function isOverlayOpen() {
     return DOM.resultSheet.classList.contains('is-open') ||
            DOM.manualSheet.classList.contains('is-open') ||
+           DOM.lensSheet.classList.contains('is-open') ||
            !DOM.errorModal.hidden;
   }
 
   function updateScrim() {
     const open = DOM.resultSheet.classList.contains('is-open') ||
-                 DOM.manualSheet.classList.contains('is-open');
+                 DOM.manualSheet.classList.contains('is-open') ||
+                 DOM.lensSheet.classList.contains('is-open');
     DOM.scrim.classList.toggle('is-open', open);
   }
 
@@ -849,7 +911,7 @@ const UI = (() => {
   }
 
   function closeAllSheets() {
-    [DOM.resultSheet, DOM.manualSheet].forEach((s) => {
+    [DOM.resultSheet, DOM.manualSheet, DOM.lensSheet].forEach((s) => {
       if (s.classList.contains('is-open')) closeSheet(s);
     });
   }
@@ -919,7 +981,13 @@ const UI = (() => {
     DOM.btnZoomIn.disabled = current >= max - 0.001;
   }
 
-  /* ---- View switching ---------------------------------------------------- */
+  function setCamBadge(label, hasFocus) {
+    if (!label) { DOM.camBadge.hidden = true; return; }
+    DOM.camBadge.hidden = false;
+    DOM.camBadgeText.textContent = label;
+    DOM.camBadgeDot.classList.toggle('warn', !hasFocus);
+  }
+
   function showCameraView() {
     DOM.cameraView.hidden = false;
     DOM.analyzeView.hidden = true;
@@ -934,7 +1002,6 @@ const UI = (() => {
     DOM.analyzeControls.hidden = false;
   }
 
-  /* ---- Scanning progress ------------------------------------------------- */
   function showScanProgress(show, pct = 0) {
     DOM.scanProgress.hidden = !show;
     if (show) {
@@ -948,20 +1015,8 @@ const UI = (() => {
     DOM.scanPct.textContent = pct + '%';
   }
 
-  function showNoText(show) {
-    DOM.noText.hidden = !show;
-  }
+  function showNoText(show) { DOM.noText.hidden = !show; }
 
-  /* ---- Word overlay ------------------------------------------------------ */
-  /**
-   * Renders tappable word overlays on the frozen image.
-   * @param {Array<{text:string, bbox:{x0,y0,x1,y1}}>} words in canvas pixels
-   * @param {number} canvasW
-   * @param {number} canvasH
-   * @param {number} displayW
-   * @param {number} displayH
-   * @param {Function} onWordTap  receives the word text
-   */
   function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
     DOM.wordLayer.replaceChildren();
     const sx = displayW / canvasW;
@@ -997,8 +1052,46 @@ const UI = (() => {
     DOM.wordLayer.style.pointerEvents = 'auto';
   }
 
-  function clearWords() {
-    DOM.wordLayer.replaceChildren();
+  function clearWords() { DOM.wordLayer.replaceChildren(); }
+
+  /* ---- Lens list ------------------------------------------------------- */
+  function renderLensList(cameras, activeId, onPick) {
+    DOM.lensList.replaceChildren();
+    for (const cam of cameras) {
+      const isActive = cam.deviceId === activeId;
+      const hasFocus = cam.focusModes.some(m => ['continuous', 'single-shot', 'manual'].includes(m));
+
+      const metaBits = [];
+      metaBits.push(h('span', {
+        class: 'lens-badge ' + (hasFocus ? 'focus' : 'nofocus'),
+        text: hasFocus ? 'Autofocus' : 'Fixed focus'
+      }));
+      if (cam.maxWidth) {
+        metaBits.push(h('span', {
+          class: 'lens-badge',
+          text: `${Math.round(cam.maxWidth)}×${Math.round(cam.maxHeight)}`
+        }));
+      }
+      if (cam.zoomMax > 1.5) {
+        metaBits.push(h('span', {
+          class: 'lens-badge',
+          text: `Zoom ${cam.zoomMax.toFixed(1)}×`
+        }));
+      }
+
+      const item = h('button', {
+        class: 'lens-item' + (isActive ? ' is-active' : ''),
+        type: 'button',
+        onClick: () => onPick(cam.deviceId)
+      },
+        h('div', { class: 'lens-icon', text: isActive ? '✓' : '📷' }),
+        h('div', { class: 'lens-body' },
+          h('div', { class: 'lens-name', text: cam.label }),
+          h('div', { class: 'lens-meta' }, ...metaBits)
+        )
+      );
+      DOM.lensList.appendChild(item);
+    }
   }
 
   /* ---- Result rendering -------------------------------------------------- */
@@ -1061,7 +1154,6 @@ const UI = (() => {
     DOM.resultBody.replaceChildren(...nodes);
   }
 
-  /* ---- Bindings ---------------------------------------------------------- */
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
@@ -1069,14 +1161,15 @@ const UI = (() => {
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraRetry.addEventListener('click', handlers.onCameraRetry);
-    DOM.btnSwitch.addEventListener('click', handlers.onSwitchCamera);
+    DOM.btnLens.addEventListener('click', handlers.onOpenLensPicker);
+    DOM.btnLensClose.addEventListener('click', handlers.onCloseLensPicker);
     DOM.btnTorch.addEventListener('click', handlers.onTorchToggle);
     DOM.btnZoomIn.addEventListener('click', handlers.onZoomIn);
     DOM.btnZoomOut.addEventListener('click', handlers.onZoomOut);
 
     DOM.btnResultClose.addEventListener('click', handlers.onCloseResult);
     DOM.btnManualClose.addEventListener('click', handlers.onCloseManual);
-    DOM.scrim.addEventListener('click', handlers.onScrimClick);
+    DOM.scrim.addEventListener('click', () => { closeAllSheets(); handlers.onAfterSheetsClosed?.(); });
     DOM.manualForm.addEventListener('submit', handlers.onManualSubmit);
     DOM.manualInput.addEventListener('input', clearInputError);
     DOM.errorRetry.addEventListener('click', triggerRetry);
@@ -1085,7 +1178,7 @@ const UI = (() => {
       handlers.onErrorDismissed?.();
     });
 
-    // Camera view: pointer interactions (tap-to-focus + pinch-to-zoom).
+    // Camera view: tap-to-focus + pinch-to-zoom.
     const pointerMap = new Map();
     let pinch = null;
     let tapCandidate = null;
@@ -1110,12 +1203,10 @@ const UI = (() => {
     DOM.cameraView.addEventListener('pointermove', (e) => {
       if (!pointerMap.has(e.pointerId)) return;
       pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
       if (pinch && pointerMap.size === 2) {
         const [a, b] = [...pointerMap.values()];
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        const ratio = dist / pinch.startDist;
-        handlers.setZoom(pinch.startZoom * ratio);
+        handlers.setZoom(pinch.startZoom * (dist / pinch.startDist));
         tapCandidate = null;
       }
     });
@@ -1139,6 +1230,7 @@ const UI = (() => {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (!DOM.errorModal.hidden) { hideError(); handlers.onErrorDismissed?.(); }
+      else if (DOM.lensSheet.classList.contains('is-open')) handlers.onCloseLensPicker();
       else if (DOM.manualSheet.classList.contains('is-open')) handlers.onCloseManual();
       else if (DOM.resultSheet.classList.contains('is-open')) handlers.onCloseResult();
     });
@@ -1150,26 +1242,169 @@ const UI = (() => {
     toast, showError, hideError,
     showCameraError, hideCameraError, setOffline,
     showInputError, clearInputError,
-    showFocusRing, setTorchUI, setZoomUI,
+    showFocusRing, setTorchUI, setZoomUI, setCamBadge,
     showCameraView, showAnalyzeView,
     showScanProgress, updateScanProgress, showNoText,
-    renderWords, clearWords,
+    renderWords, clearWords, renderLensList,
     renderResult, bindEvents
   };
 })();
 
 /* ==========================================================================
- * 5. CAMERA SERVICE
+ * 5. CAMERA SELECTION — enumerate + probe + score
+ * ========================================================================== */
+const CameraSelection = (() => {
+  /**
+   * Opens a short-lived stream on a specific deviceId and reads capabilities.
+   * Does NOT open the camera persistently — closes it immediately.
+   */
+  async function probe(deviceId) {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { deviceId: { exact: deviceId } }
+    });
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities?.() || {};
+    const settings = track.getSettings?.() || {};
+
+    const info = {
+      deviceId,
+      label: track.label || 'Camera',
+      focusModes: Array.isArray(caps.focusMode) ? caps.focusMode : [],
+      zoomMin: caps.zoom?.min ?? 1,
+      zoomMax: caps.zoom?.max ?? 1,
+      hasTorch: caps.torch === true,
+      maxWidth: settings.width || 0,
+      maxHeight: settings.height || 0
+    };
+    stream.getTracks().forEach(t => t.stop());
+    return info;
+  }
+
+  /**
+   * Scoring heuristic. Goal: prefer the main rear camera over ultra-wide,
+   * prefer cameras that report autofocus modes, penalize depth/IR sensors.
+   */
+  function score(cam) {
+    let s = 0;
+    const L = (cam.label || '').toLowerCase();
+
+    // Front vs rear — heavily prefer rear
+    if (/\b(back|rear|environment)\b/.test(L)) s += 150;
+    if (/\b(front|user|facetime)\b/.test(L)) s -= 250;
+
+    // Camera type from label — the most reliable signal we have
+    if (/\b(main|primary)\b/.test(L)) s += 120;
+    if (/\bwide\b/.test(L) && !/ultra/.test(L)) s += 80;
+    if (/\btele|telephoto\b/.test(L)) s += 30;
+
+    // Heavy penalty for ultra-wide: almost always fixed-focus
+    if (/ultra[\s-]?wide/.test(L)) s -= 250;
+    if (/wide[\s-]?angle/.test(L)) s -= 120;
+    if (/\bfish/.test(L)) s -= 300;
+
+    // Skip sensors entirely
+    if (/\b(depth|mono|tof|ir)\b/.test(L)) s -= 500;
+
+    // Autofocus capability — the single biggest quality signal
+    if (cam.focusModes.length === 0) s -= 60;  // suspicious
+    if (cam.focusModes.includes('continuous')) s += 120;
+    else if (cam.focusModes.includes('single-shot')) s += 80;
+    else if (cam.focusModes.includes('manual')) s += 40;
+
+    // Higher resolution main sensor
+    if (cam.maxWidth >= 3000) s += 40;
+    else if (cam.maxWidth >= 1900) s += 20;
+    else if (cam.maxWidth && cam.maxWidth < 1600) s -= 20;
+
+    // Native zoom range (main cameras usually expose a bigger range)
+    if (cam.zoomMax - cam.zoomMin > 5) s += 25;
+    else if (cam.zoomMax - cam.zoomMin > 1.5) s += 10;
+
+    return s;
+  }
+
+  /** Ensures permission has been granted so labels are non-empty. */
+  async function ensurePermission() {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      s.getTracks().forEach(t => t.stop());
+      await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
+      return true;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  /**
+   * Enumerate all video inputs, probe them sequentially (each opened briefly),
+   * score them, and return the full list sorted best-first.
+   */
+  async function probeAll() {
+    await ensurePermission();
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    if (!cams.length) return [];
+
+    // Skip obvious junk first — saves probing time
+    const toProbe = cams.filter(c => {
+      const L = (c.label || '').toLowerCase();
+      return !/\b(depth|mono|tof|ir)\b/.test(L);
+    });
+    if (!toProbe.length) toProbe.push(...cams); // never probe nothing
+
+    const probed = [];
+    for (const cam of toProbe) {
+      try {
+        const info = await probe(cam.deviceId);
+        // Prefer the label from enumerateDevices (probe sometimes gives shorter labels)
+        if (cam.label) info.label = cam.label;
+        info.score = score(info);
+        probed.push(info);
+        await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
+      } catch (e) {
+        console.warn('[ScanLex] Probe failed for', cam.label, e.message);
+      }
+    }
+
+    // Sort best-first
+    probed.sort((a, b) => b.score - a.score);
+    return probed;
+  }
+
+  return { probeAll };
+})();
+
+/* ==========================================================================
+ * 6. CAMERA SERVICE
  * ========================================================================== */
 const CameraService = (() => {
   let stream = null;
   let videoEl = null;
-  let facingMode = CONFIG.CAMERA.DEFAULT_FACING;
+  let facingMode = 'environment';
   let paused = false;
   let torchOn = false;
+
   let zoomInfo = { min: 1, max: 1, step: 0.1, native: false };
   let currentZoom = 1;
   let digitalZoom = 1;
+
+  let allCameras = [];         // [{deviceId,label,focusModes,...}]
+  let selectedCamera = null;   // one of allCameras
+
+  function getTrack() {
+    const track = stream?.getVideoTracks()[0];
+    return track && track.readyState === 'live' ? track : null;
+  }
+
+  function getCaps() {
+    const track = getTrack();
+    if (!track) return {};
+    try { return track.getCapabilities?.() || {}; } catch { return {}; }
+  }
 
   function translateError(error) {
     const name = error?.name;
@@ -1210,17 +1445,6 @@ const CameraService = (() => {
     });
   }
 
-  function getTrack() {
-    const track = stream?.getVideoTracks()[0];
-    return track && track.readyState === 'live' ? track : null;
-  }
-
-  function getCaps() {
-    const track = getTrack();
-    if (!track) return {};
-    try { return track.getCapabilities?.() || {}; } catch { return {}; }
-  }
-
   async function applyContinuousFocus() {
     const track = getTrack();
     if (!track) return;
@@ -1228,7 +1452,7 @@ const CameraService = (() => {
     if (!Array.isArray(caps.focusMode) || !caps.focusMode.includes('continuous')) return;
     try {
       await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-    } catch { /* ignore */ }
+    } catch {}
   }
 
   async function triggerAutofocus() {
@@ -1243,7 +1467,7 @@ const CameraService = (() => {
           try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch {}
         }
         return;
-      } catch { /* fall through */ }
+      } catch {}
     }
     await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
   }
@@ -1254,12 +1478,36 @@ const CameraService = (() => {
     const caps = getCaps();
     if (!Array.isArray(caps.pointsOfInterest)) return;
 
-    const rect = videoEl.getBoundingClientRect();
-    const x = clamp((clientX - rect.left) / rect.width, 0, 1);
-    const y = clamp((clientY - rect.top) / rect.height, 0, 1);
-    const px = facingMode === CONFIG.CAMERA.ALTERNATE_FACING ? 1 - x : x;
+    // Use the PARENT rect — video has inset:0 so it equals the layout box.
+    const parentRect = DOM.cameraView.getBoundingClientRect();
+    const Lw = parentRect.width;
+    const Lh = parentRect.height;
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    if (!Lw || !Lh || !vw || !vh) return;
 
-    const advanced = [{ pointsOfInterest: [{ x: px, y }] }];
+    const vpX = clamp((clientX - parentRect.left) / Lw, 0, 1);
+    const vpY = clamp((clientY - parentRect.top) / Lh, 0, 1);
+
+    const S_cover = Math.max(Lw / vw, Lh / vh);
+
+    let nx, ny;
+    if (zoomInfo.native) {
+      // Sensor is already zoomed. Simple cover-fit mapping.
+      nx = (vpX - 0.5) * Lw / (S_cover * vw) + 0.5;
+      ny = (vpY - 0.5) * Lh / (S_cover * vh) + 0.5;
+    } else {
+      // Digital zoom: undo the transform first (divide by Z).
+      const Z = digitalZoom || 1;
+      nx = (vpX - 0.5) * Lw / (Z * S_cover * vw) + 0.5;
+      ny = (vpY - 0.5) * Lh / (Z * S_cover * vh) + 0.5;
+    }
+
+    nx = clamp(nx, 0, 1);
+    ny = clamp(ny, 0, 1);
+    const px = facingMode === 'user' ? 1 - nx : nx;
+
+    const advanced = [{ pointsOfInterest: [{ x: px, y: ny }] }];
     if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
       advanced.push({ focusMode: 'single-shot' });
     }
@@ -1268,7 +1516,7 @@ const CameraService = (() => {
       if (caps.focusMode?.includes('continuous')) {
         setTimeout(() => applyContinuousFocus(), 800);
       }
-    } catch { /* ignore */ }
+    } catch {}
   }
 
   function refreshZoomInfo() {
@@ -1285,12 +1533,7 @@ const CameraService = (() => {
     }
     currentZoom = zoomInfo.min;
     digitalZoom = 1;
-    applyDigitalZoomCSS(1);
-  }
-
-  function applyDigitalZoomCSS(scale) {
-    if (!videoEl) return;
-    videoEl.style.transform = zoomInfo.native ? '' : `scale(${scale})`;
+    if (videoEl) videoEl.style.transform = '';
   }
 
   async function setZoom(value) {
@@ -1302,11 +1545,11 @@ const CameraService = (() => {
       try {
         await track.applyConstraints({ advanced: [{ zoom: target }] });
         currentZoom = target;
-      } catch { /* ignore */ }
+      } catch {}
     } else {
       digitalZoom = target;
       currentZoom = target;
-      applyDigitalZoomCSS(digitalZoom);
+      if (videoEl) videoEl.style.transform = `scale(${digitalZoom})`;
     }
     applyContinuousFocus();
   }
@@ -1327,53 +1570,64 @@ const CameraService = (() => {
     } catch { return false; }
   }
 
-  /**
-   * Draws the current viewfinder content (object-fit: cover + digital zoom)
-   * into a target canvas. Caps the long edge at CONFIG.OCR.MAX_EDGE_PX.
-   */
-  function captureFrame(targetCanvas) {
-    if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
-    const vw = videoEl.videoWidth;
-    const vh = videoEl.videoHeight;
-    if (!vw || !vh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+  /** Attempt to open the given device with progressively looser constraints. */
+  async function openCamera(deviceId) {
+    const attempts = [];
+    if (deviceId) {
+      attempts.push({
+        audio: false,
+        video: {
+          deviceId: { exact: deviceId },
+          width: { min: 1280, ideal: CONFIG.CAMERA.HIGH_WIDTH },
+          height: { min: 720, ideal: CONFIG.CAMERA.HIGH_HEIGHT },
+          advanced: [{ focusMode: 'continuous' }]
+        }
+      });
+      attempts.push({
+        audio: false,
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH },
+          height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT },
+          advanced: [{ focusMode: 'continuous' }]
+        }
+      });
+      attempts.push({
+        audio: false,
+        video: {
+          deviceId: { exact: deviceId },
+          advanced: [{ focusMode: 'continuous' }]
+        }
+      });
+      attempts.push({
+        audio: false,
+        video: { deviceId: { exact: deviceId } }
+      });
+    }
+    attempts.push({
+      audio: false,
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH },
+        height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT },
+        advanced: [{ focusMode: 'continuous' }]
+      }
+    });
+    attempts.push({
+      audio: false,
+      video: { facingMode: { ideal: facingMode } }
+    });
+    attempts.push({ audio: false, video: true });
 
-    const rect = videoEl.getBoundingClientRect();
-    const dw = rect.width;
-    const dh = rect.height;
-    if (!dw || !dh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
-
-    const coverScale = Math.max(dw / vw, dh / vh);
-    const scaledW = vw * coverScale;
-    const scaledH = vh * coverScale;
-
-    const dz = zoomInfo.native ? 1 : digitalZoom;
-    const visibleW = dw / dz;
-    const visibleH = dh / dz;
-    const offsetX = (scaledW - visibleW) / 2;
-    const offsetY = (scaledH - visibleH) / 2;
-
-    const sx = offsetX / coverScale;
-    const sy = offsetY / coverScale;
-    const sw = visibleW / coverScale;
-    const sh = visibleH / coverScale;
-
-    // Cap resolution for OCR speed.
-    const srcLong = Math.max(sw, sh);
-    const cap = Math.min(1, CONFIG.OCR.MAX_EDGE_PX / srcLong);
-    const targetW = Math.max(1, Math.round(sw * cap));
-    const targetH = Math.max(1, Math.round(sh * cap));
-
-    targetCanvas.width = targetW;
-    targetCanvas.height = targetH;
-    const ctx = targetCanvas.getContext('2d');
-    if (!ctx) throw new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetW, targetH);
-    return targetCanvas;
+    let lastErr;
+    for (const a of attempts) {
+      try { return await navigator.mediaDevices.getUserMedia(a); }
+      catch (e) { lastErr = e; }
+    }
+    throw translateError(lastErr);
   }
 
-  async function start(video) {
+  async function start(video, options = {}) {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new AppError(
         window.isSecureContext ? 'CAMERA_UNSUPPORTED' : 'CAMERA_INSECURE',
@@ -1384,22 +1638,29 @@ const CameraService = (() => {
     videoEl = video;
     await stop();
 
-    const constraints = {
-      audio: false,
-      video: {
-        facingMode: { ideal: facingMode },
-        width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH },
-        height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT },
-        advanced: [{ focusMode: 'continuous' }]
+    // Probe cameras on first start (or when explicitly refreshing)
+    if (!allCameras.length || options.refresh) {
+      try {
+        allCameras = await CameraSelection.probeAll();
+      } catch (e) {
+        // If probing itself fails (e.g. permission), surface the error
+        throw translateError(e);
       }
-    };
-
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (error) {
-      try { stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true }); }
-      catch { throw translateError(error); }
     }
+
+    // Decide which camera to open
+    let targetId = options.deviceId || null;
+    if (!targetId && allCameras.length) {
+      targetId = allCameras[0].deviceId;
+      selectedCamera = allCameras[0];
+    } else if (targetId) {
+      selectedCamera = allCameras.find(c => c.deviceId === targetId) || {
+        deviceId: targetId, label: 'Camera', focusModes: [], maxWidth: 0, maxHeight: 0,
+        zoomMin: 1, zoomMax: 1, hasTorch: false
+      };
+    }
+
+    stream = await openCamera(targetId);
 
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', '');
@@ -1416,6 +1677,9 @@ const CameraService = (() => {
 
     stream.getVideoTracks().forEach((track) => {
       track.enabled = true;
+      // Refresh selected camera info from the live track (labels from enumeration can be stale)
+      const liveLabel = track.label;
+      if (selectedCamera && liveLabel) selectedCamera.label = liveLabel;
       track.addEventListener('ended', () => {
         if (stream && stream.getVideoTracks().every((t) => t.readyState === 'ended')) stream = null;
       });
@@ -1449,39 +1713,76 @@ const CameraService = (() => {
     applyContinuousFocus();
   }
 
-  async function switchCamera() {
+  async function switchTo(deviceId) {
     if (!videoEl) return;
-    const wasTorch = torchOn;
-    facingMode = facingMode === CONFIG.CAMERA.DEFAULT_FACING
-      ? CONFIG.CAMERA.ALTERNATE_FACING
-      : CONFIG.CAMERA.DEFAULT_FACING;
-    await start(videoEl);
-    if (wasTorch && hasTorch()) await setTorch(true);
+    await start(videoEl, { deviceId, refresh: false });
   }
 
   function isActive() {
     return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
   }
 
-  async function countCameras() {
-    try {
-      if (!navigator.mediaDevices?.enumerateDevices) return 0;
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      return devices.filter((d) => d.kind === 'videoinput').length;
-    } catch { return 0; }
+  function getAllCameras() { return allCameras.slice(); }
+  function getSelectedCamera() { return selectedCamera; }
+
+  function getFocusSupport() {
+    const modes = selectedCamera?.focusModes || [];
+    return {
+      hasAutoFocus: modes.some(m => ['continuous', 'single-shot', 'manual'].includes(m)),
+      modes
+    };
+  }
+
+  /**
+   * Draw the visible viewfinder area to a canvas.
+   * Uses `offsetWidth/Height` (layout size, transform-independent) so digital
+   * zoom via CSS transform doesn't corrupt the math.
+   */
+  function captureFrame(targetCanvas) {
+    if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    const Lw = videoEl.offsetWidth;
+    const Lh = videoEl.offsetHeight;
+    if (!vw || !vh || !Lw || !Lh) {
+      throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+    }
+
+    const Z = zoomInfo.native ? 1 : (digitalZoom || 1);
+    const S_cover = Math.max(Lw / vw, Lh / vh);
+
+    const srcW = Lw / (Z * S_cover);
+    const srcH = Lh / (Z * S_cover);
+    const srcX = (vw - srcW) / 2;
+    const srcY = (vh - srcH) / 2;
+
+    const srcLong = Math.max(srcW, srcH);
+    const cap = Math.min(1, CONFIG.OCR.MAX_EDGE_PX / srcLong);
+    const targetW = Math.max(1, Math.round(srcW * cap));
+    const targetH = Math.max(1, Math.round(srcH * cap));
+
+    targetCanvas.width = targetW;
+    targetCanvas.height = targetH;
+    const ctx = targetCanvas.getContext('2d');
+    if (!ctx) throw new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(videoEl, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+    return targetCanvas;
   }
 
   return {
-    start, stop, pause, resume, switchCamera, isActive, countCameras,
+    start, stop, pause, resume, switchTo, isActive,
     triggerAutofocus, tapToFocus,
     hasTorch, setTorch, isTorchOn,
     setZoom, getZoom, getZoomInfo,
+    getAllCameras, getSelectedCamera, getFocusSupport,
     captureFrame
   };
 })();
 
 /* ==========================================================================
- * 6. OCR SERVICE — full-frame recognition with word bounding boxes
+ * 7. OCR SERVICE
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -1530,7 +1831,6 @@ const OCRService = (() => {
     return workerPromise;
   }
 
-  /* ---- Otsu binarisation (crisper text on book paper) -------------------- */
   function otsuThreshold(gray) {
     const hist = new Array(256).fill(0);
     for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
@@ -1571,7 +1871,6 @@ const OCRService = (() => {
     return out;
   }
 
-  /* ---- Extract bboxes from Tesseract's hierarchical output -------------- */
   function getBBox(node) {
     const b = node?.bbox || node?.boundingBox || {};
     if (typeof b.x0 === 'number' && typeof b.x1 === 'number') {
@@ -1585,57 +1884,28 @@ const OCRService = (() => {
 
   function collectWords(data) {
     const words = [];
-
-    // Path 1: top-level `data.words` (present in most v5 builds)
-    if (Array.isArray(data.words)) {
-      words.push(...data.words);
-    }
-
-    // Path 2: flatten `data.blocks → paragraphs → lines → words`
+    if (Array.isArray(data.words)) words.push(...data.words);
     if (!words.length && Array.isArray(data.blocks)) {
-      for (const block of data.blocks) {
-        for (const para of block?.paragraphs || []) {
-          for (const line of para?.lines || []) {
-            for (const word of line?.words || []) {
-              words.push(word);
-            }
-          }
-        }
-      }
+      for (const b of data.blocks) for (const p of b?.paragraphs || [])
+        for (const l of p?.lines || []) for (const w of l?.words || []) words.push(w);
     }
-
-    // Path 3: `data.lines[].words`
     if (!words.length && Array.isArray(data.lines)) {
-      for (const line of data.lines) {
-        for (const word of line?.words || []) {
-          words.push(word);
-        }
-      }
+      for (const l of data.lines) for (const w of l?.words || []) words.push(w);
     }
-
     return words;
   }
 
-  /**
-   * Recognizes text in the whole canvas and returns word-level bboxes.
-   * @param {HTMLCanvasElement} canvas
-   * @param {(pct:number)=>void} [onProgress]
-   * @returns {Promise<{words: Array<{text:string,confidence:number,bbox:Object}>, fullText: string}>}
-   */
   async function recognizeWithBoxes(canvas, onProgress) {
     progressCallback = onProgress || null;
     const worker = await getWorker();
     const binary = binarize(canvas);
-
     await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
 
     let data;
     try {
-      // Ask for full block structure — that's where bboxes live.
       const result = await worker.recognize(binary, {}, { text: true, blocks: true });
       data = result.data;
     } catch {
-      // Fallback: text-only (no word bboxes) — we'll still return full text.
       const result = await worker.recognize(binary);
       data = result.data;
     }
@@ -1656,34 +1926,10 @@ const OCRService = (() => {
       words.push({ text, confidence, bbox });
     }
 
-    // Fallback: if we got text but no bboxes, synthesize one big bbox per line
-    if (!words.length && typeof data.text === 'string' && data.text.trim()) {
-      // No bboxes available — offer the longest word as a single button
-      // positioned over the top-left region so the UI remains usable.
-      const tokens = data.text
-        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase().replace(/[^a-z\s'-]+/g, ' ').split(/\s+/)
-        .filter((t) => t.length >= 3);
-      if (tokens.length) {
-        const best = tokens.sort((a, b) => b.length - a.length)[0];
-        words.push({
-          text: best,
-          confidence: 50,
-          bbox: {
-            x0: Math.round(canvas.width * 0.1),
-            y0: Math.round(canvas.height * 0.1),
-            x1: Math.round(canvas.width * 0.9),
-            y1: Math.round(canvas.height * 0.1) + 60
-          }
-        });
-      }
-    }
-
     progressCallback = null;
     return { words, fullText: typeof data.text === 'string' ? data.text : '' };
   }
 
-  /* ---- Word sanitisation ------------------------------------------------- */
   function tokenize(raw) {
     if (typeof raw !== 'string') return [];
     return raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
@@ -1704,7 +1950,7 @@ const OCRService = (() => {
 })();
 
 /* ==========================================================================
- * 7. DICTIONARY SERVICE
+ * 8. DICTIONARY SERVICE
  * ========================================================================== */
 const DictionaryService = (() => {
   const POS_MAP = Object.freeze({
@@ -1861,16 +2107,15 @@ const DictionaryService = (() => {
 })();
 
 /* ==========================================================================
- * 8. APP CONTROLLER
+ * 9. APP CONTROLLER
  * ========================================================================== */
 const App = (() => {
   const state = {
     busy: false,
-    phase: 'camera',       // 'camera' | 'analyzing' | 'ready'
+    phase: 'camera',
     cameraReady: false,
     lastWord: '',
     ocrWarmedUp: false,
-    currentFrozenCanvas: null,
     currentWords: []
   };
 
@@ -1879,14 +2124,29 @@ const App = (() => {
       await CameraService.start(DOM.video);
       state.cameraReady = true;
       UI.hideCameraError();
-      UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+      DOM.btnCapture.disabled = false;
 
-      const count = await CameraService.countCameras();
-      DOM.btnSwitch.hidden = count < 2;
+      const cams = CameraService.getAllCameras();
+      DOM.btnLens.hidden = cams.length < 2;
+
       UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
-
       const zi = CameraService.getZoomInfo();
       UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+
+      // Update badge and status based on the selected camera
+      const sel = CameraService.getSelectedCamera();
+      const focus = CameraService.getFocusSupport();
+      if (sel) {
+        // Shorten label for the badge
+        const shortLabel = shortenLabel(sel.label);
+        UI.setCamBadge(shortLabel, focus.hasAutoFocus);
+      }
+
+      if (focus.hasAutoFocus) {
+        UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+      } else {
+        UI.setStatus('⚠ No autofocus on this lens — tap the lens button to switch.');
+      }
 
       warmUpOcr();
     } catch (error) {
@@ -1895,7 +2155,23 @@ const App = (() => {
       UI.showCameraError(msg);
       UI.setStatus('Camera unavailable — type a word instead.');
       DOM.btnCapture.disabled = true;
+      UI.setCamBadge(null, false);
     }
+  }
+
+  function shortenLabel(label) {
+    if (!label) return 'Camera';
+    // Common label patterns → friendly names
+    let L = label.replace(/camera\d*\s*/i, '').trim();
+    L = L.replace(/,?\s*facing\s+(back|front|environment|user)/i, '').trim();
+    L = L.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    if (/ultra[\s-]?wide/i.test(L)) return 'Ultra-wide';
+    if (/\btele/i.test(L)) return 'Telephoto';
+    if (/\bwide\b/i.test(L)) return 'Wide';
+    if (/\bmain\b/i.test(L)) return 'Main';
+    if (/\bfront\b/i.test(L)) return 'Front';
+    if (!L) return 'Camera';
+    return L.length > 18 ? L.slice(0, 16) + '…' : L;
   }
 
   function warmUpOcr() {
@@ -1919,18 +2195,14 @@ const App = (() => {
 
     try {
       await CameraService.triggerAutofocus();
-
-      // Grab the frame while the stream is live.
       const frozen = CameraService.captureFrame(DOM.cropCanvas);
       CameraService.pause();
 
-      // Copy frozen frame into display canvas.
       DOM.frozenCanvas.width = frozen.width;
       DOM.frozenCanvas.height = frozen.height;
       const fctx = DOM.frozenCanvas.getContext('2d');
       fctx.drawImage(frozen, 0, 0);
 
-      // Layout the frozen image on screen (contain-fit).
       state.phase = 'analyzing';
       UI.showAnalyzeView();
       UI.showNoText(false);
@@ -1953,11 +2225,8 @@ const App = (() => {
     const stageAspect = stage.width / stage.height;
 
     let w, h;
-    if (aspect > stageAspect) {
-      w = stage.width; h = stage.width / aspect;
-    } else {
-      h = stage.height; w = stage.height * aspect;
-    }
+    if (aspect > stageAspect) { w = stage.width; h = stage.width / aspect; }
+    else { h = stage.height; w = stage.height * aspect; }
     DOM.frozenWrap.style.width = w + 'px';
     DOM.frozenWrap.style.height = h + 'px';
   }
@@ -1992,22 +2261,17 @@ const App = (() => {
       return;
     }
 
-    // Render tappable word overlays.
     const cw = DOM.frozenCanvas.width;
     const ch = DOM.frozenCanvas.height;
     const dw = DOM.frozenWrap.getBoundingClientRect().width;
     const dh = DOM.frozenWrap.getBoundingClientRect().height;
-    UI.renderWords(result.words, cw, ch, dw, dh, (word) => {
-      lookupWord(word);
-    });
+    UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
     UI.setAnalyzeHint(`${result.words.length} word${result.words.length === 1 ? '' : 's'} found — tap one`);
   }
 
-  /* ---- Retake ------------------------------------------------------------ */
   async function onRetake() {
     if (state.busy) return;
     state.phase = 'camera';
-    state.currentFrozenCanvas = null;
     state.currentWords = [];
     UI.clearWords();
     UI.showScanProgress(false);
@@ -2017,7 +2281,6 @@ const App = (() => {
     UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
   }
 
-  /* ---- Word tap → lookup ------------------------------------------------- */
   async function lookupWord(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) return;
@@ -2030,14 +2293,8 @@ const App = (() => {
       UI.showScanProgress(false);
       UI.setAnalyzeHint(`${state.currentWords.length} words found — tap one`);
       UI.renderResult(entry, {
-        onScanAnother: () => {
-          UI.closeSheet(DOM.resultSheet);
-          onRetake();
-        },
-        onTypeWord: () => {
-          UI.closeSheet(DOM.resultSheet);
-          openManualSheet('');
-        }
+        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
+        onTypeWord: () => { UI.closeSheet(DOM.resultSheet); openManualSheet(''); }
       });
       UI.openSheet(DOM.resultSheet);
     } catch (error) {
@@ -2047,7 +2304,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Error handling ---------------------------------------------------- */
   function describeError(error, attemptedWord) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
@@ -2075,19 +2331,12 @@ const App = (() => {
           retryLabel: 'Retry', onRetry: () => lookupWord(w) };
       case 'OCR_EMPTY':
       case 'OCR_FAILED':
-        return {
-          title: 'Could not read the text',
-          message: MESSAGES.OCR_EMPTY,
-          retryLabel: 'Retake',
-          onRetry: () => onRetake()
-        };
+        return { title: 'Could not read the text', message: MESSAGES.OCR_EMPTY,
+          retryLabel: 'Retake', onRetry: () => onRetake() };
       case 'OCR_LIB':
-        return {
-          title: 'Scanner unavailable',
-          message: MESSAGES.OCR_LIB,
+        return { title: 'Scanner unavailable', message: MESSAGES.OCR_LIB,
           retryLabel: 'Retry',
-          onRetry: () => OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB))
-        };
+          onRetry: () => OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB)) };
       case 'BAD_WORD':
         return { title: 'Invalid word', message: MESSAGES.BAD_WORD,
           retryLabel: 'Type a word', onRetry: () => openManualSheet('') };
@@ -2104,7 +2353,6 @@ const App = (() => {
     UI.showError(describeError(error, attemptedWord));
   }
 
-  /* ---- Manual entry ------------------------------------------------------ */
   function openManualSheet(prefill = '') {
     UI.closeAllSheets();
     UI.clearInputError();
@@ -2123,14 +2371,8 @@ const App = (() => {
     try {
       const entry = await DictionaryService.lookup(word);
       UI.renderResult(entry, {
-        onScanAnother: () => {
-          UI.closeSheet(DOM.resultSheet);
-          onRetake();
-        },
-        onTypeWord: () => {
-          UI.closeSheet(DOM.resultSheet);
-          openManualSheet('');
-        }
+        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
+        onTypeWord: () => { UI.closeSheet(DOM.resultSheet); openManualSheet(''); }
       });
       UI.openSheet(DOM.resultSheet);
     } catch (error) {
@@ -2138,21 +2380,47 @@ const App = (() => {
     }
   }
 
-  /* ---- Camera misc ------------------------------------------------------- */
-  async function onSwitchCamera() {
+  /* ---- Lens picker ----------------------------------------------------- */
+  function openLensPicker() {
+    const cams = CameraService.getAllCameras();
+    if (cams.length < 2) { UI.toast('Only one camera available.'); return; }
+    const sel = CameraService.getSelectedCamera();
+    UI.renderLensList(cams, sel?.deviceId, async (deviceId) => {
+      UI.closeSheet(DOM.lensSheet);
+      await onPickLens(deviceId);
+    });
+    UI.openSheet(DOM.lensSheet);
+  }
+
+  async function onPickLens(deviceId) {
     if (state.busy) return;
     try {
-      await CameraService.switchCamera();
+      UI.setStatus('Switching lens…');
+      await CameraService.switchTo(deviceId);
+      state.cameraReady = true;
+      UI.hideCameraError();
+
       UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
       const zi = CameraService.getZoomInfo();
       UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
-      UI.setStatus('Camera switched.');
+
+      const sel = CameraService.getSelectedCamera();
+      const focus = CameraService.getFocusSupport();
+      if (sel) UI.setCamBadge(shortenLabel(sel.label), focus.hasAutoFocus);
+
+      if (focus.hasAutoFocus) {
+        UI.setStatus('Lens switched — align the page and capture.');
+      } else {
+        UI.setStatus('⚠ This lens has no autofocus. Try another lens.');
+      }
     } catch (error) {
       const msg = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
       UI.showCameraError(msg);
+      UI.setStatus('Could not switch lens — try another.');
     }
   }
 
+  /* ---- Torch / zoom --------------------------------------------------- */
   async function onTorchToggle() {
     const next = !CameraService.isTorchOn();
     const ok = await CameraService.setTorch(next);
@@ -2186,14 +2454,12 @@ const App = (() => {
     try { await CameraService.tapToFocus(x, y); } catch {}
   }
 
-  /* ---- Network ----------------------------------------------------------- */
   function syncOnlineState() {
     const offline = !navigator.onLine;
     UI.setOffline(offline);
     if (offline) UI.setStatus('You are offline — reconnect to look up words.');
   }
 
-  /* ---- Init -------------------------------------------------------------- */
   function init() {
     cacheDom();
 
@@ -2202,7 +2468,8 @@ const App = (() => {
       onRetake,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
-      onSwitchCamera,
+      onOpenLensPicker: openLensPicker,
+      onCloseLensPicker: () => UI.closeSheet(DOM.lensSheet),
       onTorchToggle,
       onZoomIn,
       onZoomOut,
@@ -2211,14 +2478,13 @@ const App = (() => {
       onViewfinderTap,
       onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
       onCloseManual: () => UI.closeSheet(DOM.manualSheet),
-      onScrimClick: () => UI.closeAllSheets(),
+      onAfterSheetsClosed: () => {},
       onManualSubmit
     });
 
     window.addEventListener('resize', () => {
       if (state.phase === 'ready' || state.phase === 'analyzing') {
         layoutFrozenImage();
-        // Re-render word overlays with new display size
         if (state.currentWords.length) {
           const cw = DOM.frozenCanvas.width;
           const ch = DOM.frozenCanvas.height;
@@ -2246,7 +2512,7 @@ const App = (() => {
 })();
 
 /* ==========================================================================
- * 9. BOOTSTRAP
+ * 10. BOOTSTRAP
  * ========================================================================== */
 try { App.init(); }
 catch (error) {
