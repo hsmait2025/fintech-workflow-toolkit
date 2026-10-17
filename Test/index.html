@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
 <meta name="theme-color" content="#0b0f14" />
 <meta name="color-scheme" content="dark" />
-<meta name="description" content="ScanLex — point your camera at a word in a book and get its definition instantly." />
+<meta name="description" content="ScanLex — capture a page, select the word, get its definition." />
 <title>ScanLex — Visual Scan Dictionary</title>
 
 <style>
 /* ==========================================================================
-   1. DESIGN TOKENS
+   1. TOKENS
    ========================================================================== */
 :root {
   --bg: #0b0f14;
@@ -25,8 +25,7 @@
   --accent-line: rgba(76, 201, 240, 0.32);
   --danger: #ff6b6b;
   --danger-soft: rgba(255, 107, 107, 0.14);
-  --success: #3ddc97;
-  --radius-lg: 24px;
+  --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
   --shadow-sheet: 0 -18px 60px rgba(0, 0, 0, 0.65);
@@ -38,23 +37,19 @@
 }
 
 /* ==========================================================================
-   2. RESET & BASE
+   2. RESET
    ========================================================================== */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 16px; line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  text-rendering: optimizeLegibility;
 }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
@@ -76,16 +71,16 @@ button { cursor: pointer; border: 0; background: none; }
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: calc(var(--safe-top) + 12px) 16px 12px; flex: 0 0 auto;
 }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot {
   width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); flex: 0 0 auto;
+  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
 }
 .brand h1 {
   margin: 0; font-size: 1.05rem; font-weight: 650;
   letter-spacing: -0.01em; white-space: nowrap;
 }
-.app-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.app-actions { display: flex; gap: 8px; }
 .icon-btn {
   display: grid; place-items: center;
   width: 44px; height: 44px; border-radius: 14px;
@@ -99,81 +94,66 @@ button { cursor: pointer; border: 0; background: none; }
 }
 
 /* ==========================================================================
-   4. OFFLINE BANNER
+   4. OFFLINE
    ========================================================================== */
 .offline-banner {
-  flex: 0 0 auto; margin: 0 16px 10px; padding: 10px 14px;
-  border-radius: var(--radius-sm);
+  margin: 0 16px 10px; padding: 10px 14px; border-radius: var(--radius-sm);
   background: var(--danger-soft); border: 1px solid rgba(255, 107, 107, 0.32);
   color: #ffc9c9; font-size: 0.85rem; text-align: center;
 }
 
 /* ==========================================================================
-   5. STAGE / VIEWFINDER
+   5. STAGE + VIEWS
    ========================================================================== */
 .stage {
   flex: 1 1 auto; display: flex; flex-direction: column;
   min-height: 0; padding: 0 12px calc(var(--safe-bottom) + 12px); gap: 12px;
 }
-.viewfinder {
+
+/* ---- Camera view ------------------------------------------------------- */
+.camera-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   border-radius: var(--radius-lg); overflow: hidden;
-  background: #000; border: 1px solid var(--line); isolation: isolate;
-  touch-action: manipulation;
+  background: #000; border: 1px solid var(--line);
+  isolation: isolate; touch-action: none;
 }
 .video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; display: block; background: #000;
+  transition: transform 0.22s var(--ease-out);
+  transform-origin: center center;
 }
 
-/* ---- Scanning reticle (wider band for a full line of text) -------------- */
-.reticle {
-  position: absolute; left: 50%; top: 42%;
-  transform: translate(-50%, -50%);
-  width: min(90%, 640px);
-  height: clamp(110px, 26vh, 200px);
-  border-radius: var(--radius-md);
-  border: 1.5px dashed rgba(76, 201, 240, 0.55);
-  background: rgba(76, 201, 240, 0.04);
-  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
-  pointer-events: none;
-  transition: border-color 0.2s;
+/* Zoom bar (top-right pill) */
+.zoom-bar {
+  position: absolute; top: 12px; right: 12px; z-index: 6;
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(8, 14, 20, 0.72);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px; padding: 4px;
 }
-.reticle.is-locked { border-color: var(--success); background: rgba(61, 220, 151, 0.05); }
-.corner {
-  position: absolute; width: 22px; height: 22px;
-  border: 3px solid var(--accent); border-radius: 4px;
+.zoom-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.35rem; font-weight: 400; line-height: 1;
+  color: var(--text); background: transparent;
+  transition: background 0.15s;
 }
-.corner.tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
-.corner.tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
-.corner.bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
-.corner.br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
-
-/* Horizontal centre guide */
-.reticle::after {
-  content: ""; position: absolute; left: 12%; right: 12%; top: 50%;
-  height: 1px; background: rgba(76, 201, 240, 0.35);
-  transform: translateY(-50%); pointer-events: none;
+.zoom-btn:active { background: rgba(255, 255, 255, 0.12); }
+.zoom-btn:disabled { opacity: 0.35; }
+.zoom-value {
+  min-width: 42px; text-align: center;
+  font-size: 0.82rem; font-weight: 650; letter-spacing: 0.02em;
+  color: var(--text); font-variant-numeric: tabular-nums;
 }
 
-.reticle-hint {
-  position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
-  font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(233, 240, 247, 0.82); white-space: nowrap;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
-  text-align: center;
-}
-
-/* ---- Tap-to-focus feedback --------------------------------------------- */
+/* Tap-to-focus pulse */
 .focus-ring {
-  position: absolute;
-  width: 64px; height: 64px;
-  border: 2px solid var(--accent);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0.4);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 5;
+  position: absolute; width: 64px; height: 64px;
+  border: 2px solid var(--accent); border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.4); opacity: 0;
+  pointer-events: none; z-index: 5;
 }
 .focus-ring.is-active { animation: focus-pulse 0.7s var(--ease-out) forwards; }
 @keyframes focus-pulse {
@@ -181,36 +161,84 @@ button { cursor: pointer; border: 0; background: none; }
   100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.5); }
 }
 
-/* ---- Busy overlay ------------------------------------------------------- */
+/* Busy overlay */
 .ocr-overlay {
   position: absolute; inset: 0; z-index: 3;
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 14px;
-  background: rgba(6, 10, 14, 0.62);
+  background: rgba(6, 10, 14, 0.72);
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
   animation: fade-in 0.18s var(--ease-out);
 }
-.ocr-overlay p { margin: 0; font-size: 0.9rem; color: var(--text); letter-spacing: 0.02em; }
+.ocr-overlay p { margin: 0; font-size: 0.9rem; }
 .spinner {
   width: 46px; height: 46px; border-radius: 50%;
-  border: 3px solid rgba(76, 201, 240, 0.18);
-  border-top-color: var(--accent);
+  border: 3px solid rgba(76, 201, 240, 0.18); border-top-color: var(--accent);
   animation: spin 0.85s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* ---- Camera error panel ------------------------------------------------- */
+/* Camera error */
 .camera-error {
   position: absolute; inset: 0; z-index: 4;
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 12px; padding: 28px 22px;
-  text-align: center;
+  justify-content: center; gap: 12px; padding: 28px 22px; text-align: center;
   background: linear-gradient(160deg, #101a24 0%, #0b1219 100%);
 }
 .camera-error h2 { margin: 0; font-size: 1.1rem; }
 .camera-error p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+
+/* ---- Selection view ---------------------------------------------------- */
+.selection-view {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg);
+  background: #000;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  padding: 0;
+}
+.frozen-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.frozen-canvas {
+  width: 100%; height: 100%; display: block;
+  user-select: none; -webkit-user-select: none;
+  pointer-events: none;
+}
+.selection-rect {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  background: rgba(76, 201, 240, 0.08);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+  cursor: move;
+  touch-action: none;
+  will-change: left, top, width, height;
+}
+.selection-rect::after {
+  content: ''; position: absolute;
+  left: 12%; right: 12%; top: 50%; height: 1px;
+  background: rgba(76, 201, 240, 0.4);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.handle {
+  position: absolute; width: 36px; height: 36px;
+  background: transparent; touch-action: none; cursor: pointer;
+}
+.handle::after {
+  content: ''; position: absolute; inset: 9px;
+  border-radius: 50%; background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+.handle.h-tl { top: -18px; left: -18px; cursor: nwse-resize; }
+.handle.h-tr { top: -18px; right: -18px; cursor: nesw-resize; }
+.handle.h-bl { bottom: -18px; left: -18px; cursor: nesw-resize; }
+.handle.h-br { bottom: -18px; right: -18px; cursor: nwse-resize; }
 
 /* ==========================================================================
    6. CONTROLS
@@ -220,10 +248,9 @@ button { cursor: pointer; border: 0; background: none; }
   align-items: center; gap: 10px;
 }
 .capture-btn {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  gap: 12px; width: 100%; max-width: 440px; height: 62px;
-  border-radius: 31px; font-size: 1rem; font-weight: 640; letter-spacing: 0.01em;
-  color: #04121a;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; max-width: 440px; height: 62px; border-radius: 31px;
+  font-size: 1rem; font-weight: 640; letter-spacing: 0.01em; color: #04121a;
   background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 45%, #3aa8d8 100%);
   box-shadow: 0 10px 30px rgba(76, 201, 240, 0.28);
   transition: transform 0.12s var(--ease-out), box-shadow 0.2s var(--ease-out), opacity 0.2s;
@@ -233,8 +260,12 @@ button { cursor: pointer; border: 0; background: none; }
 .capture-ring {
   width: 16px; height: 16px; border-radius: 50%;
   border: 2.5px solid currentColor;
-  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16); flex: 0 0 auto;
+  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16);
 }
+.selection-actions {
+  display: flex; gap: 10px; width: 100%; max-width: 440px;
+}
+.selection-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.98rem; }
 .status-hint {
   margin: 0; font-size: 0.82rem; color: var(--muted);
   text-align: center; min-height: 1.2em; max-width: 44ch;
@@ -255,7 +286,7 @@ button { cursor: pointer; border: 0; background: none; }
 .btn-block { width: 100%; }
 
 /* ==========================================================================
-   8. SCRIM + BOTTOM SHEETS
+   8. SCRIM + SHEETS
    ========================================================================== */
 .scrim {
   position: fixed; inset: 0; z-index: 40;
@@ -270,8 +301,8 @@ button { cursor: pointer; border: 0; background: none; }
 }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  max-height: 84vh; max-height: 84dvh;
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  max-height: 84vh; max-height: 84dvh; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 10px calc(20px + var(--safe-right)) calc(24px + var(--safe-bottom))
            calc(20px + var(--safe-left));
   background: var(--surface);
@@ -305,16 +336,13 @@ button { cursor: pointer; border: 0; background: none; }
   color: var(--text); font-size: 1rem; transition: border-color 0.18s;
 }
 .text-input::placeholder { color: #62788b; }
-.text-input:focus {
-  outline: none; border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
+.text-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .text-input[aria-invalid="true"] { border-color: var(--danger); }
 .input-error { margin: 8px 2px 12px; color: var(--danger); font-size: 0.84rem; }
 #manualForm .btn { margin-top: 14px; }
 
 /* ==========================================================================
-   9. RESULT CARD
+   9. RESULT
    ========================================================================== */
 .result-head {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -324,11 +352,11 @@ button { cursor: pointer; border: 0; background: none; }
   margin: 0; font-size: 1.85rem; font-weight: 700;
   letter-spacing: -0.025em; line-height: 1.15; word-break: break-word;
 }
-.result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; letter-spacing: 0.01em; }
+.result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; }
 .audio-btn {
   flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--accent-soft); border: 1px solid var(--accent-line);
-  color: var(--accent);
+  border-radius: 50%; background: var(--accent-soft);
+  border: 1px solid var(--accent-line); color: var(--accent);
   transition: transform 0.12s var(--ease-out), background 0.18s;
 }
 .audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
@@ -352,7 +380,7 @@ button { cursor: pointer; border: 0; background: none; }
 .result-actions .btn { flex: 1 1 0; }
 
 /* ==========================================================================
-   10. ERROR MODAL
+   10. MODAL
    ========================================================================== */
 .modal {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
@@ -377,7 +405,7 @@ button { cursor: pointer; border: 0; background: none; }
   background: var(--danger-soft); border: 1px solid rgba(255, 107, 107, 0.3);
   color: var(--danger); font-size: 1.5rem; font-weight: 700;
 }
-.modal-title { margin: 0 0 8px; font-size: 1.08rem; letter-spacing: -0.01em; }
+.modal-title { margin: 0 0 8px; font-size: 1.08rem; }
 .modal-text { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
 
@@ -400,7 +428,7 @@ button { cursor: pointer; border: 0; background: none; }
 }
 
 /* ==========================================================================
-   12. RESPONSIVE / LANDSCAPE / MOTION
+   12. RESPONSIVE
    ========================================================================== */
 @media (min-width: 720px) {
   .stage { padding: 0 24px calc(var(--safe-bottom) + 20px); }
@@ -408,14 +436,8 @@ button { cursor: pointer; border: 0; background: none; }
   .sheet {
     left: 50%; right: auto; width: min(560px, 100%);
     transform: translate(-50%, 110%);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
   .sheet.is-open { transform: translate(-50%, 0); }
-}
-@media (orientation: landscape) and (max-height: 520px) {
-  .reticle { height: clamp(70px, 30vh, 120px); top: 40%; }
-  .capture-btn { height: 54px; }
-  .app-bar { padding-top: calc(var(--safe-top) + 8px); padding-bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -429,7 +451,6 @@ button { cursor: pointer; border: 0; background: none; }
 
 <body>
 <div class="app">
-  <!-- ===================== HEADER ===================== -->
   <header class="app-bar">
     <div class="brand">
       <span class="brand-dot" aria-hidden="true"></span>
@@ -451,7 +472,7 @@ button { cursor: pointer; border: 0; background: none; }
           <path d="M3 20v-6h6" />
         </svg>
       </button>
-      <button id="btnManual" class="icon-btn" type="button" aria-label="Type a word instead">
+      <button id="btnManual" class="icon-btn" type="button" aria-label="Type a word">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
@@ -465,21 +486,18 @@ button { cursor: pointer; border: 0; background: none; }
     You're offline — definitions can't be loaded right now.
   </div>
 
-  <!-- ===================== STAGE ===================== -->
   <main class="stage">
-    <section class="viewfinder" id="viewfinder" aria-label="Camera viewfinder">
+    <!-- ============ CAMERA VIEW ============ -->
+    <section class="camera-view" id="cameraView" aria-label="Camera viewfinder">
       <video id="video" class="video" playsinline autoplay muted
              aria-label="Live camera preview"></video>
 
-      <div class="reticle" id="reticle" aria-hidden="true">
-        <i class="corner tl"></i>
-        <i class="corner tr"></i>
-        <i class="corner bl"></i>
-        <i class="corner br"></i>
-        <span class="reticle-hint">Fill the box with one line of text • tap to focus</span>
+      <div class="zoom-bar" id="zoomBar" hidden>
+        <button id="btnZoomOut" class="zoom-btn" type="button" aria-label="Zoom out">−</button>
+        <span class="zoom-value" id="zoomValue">1.0×</span>
+        <button id="btnZoomIn" class="zoom-btn" type="button" aria-label="Zoom in">+</button>
       </div>
 
-      <!-- Tap-to-focus pulse -->
       <div class="focus-ring" id="focusRing" aria-hidden="true"></div>
 
       <div class="ocr-overlay" id="ocrOverlay" hidden>
@@ -499,33 +517,54 @@ button { cursor: pointer; border: 0; background: none; }
       <canvas id="cropCanvas" hidden aria-hidden="true"></canvas>
     </section>
 
-    <div class="controls">
+    <!-- ============ SELECTION VIEW ============ -->
+    <section class="selection-view" id="selectionView" hidden aria-label="Select text region">
+      <div class="frozen-wrap" id="frozenWrap">
+        <canvas id="frozenCanvas" class="frozen-canvas"></canvas>
+        <div class="selection-rect" id="selectionRect">
+          <div class="handle h-tl" data-handle="tl"></div>
+          <div class="handle h-tr" data-handle="tr"></div>
+          <div class="handle h-bl" data-handle="bl"></div>
+          <div class="handle h-br" data-handle="br"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTROLS: CAMERA ============ -->
+    <div class="controls" id="cameraControls">
       <button id="btnCapture" class="capture-btn" type="button">
         <span class="capture-ring" aria-hidden="true"></span>
-        Capture &amp; Look Up
+        Capture
       </button>
       <p class="status-hint" id="statusHint" role="status" aria-live="polite">
         Starting camera…
       </p>
+    </div>
+
+    <!-- ============ CONTROLS: SELECTION ============ -->
+    <div class="controls" id="selectionControls" hidden>
+      <div class="selection-actions">
+        <button id="btnRetake" class="btn btn-ghost" type="button">Retake</button>
+        <button id="btnLookUp" class="btn btn-primary" type="button">Look Up</button>
+      </div>
+      <p class="status-hint">Drag the box to fit the word or line, then tap Look Up</p>
     </div>
   </main>
 </div>
 
 <div class="scrim" id="scrim" aria-hidden="true"></div>
 
-<section class="sheet" id="resultSheet" role="dialog" aria-modal="true"
-         aria-labelledby="resultTitle">
+<section class="sheet" id="resultSheet" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
   <div class="sheet-handle" aria-hidden="true"></div>
-  <button class="sheet-close" id="btnResultClose" type="button" aria-label="Close definition">×</button>
+  <button class="sheet-close" id="btnResultClose" type="button" aria-label="Close">×</button>
   <div class="result-body" id="resultBody"></div>
 </section>
 
-<section class="sheet" id="manualSheet" role="dialog" aria-modal="true"
-         aria-labelledby="manualTitle">
+<section class="sheet" id="manualSheet" role="dialog" aria-modal="true" aria-labelledby="manualTitle">
   <div class="sheet-handle" aria-hidden="true"></div>
-  <button class="sheet-close" id="btnManualClose" type="button" aria-label="Close manual entry">×</button>
+  <button class="sheet-close" id="btnManualClose" type="button" aria-label="Close">×</button>
   <h2 class="sheet-title" id="manualTitle">Type a word</h2>
-  <p class="sheet-sub">Camera not available? Enter the word manually and we'll look it up.</p>
+  <p class="sheet-sub">Camera not available? Enter the word manually.</p>
   <form id="manualForm" novalidate>
     <label class="sr-only" for="manualInput">Word to look up</label>
     <input id="manualInput" class="text-input" type="text" inputmode="text"
@@ -556,19 +595,13 @@ button { cursor: pointer; border: 0; background: none; }
 <script type="module">
 /* ==========================================================================
  * ScanLex — Visual Scan Dictionary
- * ==========================================================================
- * Fixes vs. previous version:
- *   1. Continuous autofocus + single-shot AF trigger before capture.
- *   2. Tap-to-focus via pointsOfInterest (Android Chrome).
- *   3. Torch toggle for low-light book scanning.
- *   4. Otsu-binarised, multi-pass OCR for much higher hit-rate on book text.
- *   5. Larger reticle band suited to a full line of text.
- *   6. Capture flow waits for lens to settle before grabbing the frame.
- *   7. Dictionary lookup keeps primary + Datamuse fallback (unchanged).
+ * --------------------------------------------------------------------------
+ * Flow:
+ *   Camera  →  Capture full frame  →  Select region  →  OCR  →  Lookup
  * ========================================================================== */
 
 /* ==========================================================================
- * 1. CONFIGURATION
+ * 1. CONFIG
  * ========================================================================== */
 const CONFIG = Object.freeze({
   API: Object.freeze({
@@ -583,7 +616,8 @@ const CONFIG = Object.freeze({
     IDEAL_HEIGHT: 1080,
     DEFAULT_FACING: 'environment',
     ALTERNATE_FACING: 'user',
-    FOCUS_SETTLE_MS: 550   // time to let the lens converge after focus trigger
+    FOCUS_SETTLE_MS: 550,
+    ZOOM_STEP_FRACTION: 0.15   // 15 % of range per button tap
   }),
 
   OCR: Object.freeze({
@@ -593,8 +627,6 @@ const CONFIG = Object.freeze({
     DEFAULT_PSM: '6',
     PSM_LINE: '7',
     PSM_BLOCK: '6',
-    TARGET_CROP_WIDTH: 1000,
-    MAX_CROP_WIDTH: 2200,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
     MIN_CONFIDENCE_EARLY: 70
@@ -608,10 +640,17 @@ const CONFIG = Object.freeze({
   }),
 
   SELECTORS: Object.freeze({
-    viewfinder:     '#viewfinder',
+    cameraView:     '#cameraView',
+    selectionView:  '#selectionView',
     video:          '#video',
-    reticle:        '#reticle',
     focusRing:      '#focusRing',
+    zoomBar:        '#zoomBar',
+    zoomValue:      '#zoomValue',
+    btnZoomIn:      '#btnZoomIn',
+    btnZoomOut:     '#btnZoomOut',
+    frozenCanvas:   '#frozenCanvas',
+    frozenWrap:     '#frozenWrap',
+    selectionRect:  '#selectionRect',
     cropCanvas:     '#cropCanvas',
     ocrOverlay:     '#ocrOverlay',
     ocrLabel:       '#ocrLabel',
@@ -620,6 +659,10 @@ const CONFIG = Object.freeze({
     btnCameraRetry: '#btnCameraRetry',
     btnCameraManual:'#btnCameraManual',
     btnCapture:     '#btnCapture',
+    btnRetake:      '#btnRetake',
+    btnLookUp:      '#btnLookUp',
+    cameraControls: '#cameraControls',
+    selectionCtrls: '#selectionControls',
     btnSwitch:      '#btnSwitch',
     btnTorch:       '#btnTorch',
     btnManual:      '#btnManual',
@@ -644,7 +687,7 @@ const CONFIG = Object.freeze({
 });
 
 /* ==========================================================================
- * 2. ERROR MODEL & USER-FACING COPY
+ * 2. ERRORS
  * ========================================================================== */
 class AppError extends Error {
   constructor(code, message, options = {}) {
@@ -666,8 +709,8 @@ const MESSAGES = Object.freeze({
   CAMERA_NOT_READY: 'The camera is still warming up. Give it a moment and try again.',
   OCR_LIB:          'The text-recognition engine could not be loaded. Check your connection.',
   OCR_FAILED:       'Text recognition failed. Try again with steadier lighting.',
-  OCR_EMPTY:        'No readable text was found. Hold the phone 15–25 cm from the page, ' +
-                    'keep it flat, and fill the box with one line of text.',
+  OCR_EMPTY:        'No readable text in the selected area. Try zooming in closer on the ' +
+                    'camera, or selecting a tighter area with more of the word visible.',
   OFFLINE:          'You appear to be offline. Reconnect to look up definitions.',
   TIMEOUT:          'The dictionary request timed out. Please try again.',
   NETWORK:          'A network error occurred while contacting the dictionary.',
@@ -679,8 +722,8 @@ const MESSAGES = Object.freeze({
 /* ==========================================================================
  * 3. UTILITIES
  * ========================================================================== */
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function h(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -719,7 +762,7 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * 4. UI LAYER
+ * 4. UI
  * ========================================================================== */
 const UI = (() => {
   let toastTimer = null;
@@ -733,15 +776,12 @@ const UI = (() => {
     DOM.ocrOverlay.hidden = !isBusy;
     if (label) DOM.ocrLabel.textContent = label;
     DOM.btnCapture.disabled = isBusy;
-    DOM.btnCapture.setAttribute('aria-busy', String(isBusy));
   }
 
   function isOverlayOpen() {
-    return (
-      DOM.resultSheet.classList.contains('is-open') ||
-      DOM.manualSheet.classList.contains('is-open') ||
-      !DOM.errorModal.hidden
-    );
+    return DOM.resultSheet.classList.contains('is-open') ||
+           DOM.manualSheet.classList.contains('is-open') ||
+           !DOM.errorModal.hidden;
   }
 
   function updateScrim() {
@@ -761,15 +801,12 @@ const UI = (() => {
   function closeSheet(sheet) {
     sheet.classList.remove('is-open');
     updateScrim();
-    if (lastFocused && typeof lastFocused.focus === 'function') {
-      lastFocused.focus({ preventScroll: true });
-      lastFocused = null;
-    }
+    if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
   }
 
   function closeAllSheets() {
-    [DOM.resultSheet, DOM.manualSheet].forEach((sheet) => {
-      if (sheet.classList.contains('is-open')) closeSheet(sheet);
+    [DOM.resultSheet, DOM.manualSheet].forEach((s) => {
+      if (s.classList.contains('is-open')) closeSheet(s);
     });
   }
 
@@ -799,7 +836,7 @@ const UI = (() => {
 
   function showCameraError(message) { DOM.cameraErrorText.textContent = message; DOM.cameraError.hidden = false; }
   function hideCameraError() { DOM.cameraError.hidden = true; }
-  function setOffline(isOffline) { DOM.offlineBanner.hidden = !isOffline; }
+  function setOffline(v) { DOM.offlineBanner.hidden = !v; }
 
   function showInputError(message) {
     DOM.manualError.textContent = message;
@@ -813,10 +850,8 @@ const UI = (() => {
     DOM.manualInput.removeAttribute('aria-invalid');
   }
 
-  /* ---- Tap-to-focus visual ---------------------------------------------- */
   function showFocusRing(clientX, clientY) {
-    if (!DOM.focusRing) return;
-    const rect = DOM.viewfinder.getBoundingClientRect();
+    const rect = DOM.cameraView.getBoundingClientRect();
     DOM.focusRing.style.left = (clientX - rect.left) + 'px';
     DOM.focusRing.style.top = (clientY - rect.top) + 'px';
     DOM.focusRing.classList.remove('is-active');
@@ -826,27 +861,47 @@ const UI = (() => {
     focusRingTimer = setTimeout(() => DOM.focusRing.classList.remove('is-active'), 750);
   }
 
-  /* ---- Torch toggle ----------------------------------------------------- */
   function setTorchUI(on, available) {
     DOM.btnTorch.hidden = !available;
     DOM.btnTorch.classList.toggle('is-on', Boolean(on));
     DOM.btnTorch.setAttribute('aria-pressed', String(Boolean(on)));
   }
 
+  function setZoomUI(current, min, max, available) {
+    DOM.zoomBar.hidden = !available;
+    if (!available) return;
+    DOM.zoomValue.textContent = current.toFixed(1) + '×';
+    DOM.btnZoomOut.disabled = current <= min + 0.001;
+    DOM.btnZoomIn.disabled = current >= max - 0.001;
+  }
+
+  /* ---- View switching ---------------------------------------------------- */
+  function showCameraView() {
+    DOM.cameraView.hidden = false;
+    DOM.selectionView.hidden = true;
+    DOM.cameraControls.hidden = false;
+    DOM.selectionCtrls.hidden = true;
+  }
+
+  function showSelectionView() {
+    DOM.cameraView.hidden = true;
+    DOM.selectionView.hidden = false;
+    DOM.cameraControls.hidden = true;
+    DOM.selectionCtrls.hidden = false;
+  }
+
   /* ---- Result rendering -------------------------------------------------- */
   function playAudio(url) {
     try {
       const audio = new Audio(url);
-      const promise = audio.play();
-      if (promise && typeof promise.catch === 'function') {
-        promise.catch(() => toast('Pronunciation is unavailable right now.'));
-      }
+      const p = audio.play();
+      if (p?.catch) p.catch(() => toast('Pronunciation is unavailable right now.'));
     } catch { toast('Pronunciation is unavailable right now.'); }
   }
 
   function renderResult(entry, actions) {
     const nodes = [];
-    const headText = h('div', { class: 'result-head-text' },
+    const headText = h('div', {},
       h('h2', { class: 'result-word', id: 'resultTitle', text: entry.word }),
       entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null
     );
@@ -865,7 +920,6 @@ const UI = (() => {
     if (!entry.meanings.length) {
       nodes.push(h('p', { class: 'result-empty', text: 'No definitions were returned for this word.' }));
     }
-
     for (const meaning of entry.meanings) {
       nodes.push(
         h('section', { class: 'meaning' },
@@ -873,7 +927,7 @@ const UI = (() => {
           h('ol', { class: 'def-list' },
             ...meaning.definitions.map((def) =>
               h('li', {},
-                h('span', { class: 'def-text', text: def.definition }),
+                h('span', { text: def.definition }),
                 def.example ? h('em', { class: 'example', text: `“${def.example}”` }) : null
               )
             )
@@ -881,7 +935,6 @@ const UI = (() => {
         )
       );
     }
-
     nodes.push(
       h('div', { class: 'result-actions' },
         h('button', {
@@ -894,17 +947,21 @@ const UI = (() => {
         })
       )
     );
-
     DOM.resultBody.replaceChildren(...nodes);
   }
 
+  /* ---- Bindings ---------------------------------------------------------- */
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
+    DOM.btnRetake.addEventListener('click', handlers.onRetake);
+    DOM.btnLookUp.addEventListener('click', handlers.onLookUp);
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraRetry.addEventListener('click', handlers.onCameraRetry);
     DOM.btnSwitch.addEventListener('click', handlers.onSwitchCamera);
     DOM.btnTorch.addEventListener('click', handlers.onTorchToggle);
+    DOM.btnZoomIn.addEventListener('click', handlers.onZoomIn);
+    DOM.btnZoomOut.addEventListener('click', handlers.onZoomOut);
 
     DOM.btnResultClose.addEventListener('click', handlers.onCloseResult);
     DOM.btnManualClose.addEventListener('click', handlers.onCloseManual);
@@ -917,18 +974,62 @@ const UI = (() => {
       handlers.onErrorDismissed?.();
     });
 
-    // Tap-to-focus on viewfinder
-    DOM.viewfinder.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('button')) return;
-      handlers.onViewfinderTap?.(event.clientX, event.clientY);
+    // Camera view: pointer interactions (tap-to-focus + pinch-to-zoom).
+    const pointerMap = new Map();
+    let pinch = null;  // { startDist, startZoom }
+    let tapCandidate = null;  // { x, y, t }
+
+    DOM.cameraView.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      DOM.cameraView.setPointerCapture?.(e.pointerId);
+      pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointerMap.size === 2) {
+        const [a, b] = [...pointerMap.values()];
+        pinch = {
+          startDist: Math.hypot(a.x - b.x, a.y - b.y),
+          startZoom: handlers.getZoom()
+        };
+        tapCandidate = null;
+      } else if (pointerMap.size === 1) {
+        tapCandidate = { x: e.clientX, y: e.clientY, t: performance.now() };
+      }
     });
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape') return;
-      if (!DOM.errorModal.hidden) {
-        hideError();
-        handlers.onErrorDismissed?.();
-      } else if (DOM.manualSheet.classList.contains('is-open')) handlers.onCloseManual();
+    DOM.cameraView.addEventListener('pointermove', (e) => {
+      if (!pointerMap.has(e.pointerId)) return;
+      pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pinch && pointerMap.size === 2) {
+        const [a, b] = [...pointerMap.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        const ratio = dist / pinch.startDist;
+        handlers.setZoom(pinch.startZoom * ratio);
+        tapCandidate = null;
+      }
+    });
+
+    const endPointer = (e) => {
+      pointerMap.delete(e.pointerId);
+      if (pointerMap.size < 2) pinch = null;
+      if (pointerMap.size === 0 && tapCandidate) {
+        const dx = Math.abs(e.clientX - tapCandidate.x);
+        const dy = Math.abs(e.clientY - tapCandidate.y);
+        const dt = performance.now() - tapCandidate.t;
+        if (dx < 12 && dy < 12 && dt < 350) {
+          handlers.onViewfinderTap?.(e.clientX, e.clientY);
+        }
+        tapCandidate = null;
+      }
+    };
+    DOM.cameraView.addEventListener('pointerup', endPointer);
+    DOM.cameraView.addEventListener('pointercancel', endPointer);
+
+    // Escape key closes open dialogs.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!DOM.errorModal.hidden) { hideError(); handlers.onErrorDismissed?.(); }
+      else if (DOM.manualSheet.classList.contains('is-open')) handlers.onCloseManual();
       else if (DOM.resultSheet.classList.contains('is-open')) handlers.onCloseResult();
     });
   }
@@ -939,13 +1040,14 @@ const UI = (() => {
     toast, showError, hideError,
     showCameraError, hideCameraError, setOffline,
     showInputError, clearInputError,
-    showFocusRing, setTorchUI,
+    showFocusRing, setTorchUI, setZoomUI,
+    showCameraView, showSelectionView,
     renderResult, bindEvents
   };
 })();
 
 /* ==========================================================================
- * 5. CAMERA SERVICE — with real autofocus, torch, tap-to-focus
+ * 5. CAMERA SERVICE
  * ========================================================================== */
 const CameraService = (() => {
   let stream = null;
@@ -954,8 +1056,14 @@ const CameraService = (() => {
   let paused = false;
   let torchOn = false;
 
+  /** { min, max, step, native } — native: true when hardware zoom is supported. */
+  let zoomInfo = { min: 1, max: 1, step: 0.1, native: false };
+  let currentZoom = 1;
+  /** Digital zoom via CSS when native zoom is not available. */
+  let digitalZoom = 1;
+
   function translateError(error) {
-    const name = error && error.name;
+    const name = error?.name;
     switch (name) {
       case 'NotAllowedError':
       case 'PermissionDeniedError':
@@ -987,20 +1095,15 @@ const CameraService = (() => {
         video.removeEventListener('loadedmetadata', onLoaded);
         video.removeEventListener('error', onError);
       }
-      function onError() {
-        cleanup();
-        reject(new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED));
-      }
+      function onError() { cleanup(); reject(new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED)); }
       video.addEventListener('loadedmetadata', onLoaded, { once: true });
       video.addEventListener('error', onError, { once: true });
     });
   }
 
   function getTrack() {
-    if (!stream) return null;
-    const track = stream.getVideoTracks()[0];
-    if (!track || track.readyState !== 'live') return null;
-    return track;
+    const track = stream?.getVideoTracks()[0];
+    return track && track.readyState === 'live' ? track : null;
   }
 
   function getCaps() {
@@ -1009,7 +1112,7 @@ const CameraService = (() => {
     try { return track.getCapabilities?.() || {}; } catch { return {}; }
   }
 
-  /* ---- Ask the hardware for continuous autofocus ----------------------- */
+  /* ---- Focus ------------------------------------------------------------- */
   async function applyContinuousFocus() {
     const track = getTrack();
     if (!track) return;
@@ -1018,76 +1121,106 @@ const CameraService = (() => {
     if (!caps.focusMode.includes('continuous')) return;
     try {
       await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-    } catch { /* device refused — ignore */ }
+    } catch { /* ignore */ }
   }
 
-  /* ---- Trigger a single-shot focus and wait for the lens to settle ----- */
   async function triggerAutofocus() {
     const track = getTrack();
-    if (!track) {
-      await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
-      return false;
-    }
+    if (!track) { await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS); return; }
     const caps = getCaps();
-    const canSingleShot = Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot');
-
-    if (canSingleShot) {
+    if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
       try {
         await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
         await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
-        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-          try {
-            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          } catch { /* ignore */ }
+        if (caps.focusMode.includes('continuous')) {
+          try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch {}
         }
-        return true;
-      } catch { /* fall through to delay */ }
+        return;
+      } catch { /* fall through */ }
     }
-
-    // No single-shot support → just wait, the continuous AF will converge.
     await sleep(CONFIG.CAMERA.FOCUS_SETTLE_MS);
-    return false;
   }
 
-  /* ---- Tap-to-focus via pointsOfInterest ------------------------------- */
   async function tapToFocus(clientX, clientY) {
     const track = getTrack();
-    if (!track || !videoEl) return false;
+    if (!track || !videoEl) return;
     const caps = getCaps();
-    if (!Array.isArray(caps.pointsOfInterest)) return false;
+    if (!Array.isArray(caps.pointsOfInterest)) return;
 
     const rect = videoEl.getBoundingClientRect();
     const x = clamp((clientX - rect.left) / rect.width, 0, 1);
     const y = clamp((clientY - rect.top) / rect.height, 0, 1);
-
-    // Front camera preview is mirrored — flip POI x-coordinate.
     const px = facingMode === CONFIG.CAMERA.ALTERNATE_FACING ? 1 - x : x;
 
     const advanced = [{ pointsOfInterest: [{ x: px, y }] }];
     if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
       advanced.push({ focusMode: 'single-shot' });
     }
-
     try {
       await track.applyConstraints({ advanced });
-      // Return to continuous afterwards
-      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+      if (caps.focusMode?.includes('continuous')) {
         setTimeout(() => applyContinuousFocus(), 800);
       }
-      return true;
-    } catch { return false; }
+    } catch { /* ignore */ }
   }
 
-  /* ---- Torch ------------------------------------------------------------ */
-  function hasTorch() {
+  /* ---- Zoom -------------------------------------------------------------- */
+  function refreshZoomInfo() {
     const caps = getCaps();
-    return caps.torch === true;
+    if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min) {
+      zoomInfo = {
+        min: caps.zoom.min ?? 1,
+        max: caps.zoom.max,
+        step: caps.zoom.step ?? 0.1,
+        native: true
+      };
+    } else {
+      // Digital zoom fallback range (CSS transform).
+      zoomInfo = { min: 1, max: 4, step: 0.1, native: false };
+    }
+    currentZoom = zoomInfo.min;
+    digitalZoom = 1;
+    applyDigitalZoomCSS(1);
   }
+
+  function applyDigitalZoomCSS(scale) {
+    if (!videoEl) return;
+    if (zoomInfo.native) {
+      videoEl.style.transform = '';
+    } else {
+      videoEl.style.transform = `scale(${scale})`;
+    }
+  }
+
+  async function setZoom(value) {
+    const track = getTrack();
+    if (!track) return;
+    const target = clamp(value, zoomInfo.min, zoomInfo.max);
+
+    if (zoomInfo.native) {
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: target }] });
+        currentZoom = target;
+      } catch { /* ignore */ }
+    } else {
+      digitalZoom = target;
+      currentZoom = target;
+      applyDigitalZoomCSS(digitalZoom);
+    }
+    // Re-assert focus — some devices unfocus on zoom changes.
+    applyContinuousFocus();
+  }
+
+  function getZoom() { return currentZoom; }
+  function getZoomInfo() { return { ...zoomInfo }; }
+
+  /* ---- Torch ------------------------------------------------------------- */
+  function hasTorch() { return getCaps().torch === true; }
+  function isTorchOn() { return torchOn; }
 
   async function setTorch(on) {
     const track = getTrack();
-    if (!track) return false;
-    if (!hasTorch()) return false;
+    if (!track || !hasTorch()) return false;
     try {
       await track.applyConstraints({ advanced: [{ torch: Boolean(on) }] });
       torchOn = Boolean(on);
@@ -1095,11 +1228,53 @@ const CameraService = (() => {
     } catch { return false; }
   }
 
-  function isTorchOn() { return torchOn; }
+  /* ---- Capture ----------------------------------------------------------- */
+  /**
+   * Draws the current visible viewfinder content to a canvas.
+   * Handles object-fit: cover and digital zoom scaling.
+   */
+  function captureFrame(targetCanvas) {
+    if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    if (!vw || !vh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
 
-  /* ---- Stream lifecycle -------------------------------------------------- */
+    const rect = videoEl.getBoundingClientRect();
+    const dw = rect.width;
+    const dh = rect.height;
+    if (!dw || !dh) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
+
+    // object-fit: cover mapping.
+    const coverScale = Math.max(dw / vw, dh / vh);
+    const scaledW = vw * coverScale;
+    const scaledH = vh * coverScale;
+
+    // Digital zoom crops further inside the visible region.
+    const dz = zoomInfo.native ? 1 : digitalZoom;
+    const visibleW = dw / dz;
+    const visibleH = dh / dz;
+    const offsetX = (scaledW - visibleW) / 2;
+    const offsetY = (scaledH - visibleH) / 2;
+
+    const sx = offsetX / coverScale;
+    const sy = offsetY / coverScale;
+    const sw = visibleW / coverScale;
+    const sh = visibleH / coverScale;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    targetCanvas.width = Math.round(dw * dpr);
+    targetCanvas.height = Math.round(dh * dpr);
+    const ctx = targetCanvas.getContext('2d');
+    if (!ctx) throw new AppError('CAMERA_FAILED', MESSAGES.CAMERA_FAILED);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetCanvas.width, targetCanvas.height);
+    return targetCanvas;
+  }
+
+  /* ---- Lifecycle --------------------------------------------------------- */
   async function start(video) {
-    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    if (!navigator.mediaDevices?.getUserMedia) {
       throw new AppError(
         window.isSecureContext ? 'CAMERA_UNSUPPORTED' : 'CAMERA_INSECURE',
         window.isSecureContext ? MESSAGES.CAMERA_UNSUPPORTED : MESSAGES.CAMERA_INSECURE
@@ -1109,44 +1284,38 @@ const CameraService = (() => {
     videoEl = video;
     await stop();
 
-    // Request continuous focus + torch capability upfront.
-    const preferredConstraints = {
+    const constraints = {
       audio: false,
       video: {
         facingMode: { ideal: facingMode },
         width: { ideal: CONFIG.CAMERA.IDEAL_WIDTH },
         height: { ideal: CONFIG.CAMERA.IDEAL_HEIGHT },
-        advanced: [
-          { focusMode: 'continuous' },
-          { focusMode: 'single-shot' }
-        ]
+        advanced: [{ focusMode: 'continuous' }]
       }
     };
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch (error) {
-      // Browser rejected the advanced block — retry with basic constraints.
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-      } catch {
-        throw translateError(error);
-      }
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true }); }
+      catch { throw translateError(error); }
     }
 
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', '');
     videoEl.muted = true;
-    try { await videoEl.play(); } catch { /* deferred autoplay */ }
+    try { await videoEl.play(); } catch {}
+
     await waitForMetadata(videoEl);
 
-    // Explicitly ask the driver for continuous AF (some browsers ignore the
-    // advanced block above on first call, so applyConstraints is the reliable
-    // path).
+    // Give the driver a beat, then explicitly force continuous AF.
+    await sleep(150);
     await applyContinuousFocus();
 
+    refreshZoomInfo();
     paused = false;
     torchOn = false;
+
     stream.getVideoTracks().forEach((track) => {
       track.enabled = true;
       track.addEventListener('ended', () => {
@@ -1159,9 +1328,7 @@ const CameraService = (() => {
 
   async function stop() {
     if (stream) {
-      stream.getTracks().forEach((track) => {
-        try { track.stop(); } catch { /* noop */ }
-      });
+      stream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
       stream = null;
     }
     if (videoEl) { videoEl.pause(); videoEl.srcObject = null; }
@@ -1176,16 +1343,19 @@ const CameraService = (() => {
     paused = true;
   }
 
-  function resume() {
+  async function resume() {
     if (!stream || !paused) return;
     stream.getVideoTracks().forEach((t) => { t.enabled = true; });
-    if (videoEl) videoEl.play().catch(() => { /* ignore */ });
+    if (videoEl) {
+      try { await videoEl.play(); } catch {}
+    }
     paused = false;
+    // Re-assert focus on resume.
+    applyContinuousFocus();
   }
 
   async function switchCamera() {
     if (!videoEl) return;
-    // Remember torch state to restore if the new camera supports it.
     const wasTorch = torchOn;
     facingMode = facingMode === CONFIG.CAMERA.DEFAULT_FACING
       ? CONFIG.CAMERA.ALTERNATE_FACING
@@ -1208,12 +1378,161 @@ const CameraService = (() => {
 
   return {
     start, stop, pause, resume, switchCamera, isActive, countCameras,
-    triggerAutofocus, tapToFocus, hasTorch, setTorch, isTorchOn
+    triggerAutofocus, tapToFocus,
+    hasTorch, setTorch, isTorchOn,
+    setZoom, getZoom, getZoomInfo,
+    captureFrame
   };
 })();
 
 /* ==========================================================================
- * 6. OCR SERVICE — Otsu binarisation + multi-pass recognition
+ * 6. SELECTION SERVICE
+ * ========================================================================== */
+const SelectionService = (() => {
+  let rect = { x: 0, y: 0, w: 0, h: 0 };
+  let dragMode = null;
+  let dragStart = null;
+  const MIN_SIZE = 40;
+  let imageCanvasRef = null;
+
+  /* ---- Fit the frozen image inside the stage --------------------------- */
+  function layoutFrozenImage() {
+    const stage = DOM.selectionView.getBoundingClientRect();
+    const canvas = DOM.frozenCanvas;
+    const aspect = canvas.width / canvas.height;
+    const stageAspect = stage.width / stage.height;
+
+    let w, h;
+    if (aspect > stageAspect) {
+      w = stage.width; h = stage.width / aspect;
+    } else {
+      h = stage.height; w = stage.height * aspect;
+    }
+    DOM.frozenWrap.style.width = w + 'px';
+    DOM.frozenWrap.style.height = h + 'px';
+  }
+
+  /* ---- Set the frozen image and default selection ---------------------- */
+  function setImage(canvas) {
+    imageCanvasRef = canvas;
+    DOM.frozenCanvas.width = canvas.width;
+    DOM.frozenCanvas.height = canvas.height;
+    const ctx = DOM.frozenCanvas.getContext('2d');
+    ctx.drawImage(canvas, 0, 0);
+
+    requestAnimationFrame(() => {
+      layoutFrozenImage();
+      const wrap = DOM.frozenWrap.getBoundingClientRect();
+      // Default: 80 % width, ~22 % height, centred.
+      const w = wrap.width * 0.8;
+      const h = Math.max(wrap.height * 0.22, 60);
+      rect = { x: (wrap.width - w) / 2, y: (wrap.height - h) / 2, w, h };
+      render();
+    });
+  }
+
+  function render() {
+    const s = DOM.selectionRect.style;
+    s.left = rect.x + 'px';
+    s.top = rect.y + 'px';
+    s.width = rect.w + 'px';
+    s.height = rect.h + 'px';
+  }
+
+  function getRect() { return { ...rect }; }
+
+  /* ---- Pointer handlers ------------------------------------------------- */
+  function onPointerDown(e) {
+    const handleEl = e.target.closest('.handle');
+    if (handleEl) {
+      dragMode = 'resize-' + handleEl.dataset.handle;
+    } else if (e.target === DOM.selectionRect) {
+      dragMode = 'move';
+    } else {
+      return;
+    }
+    dragStart = { x: e.clientX, y: e.clientY, rect: { ...rect } };
+    DOM.selectionRect.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragMode) return;
+    const wrap = DOM.frozenWrap.getBoundingClientRect();
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    let { x, y, w, h } = dragStart.rect;
+
+    if (dragMode === 'move') {
+      x = clamp(x + dx, 0, wrap.width - w);
+      y = clamp(y + dy, 0, wrap.height - h);
+    } else if (dragMode === 'resize-br') {
+      w = clamp(w + dx, MIN_SIZE, wrap.width - x);
+      h = clamp(h + dy, MIN_SIZE, wrap.height - y);
+    } else if (dragMode === 'resize-tl') {
+      const nx = clamp(x + dx, 0, x + w - MIN_SIZE);
+      const ny = clamp(y + dy, 0, y + h - MIN_SIZE);
+      w = w - (nx - x);
+      h = h - (ny - y);
+      x = nx; y = ny;
+    } else if (dragMode === 'resize-tr') {
+      const ny = clamp(y + dy, 0, y + h - MIN_SIZE);
+      w = clamp(w + dx, MIN_SIZE, wrap.width - x);
+      h = h - (ny - y);
+      y = ny;
+    } else if (dragMode === 'resize-bl') {
+      const nx = clamp(x + dx, 0, x + w - MIN_SIZE);
+      w = w - (nx - x);
+      x = nx;
+      h = clamp(h + dy, MIN_SIZE, wrap.height - y);
+    }
+
+    rect = { x, y, w, h };
+    render();
+  }
+
+  function onPointerUp() {
+    dragMode = null;
+    dragStart = null;
+  }
+
+  /* ---- Produce cropped canvas ------------------------------------------- */
+  function cropSelection() {
+    if (!imageCanvasRef) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
+    const wrap = DOM.frozenWrap.getBoundingClientRect();
+    const scaleX = DOM.frozenCanvas.width / wrap.width;
+    const scaleY = DOM.frozenCanvas.height / wrap.height;
+
+    const sx = clamp(rect.x * scaleX, 0, DOM.frozenCanvas.width - 1);
+    const sy = clamp(rect.y * scaleY, 0, DOM.frozenCanvas.height - 1);
+    const sw = clamp(rect.w * scaleX, 1, DOM.frozenCanvas.width - sx);
+    const sh = clamp(rect.h * scaleY, 1, DOM.frozenCanvas.height - sy);
+
+    // Upscale small regions for OCR accuracy.
+    const minTarget = 800;
+    const upscale = clamp(minTarget / sw, 1, 4);
+    const targetW = Math.min(Math.round(sw * upscale), 2200);
+    const targetH = Math.max(1, Math.round((targetW / sw) * sh));
+
+    const out = DOM.cropCanvas;
+    out.width = targetW;
+    out.height = targetH;
+    const ctx = out.getContext('2d');
+    if (!ctx) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(DOM.frozenCanvas, sx, sy, sw, sh, 0, 0, targetW, targetH);
+    return out;
+  }
+
+  return {
+    setImage, layoutFrozenImage, getRect, cropSelection,
+    onPointerDown, onPointerMove, onPointerUp
+  };
+})();
+
+/* ==========================================================================
+ * 7. OCR SERVICE
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -1227,10 +1546,9 @@ const OCRService = (() => {
       script.src = CONFIG.OCR.CDN_URL;
       script.async = true;
       script.crossOrigin = 'anonymous';
-      script.onload = () => {
-        if (window.Tesseract) resolve(window.Tesseract);
-        else reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
-      };
+      script.onload = () => window.Tesseract
+        ? resolve(window.Tesseract)
+        : reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
       script.onerror = () => {
         libraryPromise = null;
         reject(new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true }));
@@ -1245,27 +1563,24 @@ const OCRService = (() => {
     workerPromise = (async () => {
       const Tesseract = await loadLibrary();
       const worker = await Tesseract.createWorker(CONFIG.OCR.LANGUAGE, CONFIG.OCR.OEM, {
-        logger: (message) => {
-          if (message && message.status === 'recognizing text') {
-            const pct = Math.round((message.progress || 0) * 100);
-            UI.setStatus(`Reading text… ${pct}%`);
+        logger: (msg) => {
+          if (msg?.status === 'recognizing text') {
+            UI.setStatus(`Reading… ${Math.round((msg.progress || 0) * 100)}%`);
           }
         },
-        errorHandler: (error) => console.error('[ScanLex][OCR]', error)
+        errorHandler: (err) => console.error('[ScanLex][OCR]', err)
       });
-      try {
-        await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM });
-      } catch { /* non-fatal */ }
+      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM }); } catch {}
       return worker;
-    })().catch((error) => {
+    })().catch((err) => {
       workerPromise = null;
-      if (error instanceof AppError) throw error;
-      throw new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true, cause: error });
+      if (err instanceof AppError) throw err;
+      throw new AppError('OCR_LIB', MESSAGES.OCR_LIB, { retryable: true, cause: err });
     });
     return workerPromise;
   }
 
-  /* ---- Otsu adaptive threshold ------------------------------------------- */
+  /* ---- Otsu binarisation --------------------------------------------- */
   function otsuThreshold(gray) {
     const hist = new Array(256).fill(0);
     for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
@@ -1279,20 +1594,18 @@ const OCRService = (() => {
       const wF = total - wB;
       if (wF === 0) break;
       sumB += i * hist[i];
-      const mB = sumB / wB;
-      const mF = (sum - sumB) / wF;
+      const mB = sumB / wB, mF = (sum - sumB) / wF;
       const between = wB * wF * (mB - mF) * (mB - mF);
       if (between > maxVar) { maxVar = between; threshold = i; }
     }
     return threshold;
   }
 
-  function binarize(source) {
+  function binarize(src) {
     const out = document.createElement('canvas');
-    out.width = source.width;
-    out.height = source.height;
+    out.width = src.width; out.height = src.height;
     const ctx = out.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(source, 0, 0);
+    ctx.drawImage(src, 0, 0);
     const img = ctx.getImageData(0, 0, out.width, out.height);
     const data = img.data;
     const gray = new Uint8Array(data.length / 4);
@@ -1308,119 +1621,55 @@ const OCRService = (() => {
     return out;
   }
 
-  function enhance(source) {
+  function enhance(src) {
     const out = document.createElement('canvas');
-    out.width = source.width;
-    out.height = source.height;
+    out.width = src.width; out.height = src.height;
     const ctx = out.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(source, 0, 0);
+    ctx.drawImage(src, 0, 0);
     try {
       const img = ctx.getImageData(0, 0, out.width, out.height);
       const data = img.data;
-      const contrast = 1.35;
-      const intercept = 128 * (1 - contrast);
+      const c = 1.35, b = 128 * (1 - c);
       for (let i = 0; i < data.length; i += 4) {
         const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const v = clamp(g * contrast + intercept, 0, 255);
+        const v = clamp(g * c + b, 0, 255);
         data[i] = v; data[i + 1] = v; data[i + 2] = v;
       }
       ctx.putImageData(img, 0, 0);
-    } catch { /* best-effort */ }
+    } catch {}
     return out;
   }
 
-  /* ---- Frame cropping ---------------------------------------------------- */
-  function grabFrame(video, reticleEl, canvas) {
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-    if (!videoWidth || !videoHeight) {
-      throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY, { retryable: true });
-    }
-    const videoRect = video.getBoundingClientRect();
-    const reticleRect = reticleEl.getBoundingClientRect();
-    if (!videoRect.width || !videoRect.height) {
-      throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY, { retryable: true });
-    }
-
-    const scale = Math.max(videoRect.width / videoWidth, videoRect.height / videoHeight);
-    const overflowX = (videoWidth * scale - videoRect.width) / 2;
-    const overflowY = (videoHeight * scale - videoRect.height) / 2;
-
-    const relX = reticleRect.left - videoRect.left;
-    const relY = reticleRect.top - videoRect.top;
-
-    let sourceX = (relX + overflowX) / scale;
-    let sourceY = (relY + overflowY) / scale;
-    let sourceW = reticleRect.width / scale;
-    let sourceH = reticleRect.height / scale;
-
-    sourceX = clamp(sourceX, 0, videoWidth);
-    sourceY = clamp(sourceY, 0, videoHeight);
-    sourceW = clamp(sourceW, 1, videoWidth - sourceX);
-    sourceH = clamp(sourceH, 1, videoHeight - sourceY);
-
-    const upscale = clamp(CONFIG.OCR.TARGET_CROP_WIDTH / sourceW, 1, 3);
-    const targetW = Math.min(Math.round(sourceW * upscale), CONFIG.OCR.MAX_CROP_WIDTH);
-    const targetH = Math.max(1, Math.round((targetW / sourceW) * sourceH));
-
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) throw new AppError('OCR_FAILED', MESSAGES.OCR_FAILED);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(video, sourceX, sourceY, sourceW, sourceH, 0, 0, targetW, targetH);
-    return canvas;
-  }
-
-  /* ---- Multi-pass recognition ------------------------------------------- */
   async function recognizeRobust(canvas) {
     const worker = await getWorker();
-    const binarized = binarize(canvas);
-    const enhanced  = enhance(canvas);
-
     const passes = [
-      { canvas: binarized, psm: CONFIG.OCR.PSM_LINE,  label: 'binarised line' },
-      { canvas: binarized, psm: CONFIG.OCR.PSM_BLOCK, label: 'binarised block' },
-      { canvas: enhanced,  psm: CONFIG.OCR.PSM_LINE,  label: 'enhanced line' }
+      { canvas: binarize(canvas), psm: CONFIG.OCR.PSM_LINE },
+      { canvas: binarize(canvas), psm: CONFIG.OCR.PSM_BLOCK },
+      { canvas: enhance(canvas),  psm: CONFIG.OCR.PSM_LINE }
     ];
-
     let best = { text: '', confidence: 0 };
-    for (const pass of passes) {
+    for (const p of passes) {
       try {
-        await worker.setParameters({ tessedit_pageseg_mode: pass.psm });
-        const { data } = await worker.recognize(pass.canvas);
-        const text = (data && typeof data.text === 'string') ? data.text : '';
-        const confidence = (data && typeof data.confidence === 'number') ? data.confidence : 0;
-        if (confidence > best.confidence) best = { text, confidence };
-        if (confidence >= CONFIG.OCR.MIN_CONFIDENCE_EARLY &&
-            text.replace(/\s/g, '').length >= 3) break;
-      } catch { /* try next pass */ }
+        await worker.setParameters({ tessedit_pageseg_mode: p.psm });
+        const { data } = await worker.recognize(p.canvas);
+        const text = typeof data?.text === 'string' ? data.text : '';
+        const conf = typeof data?.confidence === 'number' ? data.confidence : 0;
+        if (conf > best.confidence) best = { text, confidence: conf };
+        if (conf >= CONFIG.OCR.MIN_CONFIDENCE_EARLY && text.replace(/\s/g, '').length >= 3) break;
+      } catch {}
     }
-
-    try {
-      await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM });
-    } catch { /* ignore */ }
-
+    try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.DEFAULT_PSM }); } catch {}
     return best;
   }
 
-  /* ---- Text cleaning ----------------------------------------------------- */
   function tokenize(raw) {
     if (typeof raw !== 'string') return [];
-    return raw
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z\s'-]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .split(' ')
-      .map((token) => token.replace(/^[-']+|[-']+$/g, ''))
-      .filter((token) => {
-        const letters = token.replace(/[^a-z]/g, '');
-        return letters.length >= CONFIG.OCR.MIN_WORD_LENGTH &&
-               token.length <= CONFIG.OCR.MAX_WORD_LENGTH;
+    return raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z\s'-]+/g, ' ').replace(/\s+/g, ' ').trim()
+      .split(' ').map((t) => t.replace(/^[-']+|[-']+$/g, ''))
+      .filter((t) => {
+        const l = t.replace(/[^a-z]/g, '');
+        return l.length >= CONFIG.OCR.MIN_WORD_LENGTH && t.length <= CONFIG.OCR.MAX_WORD_LENGTH;
       });
   }
 
@@ -1435,11 +1684,11 @@ const OCRService = (() => {
     return tokens.length ? tokens[0] : '';
   }
 
-  return { getWorker, grabFrame, recognizeRobust, extractWord, sanitizeWord };
+  return { getWorker, recognizeRobust, extractWord, sanitizeWord };
 })();
 
 /* ==========================================================================
- * 7. DICTIONARY API SERVICE (primary + fallback, unchanged)
+ * 8. DICTIONARY SERVICE
  * ========================================================================== */
 const DictionaryService = (() => {
   const POS_MAP = Object.freeze({
@@ -1453,23 +1702,20 @@ const DictionaryService = (() => {
     const entries = Array.isArray(payload) ? payload : [];
     const first = entries[0] || {};
     const phonetics = entries.flatMap((e) => Array.isArray(e.phonetics) ? e.phonetics : []);
-    const phonetic =
-      (typeof first.phonetic === 'string' && first.phonetic) ||
-      (phonetics.find((p) => p && p.text)?.text ?? '');
-    const audio = phonetics.find((p) => p && p.audio)?.audio ?? '';
+    const phonetic = (typeof first.phonetic === 'string' && first.phonetic) ||
+      (phonetics.find((p) => p?.text)?.text ?? '');
+    const audio = phonetics.find((p) => p?.audio)?.audio ?? '';
 
     const groups = new Map();
     for (const entry of entries) {
       for (const meaning of Array.isArray(entry.meanings) ? entry.meanings : []) {
-        const pos = typeof meaning.partOfSpeech === 'string' && meaning.partOfSpeech
-          ? meaning.partOfSpeech : 'definition';
+        const pos = (typeof meaning.partOfSpeech === 'string' && meaning.partOfSpeech) || 'definition';
         if (!groups.has(pos)) groups.set(pos, []);
         const bucket = groups.get(pos);
         for (const def of Array.isArray(meaning.definitions) ? meaning.definitions : []) {
           if (bucket.length >= CONFIG.UI.MAX_DEFINITIONS_PER_MEANING) break;
           const text = typeof def?.definition === 'string' ? def.definition.trim() : '';
-          if (!text) continue;
-          if (bucket.some((x) => x.definition === text)) continue;
+          if (!text || bucket.some((x) => x.definition === text)) continue;
           bucket.push({
             definition: text,
             example: typeof def.example === 'string' ? def.example.trim() : '',
@@ -1479,8 +1725,7 @@ const DictionaryService = (() => {
         }
       }
     }
-    const meanings = [...groups.entries()]
-      .filter(([, defs]) => defs.length > 0)
+    const meanings = [...groups.entries()].filter(([, d]) => d.length > 0)
       .slice(0, CONFIG.UI.MAX_MEANINGS)
       .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
 
@@ -1495,37 +1740,32 @@ const DictionaryService = (() => {
     const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
     try {
       const url = `${CONFIG.API.PRIMARY_URL}/${encodeURIComponent(word)}`;
-      const response = await fetch(url, {
-        method: 'GET', headers: CONFIG.API.HEADERS, signal: controller.signal
-      });
-      if (response.status === 404) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
-      if (!response.ok) {
+      const res = await fetch(url, { method: 'GET', headers: CONFIG.API.HEADERS, signal: controller.signal });
+      if (res.status === 404) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      if (!res.ok) {
         throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
-          retryable: response.status >= 500 || response.status === 429
+          retryable: res.status >= 500 || res.status === 429
         });
       }
       let payload;
-      try { payload = await response.json(); }
-      catch (error) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: error }); }
-
-      const normalized = normalizePrimary(payload, word);
-      if (!normalized.meanings.length) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
-      return normalized;
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      if (error && error.name === 'AbortError') {
-        throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: error });
-      }
-      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: error });
+      try { payload = await res.json(); }
+      catch (e) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: e }); }
+      const norm = normalizePrimary(payload, word);
+      if (!norm.meanings.length) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      return norm;
+    } catch (e) {
+      if (e instanceof AppError) throw e;
+      if (e?.name === 'AbortError') throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: e });
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: e });
     } finally { clearTimeout(timer); }
   }
 
   function normalizeFallback(payload, word) {
     if (!Array.isArray(payload) || !payload.length) return null;
     const lower = word.toLowerCase();
-    const exact = payload.find((e) => e && typeof e.word === 'string' &&
-      e.word.toLowerCase() === lower && Array.isArray(e.defs) && e.defs.length);
-    const withDefs = payload.find((e) => e && Array.isArray(e.defs) && e.defs.length);
+    const exact = payload.find((e) => e?.word?.toLowerCase() === lower &&
+      Array.isArray(e.defs) && e.defs.length);
+    const withDefs = payload.find((e) => Array.isArray(e?.defs) && e.defs.length);
     const match = exact || withDefs;
     if (!match) return null;
 
@@ -1547,8 +1787,7 @@ const DictionaryService = (() => {
       if (bucket.some((d) => d.definition === text)) continue;
       bucket.push({ definition: text, example: '', synonyms: [] });
     }
-    const meanings = [...groups.entries()]
-      .filter(([, defs]) => defs.length > 0)
+    const meanings = [...groups.entries()].filter(([, d]) => d.length > 0)
       .slice(0, CONFIG.UI.MAX_MEANINGS)
       .map(([partOfSpeech, definitions]) => ({ partOfSpeech, definitions }));
     if (!meanings.length) return null;
@@ -1564,24 +1803,22 @@ const DictionaryService = (() => {
     const timer = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
     try {
       const url = `${CONFIG.API.FALLBACK_URL}?sp=${encodeURIComponent(word)}&md=d&max=5`;
-      const response = await fetch(url, { method: 'GET', signal: controller.signal });
-      if (!response.ok) {
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      if (!res.ok) {
         throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, {
-          retryable: response.status >= 500 || response.status === 429
+          retryable: res.status >= 500 || res.status === 429
         });
       }
       let payload;
-      try { payload = await response.json(); }
-      catch (error) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: error }); }
-      const normalized = normalizeFallback(payload, word);
-      if (!normalized) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
-      return normalized;
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      if (error && error.name === 'AbortError') {
-        throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: error });
-      }
-      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: error });
+      try { payload = await res.json(); }
+      catch (e) { throw new AppError('HTTP_ERROR', MESSAGES.HTTP_ERROR, { cause: e }); }
+      const norm = normalizeFallback(payload, word);
+      if (!norm) throw new AppError('NOT_FOUND', MESSAGES.NOT_FOUND);
+      return norm;
+    } catch (e) {
+      if (e instanceof AppError) throw e;
+      if (e?.name === 'AbortError') throw new AppError('TIMEOUT', MESSAGES.TIMEOUT, { retryable: true, cause: e });
+      throw new AppError('NETWORK', MESSAGES.NETWORK, { retryable: true, cause: e });
     } finally { clearTimeout(timer); }
   }
 
@@ -1589,20 +1826,18 @@ const DictionaryService = (() => {
     if (!navigator.onLine) throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
     let primaryError = null;
     try { return await fetchPrimary(word); }
-    catch (error) {
-      primaryError = error;
-      const code = error instanceof AppError ? error.code : 'UNKNOWN';
-      if (!['NOT_FOUND', 'TIMEOUT', 'NETWORK', 'HTTP_ERROR'].includes(code)) throw error;
+    catch (e) {
+      primaryError = e;
+      const code = e instanceof AppError ? e.code : 'UNKNOWN';
+      if (!['NOT_FOUND', 'TIMEOUT', 'NETWORK', 'HTTP_ERROR'].includes(code)) throw e;
     }
     try {
       const result = await fetchFallback(word);
       UI.toast('Primary dictionary was slow — loaded from backup source.');
       return result;
-    } catch (fallbackError) {
-      if (fallbackError instanceof AppError && fallbackError.code === 'NOT_FOUND') {
-        throw fallbackError;
-      }
-      throw primaryError || fallbackError;
+    } catch (fe) {
+      if (fe instanceof AppError && fe.code === 'NOT_FOUND') throw fe;
+      throw primaryError || fe;
     }
   }
 
@@ -1610,48 +1845,39 @@ const DictionaryService = (() => {
 })();
 
 /* ==========================================================================
- * 8. APP CONTROLLER
+ * 9. APP CONTROLLER
  * ========================================================================== */
 const App = (() => {
   const state = {
     busy: false,
-    focusing: false,
+    phase: 'camera',  // 'camera' | 'selecting' | 'processing'
     cameraReady: false,
     lastWord: '',
     ocrWarmedUp: false
   };
 
-  function refreshCameraState() {
-    if (state.busy || state.focusing || UI.isOverlayOpen() || document.hidden) {
-      CameraService.pause();
-    } else if (state.cameraReady) {
-      CameraService.resume();
-    }
-  }
-
-  function setBusy(isBusy, label) {
-    state.busy = isBusy;
-    UI.setBusy(isBusy, label);
-    refreshCameraState();
-  }
-
+  /* ---- Camera lifecycle -------------------------------------------------- */
   async function startCamera() {
     try {
       await CameraService.start(DOM.video);
       state.cameraReady = true;
       UI.hideCameraError();
-      UI.setStatus('Frame a line of text, hold steady, then capture.');
+      UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+      DOM.btnCapture.disabled = false;
 
-      const cameraCount = await CameraService.countCameras();
-      DOM.btnSwitch.hidden = cameraCount < 2;
+      const count = await CameraService.countCameras();
+      DOM.btnSwitch.hidden = count < 2;
       UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
 
+      const zi = CameraService.getZoomInfo();
+      UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+      if (!zi.native && zi.max <= 1.01) DOM.zoomBar.hidden = true;
+
       warmUpOcr();
-      refreshCameraState();
     } catch (error) {
       state.cameraReady = false;
-      const message = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
-      UI.showCameraError(message);
+      const msg = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(msg);
       UI.setStatus('Camera unavailable — type a word instead.');
       DOM.btnCapture.disabled = true;
     }
@@ -1660,76 +1886,95 @@ const App = (() => {
   function warmUpOcr() {
     if (state.ocrWarmedUp) return;
     state.ocrWarmedUp = true;
-    const run = () => {
-      OCRService.getWorker().catch(() => { state.ocrWarmedUp = false; });
-    };
+    const run = () => OCRService.getWorker().catch(() => { state.ocrWarmedUp = false; });
     if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 4000 });
     else setTimeout(run, 1200);
   }
 
-  /* ---- Capture → Focus → OCR → Lookup ----------------------------------- */
+  /* ---- Capture: freeze full frame → show selection --------------------- */
   async function onCapture() {
-    if (state.busy || state.focusing) return;
-
-    if (!state.cameraReady || !CameraService.isActive()) {
-      openManualSheet(state.lastWord);
+    if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
+      if (!state.cameraReady) openManualSheet(state.lastWord);
       return;
     }
 
-    // Phase 1: focus (keep stream live, do NOT pause here)
-    state.focusing = true;
+    state.busy = true;
+    DOM.btnCapture.disabled = true;
     UI.setStatus('Focusing…');
+
     try {
       await CameraService.triggerAutofocus();
-    } catch { /* non-fatal */ }
-    state.focusing = false;
+      const frozen = CameraService.captureFrame(DOM.cropCanvas);
+      CameraService.pause();
 
-    // Phase 2: grab frame while stream is still live
-    let canvas;
+      // Copy frozen frame into the selection canvas and switch views.
+      SelectionService.setImage(frozen);
+      state.phase = 'selecting';
+      UI.showSelectionView();
+    } catch (error) {
+      handleError(error);
+    } finally {
+      state.busy = false;
+      DOM.btnCapture.disabled = false;
+    }
+  }
+
+  /* ---- Retake: back to live camera ------------------------------------- */
+  async function onRetake() {
+    if (state.busy) return;
+    state.phase = 'camera';
+    UI.showCameraView();
+    await CameraService.resume();
+    UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
+  }
+
+  /* ---- Confirm selection → crop → OCR → lookup ------------------------- */
+  async function onLookUp() {
+    if (state.busy || state.phase !== 'selecting') return;
+
+    let crop;
     try {
-      canvas = OCRService.grabFrame(DOM.video, DOM.reticle, DOM.cropCanvas);
+      crop = SelectionService.cropSelection();
     } catch (error) {
       handleError(error);
       return;
     }
 
-    // Phase 3: OCR — safe to pause camera now
-    setBusy(true, 'Reading text…');
-    UI.setStatus('Reading text from the page…');
+    state.phase = 'processing';
+    state.busy = true;
+    UI.setBusy(true, 'Reading…');
+    UI.setStatus('Reading text from selection…');
 
     try {
-      const { text, confidence } = await OCRService.recognizeRobust(canvas);
+      const { text, confidence } = await OCRService.recognizeRobust(crop);
       const word = OCRService.extractWord(text);
-      if (!word) {
-        throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
-      }
-      // Low-confidence single-char reads are almost always noise
+      if (!word) throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
       if (word.length < 3 && confidence < 55) {
         throw new AppError('OCR_EMPTY', MESSAGES.OCR_EMPTY, { retryable: true });
       }
       await runLookup(word);
-      UI.setStatus('Definition ready.');
     } catch (error) {
       handleError(error);
     } finally {
-      setBusy(false);
+      UI.setBusy(false);
+      state.busy = false;
     }
   }
 
+  /* ---- Lookup ------------------------------------------------------------ */
   async function runLookup(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) throw new AppError('BAD_WORD', MESSAGES.BAD_WORD);
-
     state.lastWord = word;
-    setBusy(true, 'Looking up…');
+
+    UI.setBusy(true, 'Looking up…');
 
     try {
       const entry = await DictionaryService.lookup(word);
       UI.renderResult(entry, {
         onScanAnother: () => {
           UI.closeSheet(DOM.resultSheet);
-          refreshCameraState();
-          UI.setStatus('Frame a line of text, hold steady, then capture.');
+          onRetake();
         },
         onTypeWord: () => {
           UI.closeSheet(DOM.resultSheet);
@@ -1738,20 +1983,22 @@ const App = (() => {
       });
       UI.openSheet(DOM.resultSheet);
     } finally {
-      setBusy(false);
+      UI.setBusy(false);
     }
   }
 
+  /* ---- Error handling ---------------------------------------------------- */
   function describeError(error) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
+
     switch (code) {
       case 'NOT_FOUND':
         return {
           title: 'Word not found',
-          message: `We couldn't find a definition for “${state.lastWord}”. Check the spelling or try another word.`,
-          retryLabel: 'Try another word',
-          onRetry: () => openManualSheet(state.lastWord)
+          message: `We couldn't find a definition for “${state.lastWord}”. Try adjusting the selection or type a word.`,
+          retryLabel: 'Adjust selection',
+          onRetry: () => onLookUp()
         };
       case 'OFFLINE':
         return { title: "You're offline", message: MESSAGES.OFFLINE,
@@ -1770,13 +2017,19 @@ const App = (() => {
         return {
           title: 'Could not read the text',
           message: MESSAGES.OCR_EMPTY,
-          retryLabel: 'Scan again',
-          onRetry: () => onCapture()
+          retryLabel: 'Adjust selection',
+          onRetry: () => {
+            state.phase = 'selecting';
+            UI.showSelectionView();
+          }
         };
       case 'OCR_LIB':
-        return { title: 'Scanner unavailable', message: MESSAGES.OCR_LIB,
+        return {
+          title: 'Scanner unavailable',
+          message: MESSAGES.OCR_LIB,
           retryLabel: 'Retry',
-          onRetry: () => { OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB)); } };
+          onRetry: () => OCRService.getWorker().catch(() => UI.toast(MESSAGES.OCR_LIB))
+        };
       case 'BAD_WORD':
         return { title: 'Invalid word', message: MESSAGES.BAD_WORD,
           retryLabel: 'Type a word', onRetry: () => openManualSheet('') };
@@ -1784,14 +2037,13 @@ const App = (() => {
         return { title: 'Camera not ready', message: MESSAGES.CAMERA_NOT_READY,
           retryLabel: 'Try again', onRetry: () => onCapture() };
       default:
-        return { title: 'Something went wrong', message: fallback, retryLabel: null, onRetry: null };
+        return { title: 'Something went wrong', message: fallback };
     }
   }
 
   function handleError(error) {
     console.error('[ScanLex]', error);
     UI.showError(describeError(error));
-    refreshCameraState();
   }
 
   async function retryLastLookup() {
@@ -1800,84 +2052,113 @@ const App = (() => {
     catch (error) { handleError(error); }
   }
 
+  /* ---- Manual entry ------------------------------------------------------ */
   function openManualSheet(prefill = '') {
     UI.closeAllSheets();
     UI.clearInputError();
     DOM.manualInput.value = prefill || '';
     UI.openSheet(DOM.manualSheet);
-    refreshCameraState();
-  }
-
-  function closeManualSheet() {
-    UI.closeSheet(DOM.manualSheet);
-    refreshCameraState();
   }
 
   async function onManualSubmit(event) {
     event.preventDefault();
-    const raw = DOM.manualInput.value;
-    const word = OCRService.sanitizeWord(raw);
+    const word = OCRService.sanitizeWord(DOM.manualInput.value);
     if (!word) { UI.showInputError(MESSAGES.BAD_WORD); return; }
     UI.clearInputError();
     UI.closeSheet(DOM.manualSheet);
     try { await runLookup(word); }
     catch (error) { handleError(error); }
-    finally { refreshCameraState(); }
   }
 
+  /* ---- Camera misc ------------------------------------------------------- */
   async function onSwitchCamera() {
     if (state.busy) return;
     try {
       await CameraService.switchCamera();
-      state.cameraReady = true;
-      UI.hideCameraError();
       UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
-      UI.setStatus('Camera switched. Frame a line of text.');
+      const zi = CameraService.getZoomInfo();
+      UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+      UI.setStatus('Camera switched.');
     } catch (error) {
-      state.cameraReady = false;
-      const message = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
-      UI.showCameraError(message);
-      UI.setStatus('Camera unavailable — type a word instead.');
-    } finally { refreshCameraState(); }
+      const msg = error instanceof AppError ? error.message : MESSAGES.CAMERA_FAILED;
+      UI.showCameraError(msg);
+    }
   }
 
   async function onTorchToggle() {
     const next = !CameraService.isTorchOn();
     const ok = await CameraService.setTorch(next);
     if (ok) UI.setTorchUI(next, true);
-    else {
-      UI.setTorchUI(false, CameraService.hasTorch());
-      UI.toast('Torch is unavailable on this camera.');
-    }
+    else { UI.setTorchUI(false, CameraService.hasTorch()); UI.toast('Torch unavailable.'); }
+  }
+
+  async function onZoomIn() {
+    const zi = CameraService.getZoomInfo();
+    const step = Math.max((zi.max - zi.min) * CONFIG.CAMERA.ZOOM_STEP_FRACTION, zi.step);
+    await CameraService.setZoom(CameraService.getZoom() + step);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+  }
+
+  async function onZoomOut() {
+    const zi = CameraService.getZoomInfo();
+    const step = Math.max((zi.max - zi.min) * CONFIG.CAMERA.ZOOM_STEP_FRACTION, zi.step);
+    await CameraService.setZoom(CameraService.getZoom() - step);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
+  }
+
+  async function setZoomRaw(value) {
+    const zi = CameraService.getZoomInfo();
+    await CameraService.setZoom(value);
+    UI.setZoomUI(CameraService.getZoom(), zi.min, zi.max, true);
   }
 
   async function onViewfinderTap(x, y) {
-    if (state.busy || state.focusing || !state.cameraReady) return;
+    if (state.phase !== 'camera' || !state.cameraReady) return;
     UI.showFocusRing(x, y);
-    try { await CameraService.tapToFocus(x, y); }
-    catch { /* silent — tap is best-effort */ }
+    try { await CameraService.tapToFocus(x, y); } catch {}
   }
 
+  /* ---- Network ----------------------------------------------------------- */
   function syncOnlineState() {
     const offline = !navigator.onLine;
     UI.setOffline(offline);
     if (offline) UI.setStatus('You are offline — reconnect to look up words.');
   }
 
+  /* ---- Init -------------------------------------------------------------- */
   function init() {
     cacheDom();
+
     UI.bindEvents({
       onCapture,
+      onRetake,
+      onLookUp,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onSwitchCamera,
       onTorchToggle,
+      onZoomIn,
+      onZoomOut,
+      getZoom: () => CameraService.getZoom(),
+      setZoom: setZoomRaw,
       onViewfinderTap,
-      onCloseResult: () => { UI.closeSheet(DOM.resultSheet); refreshCameraState(); },
-      onCloseManual: closeManualSheet,
-      onScrimClick: () => { UI.closeAllSheets(); refreshCameraState(); },
-      onManualSubmit,
-      onErrorDismissed: () => refreshCameraState()
+      onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
+      onCloseManual: () => UI.closeSheet(DOM.manualSheet),
+      onScrimClick: () => UI.closeAllSheets(),
+      onManualSubmit
+    });
+
+    // Selection rect pointer handlers (attached once, live throughout).
+    DOM.selectionRect.addEventListener('pointerdown', SelectionService.onPointerDown);
+    DOM.selectionRect.addEventListener('pointermove', SelectionService.onPointerMove);
+    DOM.selectionRect.addEventListener('pointerup', SelectionService.onPointerUp);
+    DOM.selectionRect.addEventListener('pointercancel', SelectionService.onPointerUp);
+
+    window.addEventListener('resize', () => {
+      if (state.phase === 'selecting') {
+        SelectionService.layoutFrozenImage();
+        // Rescale selection rect proportionally (best effort).
+      }
     });
 
     window.addEventListener('online', syncOnlineState);
@@ -1886,7 +2167,7 @@ const App = (() => {
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) CameraService.pause();
-      else refreshCameraState();
+      else if (state.phase === 'camera') CameraService.resume();
     });
     window.addEventListener('pagehide', () => { CameraService.stop(); });
 
@@ -1897,7 +2178,7 @@ const App = (() => {
 })();
 
 /* ==========================================================================
- * 9. BOOTSTRAP
+ * 10. BOOTSTRAP
  * ========================================================================== */
 try { App.init(); }
 catch (error) {
