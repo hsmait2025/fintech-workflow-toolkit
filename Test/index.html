@@ -8,12 +8,10 @@
 <meta name="description" content="ScanLex — tap any word in a photo to see its definition." />
 <title>ScanLex — Visual Scan Dictionary</title>
 
-<!-- Speed: warm up DNS + TLS for every origin we hit at runtime -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="preconnect" href="https://tessdata.projectnaptha.com" crossorigin />
 <link rel="preconnect" href="https://api.dictionaryapi.dev" crossorigin />
 <link rel="preconnect" href="https://api.datamuse.com" crossorigin />
-<!-- Speed: start the Tesseract script fetch during HTML parse, before JS runs -->
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" as="script" crossorigin />
 
 <style>
@@ -21,7 +19,6 @@
    1. TOKENS — light theme
    ========================================================================== */
 :root {
-  /* Surfaces */
   --bg: #f3f6f9;
   --surface: #ffffff;
   --surface-2: #f7f9fb;
@@ -29,35 +26,29 @@
   --line: #d9e1e8;
   --line-strong: #c4cfd9;
 
-  /* Text */
   --text: #0d1720;
   --muted: #5a6b7c;
   --placeholder: #94a3b3;
 
-  /* Accent (readable on white; bright for fills) */
   --accent: #0a7dab;
   --accent-bright: #4cc9f0;
   --accent-soft: rgba(76, 201, 240, 0.16);
   --accent-line: rgba(76, 201, 240, 0.38);
 
-  /* Feedback */
   --danger: #d93d3d;
   --danger-soft: rgba(217, 61, 61, 0.10);
   --danger-line: rgba(217, 61, 61, 0.28);
   --success: #16a35c;
 
-  /* Over-video chrome (always dark, so it's visible on any camera feed) */
   --overlay-dark: rgba(15, 23, 32, 0.75);
   --overlay-dark-strong: rgba(15, 23, 32, 0.88);
   --overlay-text: #e9f0f7;
   --overlay-muted: #b0c0cd;
 
-  /* Toast (dark on light so it stands out) */
   --toast-bg: #1e2936;
   --toast-border: #334155;
   --toast-text: #ffffff;
 
-  /* Geometry + misc */
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
@@ -153,7 +144,6 @@ button { cursor: pointer; border: 0; background: none; }
   min-height: 0; padding: 0 12px calc(var(--safe-bottom) + 12px); gap: 12px;
 }
 
-/* ---- Camera view (viewfinder is always dark) ------------------------- */
 .camera-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   border-radius: var(--radius-lg); overflow: hidden;
@@ -253,7 +243,6 @@ button { cursor: pointer; border: 0; background: none; }
 .camera-error p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
 
-/* ---- Analyze view (frozen image on black) --------------------------- */
 .analyze-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
@@ -290,6 +279,38 @@ button { cursor: pointer; border: 0; background: none; }
 .word-tap:active, .word-tap.is-active {
   background: rgba(76, 201, 240, 0.30);
   box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.9);
+}
+
+/* Clear-selection pill — floats in the top-right of the analyze view */
+.clear-word-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--overlay-dark);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--overlay-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, transform 0.12s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  animation: fade-in 0.15s var(--ease-out);
+}
+.clear-word-btn:active {
+  background: var(--overlay-dark-strong);
+  transform: scale(0.95);
+}
+.clear-word-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
 }
 
 .scan-progress {
@@ -370,7 +391,8 @@ button { cursor: pointer; border: 0; background: none; }
   font-size: 0.94rem; font-weight: 600;
   transition: transform 0.12s var(--ease-out), background 0.18s, opacity 0.18s;
 }
-.btn:active { transform: scale(0.97); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-primary {
   background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%);
   color: #04121a;
@@ -568,7 +590,7 @@ button { cursor: pointer; border: 0; background: none; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* ==========================================================================
-   11. TOAST (dark-on-light for visibility)
+   11. TOAST
    ========================================================================== */
 .toast {
   position: fixed; left: 50%; bottom: calc(28px + var(--safe-bottom));
@@ -688,6 +710,15 @@ button { cursor: pointer; border: 0; background: none; }
         <div class="word-layer" id="wordLayer"></div>
       </div>
 
+      <button id="btnClearWord" class="clear-word-btn" type="button"
+              aria-label="Clear selected word" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+        <span>Clear</span>
+      </button>
+
       <div class="scan-progress" id="scanProgress" hidden>
         <p>Scanning text… <span class="pct" id="scanPct">0%</span></p>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -773,15 +804,15 @@ button { cursor: pointer; border: 0; background: none; }
  * ========================================================================== */
 
 /* ==========================================================================
- * 0. DEVICE-ADAPTIVE TUNING (computed once, before CONFIG is frozen)
+ * 0. DEVICE-ADAPTIVE TUNING
  * ========================================================================== */
 function computeMaxEdgePx() {
   try {
     const cores = navigator.hardwareConcurrency || 4;
     const mem = navigator.deviceMemory || 4;
-    if (cores <= 3 || mem <= 2) return 900;   // constrained devices
-    if (cores <= 5 || mem <= 3) return 1100;  // mid-range
-    return 1300;                              // modern devices
+    if (cores <= 3 || mem <= 2) return 900;
+    if (cores <= 5 || mem <= 3) return 1100;
+    return 1300;
   } catch {
     return 1200;
   }
@@ -848,6 +879,7 @@ const CONFIG = Object.freeze({
     frozenCanvas:    '#frozenCanvas',
     frozenWrap:      '#frozenWrap',
     wordLayer:       '#wordLayer',
+    btnClearWord:    '#btnClearWord',
     scanProgress:    '#scanProgress',
     scanPct:         '#scanPct',
     progressFill:    '#progressFill',
@@ -966,7 +998,7 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * 4. LOOKUP CACHE — in-memory + sessionStorage persistence
+ * 4. LOOKUP CACHE
  * ========================================================================== */
 const LookupCache = (() => {
   const KEY = 'scanlex.cache.v1';
@@ -993,7 +1025,6 @@ const LookupCache = (() => {
       for (const [word, entry] of map) obj[word] = entry;
       sessionStorage.setItem(KEY, JSON.stringify(obj));
     } catch {
-      // Quota exceeded — keep only the most recent 50 entries.
       try {
         const trimmed = [...map.entries()].slice(-50);
         const obj = Object.fromEntries(trimmed);
@@ -1179,6 +1210,7 @@ const UI = (() => {
 
   function showNoText(show) { DOM.noText.hidden = !show; }
 
+  /* ---- Word overlays ---------------------------------------------------- */
   function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
     DOM.wordLayer.replaceChildren();
     const sx = displayW / canvasW;
@@ -1205,8 +1237,16 @@ const UI = (() => {
       btn.dataset.word = w.text;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        // Auto-clear any previously selected word.
+        DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
+          if (b !== btn) b.classList.remove('is-active');
+        });
         btn.classList.add('is-active');
-        setTimeout(() => onWordTap(w.text), CONFIG.UI.WORD_TAP_DELAY_MS);
+        setTimeout(() => {
+          // If the user cleared the selection during the delay, skip the lookup.
+          if (!btn.classList.contains('is-active')) return;
+          onWordTap(w.text);
+        }, CONFIG.UI.WORD_TAP_DELAY_MS);
       });
       frag.appendChild(btn);
     }
@@ -1216,6 +1256,16 @@ const UI = (() => {
 
   function clearWords() { DOM.wordLayer.replaceChildren(); }
 
+  function clearActiveWords() {
+    DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
+      b.classList.remove('is-active');
+    });
+  }
+
+  function showClearButton() { DOM.btnClearWord.hidden = false; }
+  function hideClearButton() { DOM.btnClearWord.hidden = true; }
+
+  /* ---- Lens list ------------------------------------------------------- */
   function renderLensList(cameras, activeId, onPick) {
     DOM.lensList.replaceChildren();
     for (const cam of cameras) {
@@ -1255,6 +1305,7 @@ const UI = (() => {
     }
   }
 
+  /* ---- Result rendering ------------------------------------------------- */
   function playAudio(url) {
     try {
       const audio = new Audio(url);
@@ -1314,9 +1365,11 @@ const UI = (() => {
     DOM.resultBody.replaceChildren(...nodes);
   }
 
+  /* ---- Bindings --------------------------------------------------------- */
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
+    DOM.btnClearWord.addEventListener('click', handlers.onClearWord);
     DOM.btnManualFromAnalyze.addEventListener('click', handlers.onManualRequest);
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
     DOM.btnCameraManual.addEventListener('click', handlers.onManualRequest);
@@ -1404,7 +1457,9 @@ const UI = (() => {
     showFocusRing, setTorchUI, setZoomUI, setCamBadge,
     showCameraView, showAnalyzeView,
     showScanProgress, updateScanProgress, showNoText,
-    renderWords, clearWords, renderLensList,
+    renderWords, clearWords, clearActiveWords,
+    showClearButton, hideClearButton,
+    renderLensList,
     renderResult, bindEvents
   };
 })();
@@ -2123,7 +2178,8 @@ const App = (() => {
     lastWord: '',
     ocrWarmedUp: false,
     currentWords: [],
-    ocrRequestId: 0
+    ocrRequestId: 0,
+    lookupRequestId: 0
   };
 
   async function startCamera() {
@@ -2179,6 +2235,23 @@ const App = (() => {
     OCRService.getWorker().catch(() => { state.ocrWarmedUp = false; });
   }
 
+  /* ---- Word-count helper for hint text --------------------------------- */
+  function wordsHint(n) {
+    if (!n) return 'Tap any word to look it up';
+    return `${n} word${n === 1 ? '' : 's'} found — tap one`;
+  }
+
+  /* ---- Reset the clear button + highlight after a result session ------- */
+  function resetWordSelection() {
+    UI.clearActiveWords();
+    UI.hideClearButton();
+    state.lastWord = '';
+    if (state.currentWords.length) {
+      UI.setAnalyzeHint(wordsHint(state.currentWords.length));
+    }
+  }
+
+  /* ---- Capture → freeze → OCR whole frame → word overlays --------------- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -2203,6 +2276,7 @@ const App = (() => {
       UI.showAnalyzeView();
       UI.showNoText(false);
       UI.clearWords();
+      UI.hideClearButton();
 
       requestAnimationFrame(() => {
         if (state.phase !== 'analyzing') return;
@@ -2270,18 +2344,26 @@ const App = (() => {
     const dw = DOM.frozenWrap.getBoundingClientRect().width;
     const dh = DOM.frozenWrap.getBoundingClientRect().height;
     UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
-    UI.setAnalyzeHint(`${result.words.length} word${result.words.length === 1 ? '' : 's'} found — tap one`);
+    UI.hideClearButton();
+    UI.setAnalyzeHint(wordsHint(result.words.length));
   }
 
+  /* ---- Retake ----------------------------------------------------------- */
   async function onRetake() {
     state.ocrRequestId++;
+    state.lookupRequestId++;
     state.busy = false;
     state.phase = 'camera';
     state.currentWords = [];
+    state.lastWord = '';
+
+    UI.clearActiveWords();
+    UI.hideClearButton();
     UI.clearWords();
     UI.showScanProgress(false);
     UI.showNoText(false);
     UI.showCameraView();
+
     DOM.btnCapture.disabled = true;
     try {
       await CameraService.resume();
@@ -2293,29 +2375,53 @@ const App = (() => {
     }
   }
 
+  /* ---- Clear selected word --------------------------------------------- */
+  function onClearWord() {
+    // Invalidate any in-flight lookup so its result can't reopen the sheet.
+    state.lookupRequestId++;
+    if (DOM.resultSheet.classList.contains('is-open')) {
+      UI.closeSheet(DOM.resultSheet);
+    }
+    resetWordSelection();
+  }
+
+  /* ---- Lookup ----------------------------------------------------------- */
   async function lookupWord(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) return;
+
+    const myId = ++state.lookupRequestId;
     state.lastWord = word;
+    UI.showClearButton();
     UI.showScanProgress(true, 0);
     UI.setAnalyzeHint(`Looking up "${word}"…`);
 
     try {
       const entry = await DictionaryService.lookup(word);
+      if (myId !== state.lookupRequestId) return;
       UI.showScanProgress(false);
-      UI.setAnalyzeHint(`${state.currentWords.length} words found — tap one`);
+      UI.setAnalyzeHint(wordsHint(state.currentWords.length));
       UI.renderResult(entry, {
-        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
-        onTypeWord: () => { UI.closeSheet(DOM.resultSheet); openManualSheet(''); }
+        onScanAnother: () => {
+          UI.closeSheet(DOM.resultSheet);
+          onRetake();
+        },
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          resetWordSelection();
+          openManualSheet('');
+        }
       });
       UI.openSheet(DOM.resultSheet);
     } catch (error) {
+      if (myId !== state.lookupRequestId) return;
       UI.showScanProgress(false);
       UI.setAnalyzeHint('Tap a word to look it up');
       handleError(error, word);
     }
   }
 
+  /* ---- Error handling --------------------------------------------------- */
   function describeError(error, attemptedWord) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
@@ -2326,7 +2432,7 @@ const App = (() => {
           title: 'Word not found',
           message: `We read “${w}” but couldn't find a definition. The OCR may have misread it — try retaking the photo, or type the word.`,
           retryLabel: 'Type the word',
-          onRetry: () => openManualSheet(w)
+          onRetry: () => { resetWordSelection(); openManualSheet(w); }
         };
       case 'OFFLINE':
         return { title: "You're offline", message: MESSAGES.OFFLINE,
@@ -2378,16 +2484,27 @@ const App = (() => {
     UI.clearInputError();
     UI.closeSheet(DOM.manualSheet);
     state.lastWord = word;
+
+    const myId = ++state.lookupRequestId;
     try {
       const entry = await DictionaryService.lookup(word);
+      if (myId !== state.lookupRequestId) return;
       UI.renderResult(entry, {
         onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
-        onTypeWord: () => { UI.closeSheet(DOM.resultSheet); openManualSheet(''); }
+        onTypeWord: () => {
+          UI.closeSheet(DOM.resultSheet);
+          resetWordSelection();
+          openManualSheet('');
+        }
       });
       UI.openSheet(DOM.resultSheet);
-    } catch (error) { handleError(error, word); }
+    } catch (error) {
+      if (myId !== state.lookupRequestId) return;
+      handleError(error, word);
+    }
   }
 
+  /* ---- Lens picker ----------------------------------------------------- */
   function openLensPicker() {
     const cams = CameraService.getAllCameras();
     if (cams.length < 2) { UI.toast('Only one camera available.'); return; }
@@ -2458,14 +2575,12 @@ const App = (() => {
 
   function init() {
     cacheDom();
-
-    // OCR warmup fires *before* the camera starts — Tesseract download + init
-    // runs in parallel with the permission prompt and stream startup.
     warmUpOcr();
 
     UI.bindEvents({
       onCapture,
       onRetake,
+      onClearWord,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onOpenLensPicker: openLensPicker,
@@ -2476,7 +2591,12 @@ const App = (() => {
       getZoom: () => CameraService.getZoom(),
       setZoom: setZoomRaw,
       onViewfinderTap,
-      onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
+      onCloseResult: () => {
+        // Closing the result sheet leaves the tapped word highlighted so the
+        // user can see which word they looked up. Tapping another word, or
+        // pressing Clear, resets it.
+        UI.closeSheet(DOM.resultSheet);
+      },
       onCloseManual: () => UI.closeSheet(DOM.manualSheet),
       onAfterSheetsClosed: () => {},
       onManualSubmit
