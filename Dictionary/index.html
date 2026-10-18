@@ -386,10 +386,6 @@ button { cursor: pointer; border: 0; background: none; }
   transition: transform 0.28s var(--ease-out), visibility 0s,
               bottom 0.2s var(--ease-out), max-height 0.2s var(--ease-out);
 }
-/* When keyboard is up, sheet is repositioned above it */
-.sheet.is-open.keyboard-active {
-  /* bottom + max-height set inline via JS */
-}
 .sheet-handle {
   width: 44px; height: 4px; border-radius: 2px;
   background: var(--line); margin: 4px auto 14px;
@@ -771,19 +767,19 @@ const CONFIG = Object.freeze({
     OEM: 1,
     PSM: '6',
     PSM_SPARSE: '11',
-    MIN_WORD_CONFIDENCE: 20,   // lowered from 30 — accepts more real words
+    MIN_WORD_CONFIDENCE: 25,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
     MAX_EDGE_PX: computeMaxEdgePx(),
     WORD_TAP_PADDING: 8,
+    // isGood thresholds — conservative, only stop early when we're sure
     GOOD_CONF: 72,
-    ACCEPT_CONF: 55,
-    ACCEPT_MIN_WORDS: 5,
+    GOOD_MIN_WORDS: 20,
+    VERY_GOOD_CONF: 85,
+    VERY_GOOD_MIN_WORDS: 5,
     MAX_ZOOM: 5,
     PREFLIGHT_MAX_DIM: 400,
-    PREFLIGHT_VERTICAL_THRESHOLD: 2.2,
-    // Whitelist keeps Tesseract focused on English word chars (huge accuracy win)
-    WHITELIST: "'-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    PREFLIGHT_VERTICAL_THRESHOLD: 2.2
   }),
   CACHE: Object.freeze({ TTL_MS: 60 * 60 * 1000, MAX_ENTRIES: 200 }),
   UI: Object.freeze({
@@ -923,11 +919,7 @@ function cacheDom() {
 
 /* ==========================================================================
  * KEYBOARD-AWARE SHEET POSITIONING
- * ==========================================================================
- * Uses the visualViewport API to detect when the on-screen keyboard appears
- * and shifts any open .sheet above it. Also falls back to scrollIntoView on
- * focus for browsers where visualViewport doesn't resize reliably.
- */
+ * ========================================================================== */
 const KeyboardHandler = (() => {
   let installed = false;
   let resizeRaf = null;
@@ -935,8 +927,6 @@ const KeyboardHandler = (() => {
   function computeKeyboardHeight() {
     const vv = window.visualViewport;
     if (!vv) return 0;
-    // Height of the gap between the layout viewport bottom and the visual
-    // viewport bottom — that's the keyboard.
     return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
   }
 
@@ -944,20 +934,16 @@ const KeyboardHandler = (() => {
     const kb = computeKeyboardHeight();
     const openSheets = document.querySelectorAll('.sheet.is-open');
     if (!openSheets.length) return;
-
     const vv = window.visualViewport;
     const visibleHeight = vv ? vv.height : window.innerHeight;
 
     openSheets.forEach((sheet) => {
       if (kb > CONFIG.UI.KEYBOARD_THRESHOLD_PX) {
         sheet.style.bottom = kb + 'px';
-        // Let the sheet fill most of the remaining visible area
         sheet.style.maxHeight = Math.max(220, visibleHeight - 24) + 'px';
-        sheet.classList.add('keyboard-active');
       } else {
         sheet.style.bottom = '';
         sheet.style.maxHeight = '';
-        sheet.classList.remove('keyboard-active');
       }
     });
   }
@@ -973,7 +959,6 @@ const KeyboardHandler = (() => {
   function install() {
     if (installed) return;
     installed = true;
-
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', scheduleApply);
       window.visualViewport.addEventListener('scroll', scheduleApply);
@@ -981,26 +966,18 @@ const KeyboardHandler = (() => {
     window.addEventListener('orientationchange', scheduleApply);
     window.addEventListener('resize', scheduleApply);
 
-    // Backup: when the manual input gets focus, scroll it into view after
-    // the keyboard has finished animating. This catches edge cases where
-    // visualViewport doesn't fire or fires late (some Android WebViews).
     DOM.manualInput.addEventListener('focus', () => {
       setTimeout(() => {
-        try {
-          DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        } catch { /* older browsers */ }
+        try { DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        catch {}
         scheduleApply();
       }, 320);
     });
     DOM.manualInput.addEventListener('blur', () => {
-      // Keyboard is dismissing — apply empty state after animation
       setTimeout(scheduleApply, 120);
     });
   }
-
-  /** Called by UI when any sheet opens or closes. */
   function reflow() { scheduleApply(); }
-
   return { install, reflow };
 })();
 
@@ -1231,7 +1208,6 @@ const UI = (() => {
   }
   function closeSheet(sheet) {
     sheet.classList.remove('is-open');
-    sheet.classList.remove('keyboard-active');
     sheet.style.bottom = '';
     sheet.style.maxHeight = '';
     updateScrim();
@@ -2007,17 +1983,13 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — upgraded precision pipeline
+ * OCR SERVICE — restored pipeline (whitelist removed)
  * ==========================================================================
- * Configs tried in order (early exit as soon as a "good" result is found):
- *   1. Binarized + PSM 6      — uniform block, the fastest & usually best
- *   2. Binarized + PSM 11     — sparse text, catches isolated words
- *   3. Enhanced grayscale + PSM 11 — no binarization, survives bad lighting
- *
- * All passes set:
- *   • tessedit_char_whitelist   — English word characters only
- *   • preserve_interword_spaces — keeps token boundaries clean
- *   • MIN_WORD_CONFIDENCE = 20  — accepts more real words
+ * Tier 1: PSM 6 (uniform block) across all rotations — the workhorse.
+ * Tier 2: PSM 11 (sparse text) on the winning rotation only, only if
+ *         tier 1 didn't clearly succeed. Catches isolated words PSM 6
+ *         misses, without the whitelist penalty that crippled the
+ *         previous build.
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -2056,6 +2028,10 @@ const OCRService = (() => {
         },
         errorHandler: (err) => console.error('[ScanLex][OCR]', err)
       });
+      // Set a sane default. No whitelist — it destroys accuracy.
+      try {
+        await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
+      } catch {}
       return worker;
     })().catch((err) => {
       workerPromise = null;
@@ -2102,26 +2078,6 @@ const OCRService = (() => {
       data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-    return out;
-  }
-
-  /** Contrast-stretched grayscale. No binarization — Tesseract handles it. */
-  function enhance(src) {
-    const out = document.createElement('canvas');
-    out.width = src.width; out.height = src.height;
-    const ctx = out.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(src, 0, 0);
-    try {
-      const img = ctx.getImageData(0, 0, out.width, out.height);
-      const data = img.data;
-      const c = 1.5, b = 128 * (1 - c);
-      for (let i = 0; i < data.length; i += 4) {
-        const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const v = clamp(g * c + b, 0, 255);
-        data[i] = v; data[i + 1] = v; data[i + 2] = v;
-      }
-      ctx.putImageData(img, 0, 0);
-    } catch {}
     return out;
   }
 
@@ -2230,12 +2186,14 @@ const OCRService = (() => {
     return sum / words.length;
   }
 
-  async function configureWorker(worker, psm) {
-    await worker.setParameters({
-      tessedit_pageseg_mode: psm,
-      preserve_interword_spaces: '1',
-      tessedit_char_whitelist: CONFIG.OCR.WHITELIST
-    });
+  async function setPsm(worker, psm) {
+    try {
+      await worker.setParameters({ tessedit_pageseg_mode: psm });
+      return true;
+    } catch (e) {
+      console.warn('[ScanLex] setParameters failed:', e);
+      return false;
+    }
   }
 
   async function recognizeOne(worker, canvas, rotation) {
@@ -2273,15 +2231,18 @@ const OCRService = (() => {
     };
   }
 
+  // Conservative — stop early ONLY for truly great results.
   function isGood(result) {
-    if (!result.words.length) return false;
+    if (!result || !result.words.length) return false;
     const conf = avgConfidence(result.words);
-    if (conf >= CONFIG.OCR.GOOD_CONF) return true;
-    if (conf >= CONFIG.OCR.ACCEPT_CONF && result.words.length >= CONFIG.OCR.ACCEPT_MIN_WORDS) return true;
+    const count = result.words.length;
+    if (count >= CONFIG.OCR.GOOD_MIN_WORDS && conf >= CONFIG.OCR.GOOD_CONF) return true;
+    if (count >= CONFIG.OCR.VERY_GOOD_MIN_WORDS && conf >= CONFIG.OCR.VERY_GOOD_CONF) return true;
     return false;
   }
 
   function scoreOf(result) {
+    if (!result) return -1;
     return result.words.length * 10 + avgConfidence(result.words);
   }
 
@@ -2291,7 +2252,6 @@ const OCRService = (() => {
 
     const worker = await getWorker();
     const binary = binarize(canvas);
-    const enhanced = enhance(canvas);
 
     let order;
     if (skipAutoRotate) {
@@ -2303,49 +2263,48 @@ const OCRService = (() => {
         : [0, 180, 90, -90];
     }
 
-    // Configurations tried in order of expected quality
-    const configs = [
-      { img: binary,   psm: CONFIG.OCR.PSM,        label: 'binarized-block' },
-      { img: binary,   psm: CONFIG.OCR.PSM_SPARSE, label: 'binarized-sparse' },
-      { img: enhanced, psm: CONFIG.OCR.PSM_SPARSE, label: 'enhanced-sparse' }
-    ];
-
+    // ---- Tier 1: PSM 6 on all rotations --------------------------------
+    let psmOk = await setPsm(worker, CONFIG.OCR.PSM);
     let best = null;
     let bestScore = -1;
 
-    for (let ci = 0; ci < configs.length; ci++) {
-      const cfg = configs[ci];
+    for (let i = 0; i < order.length; i++) {
+      const rot = order[i];
+      if (onProgress) onProgress(Math.round(((i + 1) / (order.length * 1.5)) * 100));
 
-      for (let ri = 0; ri < order.length; ri++) {
-        const rot = order[ri];
-        const progressPct = Math.round(((ci * order.length + ri) / (configs.length * order.length)) * 100);
-        if (onProgress) onProgress(progressPct);
+      const input = rot === 0 ? binary : rotateCanvas(binary, rot);
+      let result;
+      try { result = await recognizeOne(worker, input, rot); }
+      catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
 
-        const input = rot === 0 ? cfg.img : rotateCanvas(cfg.img, rot);
-
-        try { await configureWorker(worker, cfg.psm); }
-        catch (e) { console.warn('[ScanLex] setParameters failed:', e); continue; }
-
-        let result;
-        try { result = await recognizeOne(worker, input, rot); }
-        catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
-
-        const score = scoreOf(result);
-        if (score > bestScore) { best = result; bestScore = score; }
-
-        if (isGood(result)) {
-          if (onProgress) onProgress(100);
-          progressCallback = null;
-          return result;
-        }
-      }
-
-      // After a config level, if we already have a decent result,
-      // don't bother with lower-quality configs (saves time).
-      if (best && best.words.length >= 3 && avgConfidence(best.words) >= 45) {
-        break;
-      }
+      const score = scoreOf(result);
+      if (score > bestScore) { best = result; bestScore = score; }
     }
+
+    if (best && isGood(best)) {
+      if (onProgress) onProgress(100);
+      progressCallback = null;
+      return best;
+    }
+
+    // ---- Tier 2: PSM 11 on winning rotation only -----------------------
+    // Only reached if tier 1 was weak. Uses the winning rotation from
+    // tier 1, so this is just 1 extra pass — fast.
+    const tier2Rot = best ? best.rotation : 0;
+    await setPsm(worker, CONFIG.OCR.PSM_SPARSE);
+
+    const tier2Input = tier2Rot === 0 ? binary : rotateCanvas(binary, tier2Rot);
+    if (onProgress) onProgress(85);
+    let tier2Result = null;
+    try { tier2Result = await recognizeOne(worker, tier2Input, tier2Rot); }
+    catch (e) { console.warn('[ScanLex] Tier 2 failed:', e); }
+
+    if (tier2Result && scoreOf(tier2Result) > bestScore) {
+      best = tier2Result;
+    }
+
+    // Restore PSM 6 for next scan
+    await setPsm(worker, CONFIG.OCR.PSM);
 
     if (onProgress) onProgress(100);
     progressCallback = null;
