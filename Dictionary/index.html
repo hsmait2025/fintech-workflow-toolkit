@@ -385,9 +385,7 @@ button { cursor: pointer; border: 0; background: none; }
     bottom 0.22s var(--ease-out);
 }
 
-/* Manual sheet needs extra bottom padding so the keyboard doesn't cover the input */
 #manualSheet {
-  /* Raise the sheet above the soft keyboard when it's open */
   bottom: var(--kb-height, 0px);
   max-height: min(84dvh, calc(100dvh - var(--kb-height, 0px) - 20px));
 }
@@ -483,12 +481,8 @@ button { cursor: pointer; border: 0; background: none; }
   color: var(--text);
   box-shadow: 0 1px 3px rgba(15, 23, 32, 0.10);
 }
-.result-tab:active:not(.is-active) {
-  background: var(--surface-3);
-}
-.result-tab[aria-selected="true"] {
-  color: var(--accent);
-}
+.result-tab:active:not(.is-active) { background: var(--surface-3); }
+.result-tab[aria-selected="true"] { color: var(--accent); }
 
 .result-head {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -511,6 +505,15 @@ button { cursor: pointer; border: 0; background: none; }
   transition: transform 0.12s var(--ease-out), background 0.18s;
 }
 .audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
+.audio-btn.is-speaking {
+  background: var(--accent);
+  color: #ffffff;
+  animation: audio-pulse 1.2s ease-in-out infinite;
+}
+@keyframes audio-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76, 201, 240, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(76, 201, 240, 0); }
+}
 .meaning { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .pos-badge {
   display: inline-block; padding: 5px 11px; border-radius: 999px;
@@ -530,6 +533,52 @@ button { cursor: pointer; border: 0; background: none; }
 .result-actions { display: flex; gap: 10px; margin-top: 26px; }
 .result-actions .btn { flex: 1 1 0; }
 
+/* ---- External lookup row --------------------------------------- */
+.result-external {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.result-external-label {
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.result-external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  text-decoration: none;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out),
+    transform 0.1s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.result-external-link:active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  transform: scale(0.96);
+}
+.result-external-link svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.75;
+  flex: 0 0 auto;
+}
+
 .result-loading {
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 14px;
@@ -541,20 +590,14 @@ button { cursor: pointer; border: 0; background: none; }
   border-top-color: var(--accent);
   animation: spin 0.85s linear infinite;
 }
-.result-loading p {
-  margin: 0; font-size: 0.9rem; color: var(--muted);
-}
+.result-loading p { margin: 0; font-size: 0.9rem; color: var(--muted); }
 
 .result-error {
   display: flex; flex-direction: column; gap: 12px;
   padding: 28px 8px; text-align: center;
 }
-.result-error-title {
-  margin: 0; font-size: 1rem; font-weight: 650; color: var(--text);
-}
-.result-error-text {
-  margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5;
-}
+.result-error-title { margin: 0; font-size: 1rem; font-weight: 650; color: var(--text); }
+.result-error-text { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
 .result-error .btn { align-self: center; min-width: 140px; }
 
 .modal {
@@ -975,7 +1018,17 @@ const ICONS = Object.freeze({
     '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
     'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>' +
-    '<path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+    '<path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  externalLink:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
+    '<path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>',
+  share:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/>' +
+    '<circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 3.9M15.4 6.6l-6.8 3.9"/></svg>'
 });
 
 const DOM = {};
@@ -989,12 +1042,11 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * KEYBOARD WATCHER — raises the manual sheet above the soft keyboard
+ * KEYBOARD WATCHER
  * ========================================================================== */
 function watchKeyboard() {
   const vv = window.visualViewport;
   if (!vv) {
-    // Fallback for browsers without visualViewport
     DOM.manualInput.addEventListener('focus', () => {
       setTimeout(() => {
         try { DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
@@ -1003,22 +1055,129 @@ function watchKeyboard() {
     });
     return;
   }
-
   let lastKb = -1;
   const update = () => {
-    // Height of the soft keyboard (0 when closed). Offset top handles the
-    // case where the address bar collapses on scroll.
     const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
     if (kb === lastKb) return;
     lastKb = kb;
     document.documentElement.style.setProperty('--kb-height', kb + 'px');
     document.body.classList.toggle('kb-open', kb > 120);
   };
-
   vv.addEventListener('resize', update);
   vv.addEventListener('scroll', update);
   update();
 }
+
+/* ==========================================================================
+ * PRONUNCIATION — audio URL with TTS fallback
+ * ========================================================================== */
+const Pronunciation = (() => {
+  let currentAudio = null;
+  let ttsSupported = 'speechSynthesis' in window;
+
+  function stopAll() {
+    if (currentAudio) {
+      try { currentAudio.pause(); } catch {}
+      try { currentAudio.currentTime = 0; } catch {}
+      currentAudio = null;
+    }
+    if (ttsSupported) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+  }
+
+  function pickEnglishVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || !voices.length) return null;
+    // Prefer natural-sounding English voices
+    const preferred = [
+      v => v.lang === 'en-US' && /google|microsoft|samantha/i.test(v.name),
+      v => v.lang === 'en-GB' && /google|microsoft/i.test(v.name),
+      v => v.lang === 'en-US',
+      v => v.lang === 'en-GB',
+      v => v.lang.startsWith('en')
+    ];
+    for (const test of preferred) {
+      const found = voices.find(test);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function speakWithTTS(word) {
+    if (!ttsSupported) return false;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(word);
+      utter.lang = 'en-US';
+      utter.rate = 0.9;
+      utter.pitch = 1;
+      utter.volume = 1;
+      const voice = pickEnglishVoice();
+      if (voice) utter.voice = voice;
+      window.speechSynthesis.speak(utter);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Play a word. Tries audio URL first (if provided); on any failure
+   * (missing URL, CORS, 404, decode error, autoplay block) falls back
+   * to Web Speech API TTS. Returns a promise that resolves when either
+   * source has been set in motion.
+   */
+  function play(word, audioUrl, onStart) {
+    stopAll();
+    if (!word) return;
+
+    if (audioUrl) {
+      try {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = audioUrl;
+        currentAudio = audio;
+
+        let fallbackFired = false;
+        const fallback = () => {
+          if (fallbackFired) return;
+          fallbackFired = true;
+          if (currentAudio === audio) currentAudio = null;
+          if (!speakWithTTS(word)) {
+            if (onStart) onStart(false);
+            UI.toast('Pronunciation unavailable');
+          }
+        };
+
+        audio.addEventListener('error', fallback, { once: true });
+        if (typeof onStart === 'function') onStart(true);
+
+        const p = audio.play();
+        if (p && typeof p.catch === 'function') p.catch(fallback);
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
+    // No URL or audio failed to construct — use TTS directly
+    if (speakWithTTS(word)) {
+      if (typeof onStart === 'function') onStart(true);
+    } else {
+      if (typeof onStart === 'function') onStart(false);
+      UI.toast('Pronunciation unavailable on this device');
+    }
+  }
+
+  // Voices load asynchronously in some browsers — warm them up
+  if (ttsSupported && 'onvoiceschanged' in window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {};
+    try { window.speechSynthesis.getVoices(); } catch {}
+  }
+
+  return { play, stopAll };
+})();
 
 /* ==========================================================================
  * FROZEN VIEWER
@@ -1206,20 +1365,15 @@ const LookupCache = (() => {
 })();
 
 /* ==========================================================================
- * TRANSLATION SERVICE — English → Hindi via MyMemory
+ * TRANSLATION SERVICE
  * ========================================================================== */
 const TranslationService = (() => {
   const memCache = new Map();
   const POS_HINDI = {
-    noun: 'संज्ञा',
-    verb: 'क्रिया',
-    adjective: 'विशेषण',
-    adverb: 'क्रिया-विशेषण',
-    pronoun: 'सर्वनाम',
-    preposition: 'पूर्वसर्ग',
-    conjunction: 'संयोजक',
-    interjection: 'विस्मयादिबोधक',
-    determiner: 'निर्धारक',
+    noun: 'संज्ञा', verb: 'क्रिया', adjective: 'विशेषण',
+    adverb: 'क्रिया-विशेषण', pronoun: 'सर्वनाम',
+    preposition: 'पूर्वसर्ग', conjunction: 'संयोजक',
+    interjection: 'विस्मयादिबोधक', determiner: 'निर्धारक',
     numeral: 'अंक'
   };
 
@@ -1232,16 +1386,13 @@ const TranslationService = (() => {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CONFIG.API.TRANSLATE_TIMEOUT_MS);
-
     try {
       const url = `${CONFIG.API.TRANSLATE_URL}?q=${encodeURIComponent(clean)}&langpair=${from}|${to}`;
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const translated = data?.responseData?.translatedText;
-      if (typeof translated !== 'string' || !translated.trim()) {
-        throw new Error('Empty translation');
-      }
+      if (typeof translated !== 'string' || !translated.trim()) throw new Error('Empty');
       memCache.set(key, translated);
       return translated;
     } finally {
@@ -1249,44 +1400,24 @@ const TranslationService = (() => {
     }
   }
 
-  /**
-   * Translate a whole dictionary entry to Hindi.
-   * Only translates the word + first definition per POS — bounded to 4
-   * requests per lookup so we stay well within MyMemory's free tier.
-   */
   async function translateEntryToHindi(entry) {
-    const tasks = [];
-    tasks.push(translateOne(entry.word));
-
+    const tasks = [translateOne(entry.word)];
     for (const meaning of entry.meanings) {
       const firstDef = meaning.definitions[0]?.definition;
-      if (firstDef) tasks.push(translateOne(firstDef));
-      else tasks.push(Promise.resolve(null));
+      tasks.push(firstDef ? translateOne(firstDef) : Promise.resolve(null));
     }
 
     const results = await Promise.allSettled(tasks);
-    const getText = (i) => {
-      const r = results[i];
-      return r.status === 'fulfilled' ? r.value : null;
-    };
+    const getText = (i) => results[i].status === 'fulfilled' ? results[i].value : null;
 
     const hindiWord = getText(0) || entry.word;
-
     const hindiMeanings = entry.meanings.map((meaning, i) => {
       const translatedFirst = getText(i + 1);
       const definitions = meaning.definitions.map((def, di) => {
         if (di === 0 && translatedFirst) {
-          return {
-            definition: translatedFirst,
-            originalDefinition: def.definition,
-            example: def.example
-          };
+          return { definition: translatedFirst, originalDefinition: def.definition, example: def.example };
         }
-        return {
-          definition: def.definition,
-          example: def.example,
-          fallbackEnglish: di > 0
-        };
+        return { definition: def.definition, example: def.example, fallbackEnglish: di > 0 };
       });
       return {
         partOfSpeech: POS_HINDI[meaning.partOfSpeech] || meaning.partOfSpeech || 'परिभाषा',
@@ -1295,7 +1426,6 @@ const TranslationService = (() => {
       };
     });
 
-    // If nothing translated at all, that's a failure
     const anythingTranslated = hindiWord !== entry.word ||
       hindiMeanings.some(m => m.definitions.some(d => d.originalDefinition));
     if (!anythingTranslated) {
@@ -1543,17 +1673,89 @@ const UI = (() => {
     }
   }
 
-  function playAudio(url) {
-    try {
-      const audio = new Audio(url);
-      const p = audio.play();
-      if (p?.catch) p.catch(() => toast('Pronunciation is unavailable right now.'));
-    } catch { toast('Pronunciation is unavailable right now.'); }
+  /* ---- Build external lookup row ---------------------------------- */
+  function buildExternalRow(word) {
+    const encoded = encodeURIComponent(word);
+    const targets = [
+      { label: 'Google',   url: `https://www.google.com/search?q=define+${encoded}` },
+      { label: 'WordWeb',  url: `https://www.wordwebonline.com/search.pl?w=${encoded}` },
+      { label: 'Wiktionary', url: `https://en.wiktionary.org/wiki/${encoded}#English` },
+      { label: 'Merriam-Webster', url: `https://www.merriam-webster.com/dictionary/${encoded}` }
+    ];
+
+    const row = h('div', { class: 'result-external' },
+      h('span', { class: 'result-external-label', text: 'Look up on' })
+    );
+
+    for (const t of targets) {
+      const a = document.createElement('a');
+      a.className = 'result-external-link';
+      a.href = t.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = t.label;
+      a.insertAdjacentHTML('beforeend', ICONS.externalLink);
+      row.appendChild(a);
+    }
+
+    // Share button — reach any installed app (WordWeb app, Google app, etc.)
+    if (navigator.share) {
+      const shareBtn = h('button', {
+        class: 'result-external-link',
+        type: 'button',
+        onClick: () => shareWord(word)
+      }, 'Share');
+      shareBtn.insertAdjacentHTML('beforeend', ICONS.share);
+      row.appendChild(shareBtn);
+    }
+
+    return row;
   }
 
-  /* ---- Result sheet with EN/HI tabs -------------------------------- */
+  async function shareWord(word) {
+    const encoded = encodeURIComponent(word);
+    const shareData = {
+      title: `"${word}"`,
+      text: `Look up the meaning of "${word}"`,
+      url: `https://www.google.com/search?q=define+${encoded}`
+    };
+    try {
+      await navigator.share(shareData);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(`${word} — ${shareData.url}`);
+          toast('Link copied to clipboard');
+        } catch {
+          toast('Sharing unavailable on this device');
+        }
+      }
+    }
+  }
+
+  /* ---- Pronunciation button with TTS fallback -------------------- */
+  function makeAudioButton(word, audioUrl) {
+    const btn = h('button', {
+      class: 'audio-btn',
+      type: 'button',
+      'aria-label': `Play pronunciation of ${word}`,
+      onClick: () => {
+        Pronunciation.play(word, audioUrl, (ok) => {
+          if (!ok) return;
+          btn.classList.add('is-speaking');
+          // Reset the animation when speech ends (or after a max timeout)
+          setTimeout(() => btn.classList.remove('is-speaking'), 2000);
+        });
+      }
+    });
+    btn.innerHTML = ICONS.speaker;
+    return btn;
+  }
+
+  /* ---- Result sheet with EN/HI tabs ------------------------------ */
   function renderEntryContent(entry, actions, opts = {}) {
     const isHindi = opts.isHindi === true;
+    const speakWord = entry.originalWord || entry.word;
     const nodes = [];
 
     const headText = h('div', {},
@@ -1564,16 +1766,9 @@ const UI = (() => {
         : null
     );
     const head = h('div', { class: 'result-head' }, headText);
-
-    if (entry.audio) {
-      const audioBtn = h('button', {
-        class: 'audio-btn', type: 'button',
-        'aria-label': `Play pronunciation of ${entry.originalWord || entry.word}`,
-        onClick: () => playAudio(entry.audio)
-      });
-      audioBtn.innerHTML = ICONS.speaker;
-      head.append(audioBtn);
-    }
+    // Audio button is always shown — uses entry.audio if available,
+    // otherwise Web Speech API TTS on the English word.
+    head.append(makeAudioButton(speakWord, entry.audio || ''));
     nodes.push(head);
 
     if (!entry.meanings.length) {
@@ -1592,10 +1787,7 @@ const UI = (() => {
               h('li', {},
                 h('span', { text: def.definition }),
                 (def.fallbackEnglish && def.definition !== def.originalDefinition)
-                  ? h('span', {
-                      class: 'example',
-                      text: '(in English)'
-                    })
+                  ? h('span', { class: 'example', text: '(in English)' })
                   : null,
                 def.example ? h('em', { class: 'example', text: `“${def.example}”` }) : null
               )
@@ -1613,6 +1805,9 @@ const UI = (() => {
           onClick: actions.onTypeWord })
       )
     );
+
+    // External lookup row — always on the English word
+    nodes.push(buildExternalRow(speakWord));
 
     return h('div', { class: 'result-content' }, ...nodes);
   }
@@ -1676,9 +1871,7 @@ const UI = (() => {
     s.activeTab = tab;
     DOM.resultSheet.scrollTop = 0;
     renderResultBody();
-    if (tab === 'hi' && !s.hindi && !s.hindiLoading) {
-      loadHindiForCurrent();
-    }
+    if (tab === 'hi' && !s.hindi && !s.hindiLoading) loadHindiForCurrent();
   }
 
   async function loadHindiForCurrent() {
@@ -1687,7 +1880,6 @@ const UI = (() => {
     s.hindiLoading = true;
     s.hindiError = null;
     renderResultBody();
-
     try {
       const hindi = await TranslationService.translateEntryToHindi(s.entry);
       if (resultSheetState !== s) return;
@@ -1703,23 +1895,17 @@ const UI = (() => {
   }
 
   function showResultSheet(entry, actions) {
+    Pronunciation.stopAll();
     resultSheetState = {
-      entry,
-      hindi: null,
-      hindiLoading: false,
-      hindiError: null,
-      activeTab: 'en',
-      actions
+      entry, hindi: null, hindiLoading: false, hindiError: null,
+      activeTab: 'en', actions
     };
     renderResultBody();
     openSheet(DOM.resultSheet);
     DOM.resultSheet.scrollTop = 0;
   }
 
-  // Backwards-compatible alias used by App
-  function renderResult(entry, actions) {
-    showResultSheet(entry, actions);
-  }
+  function renderResult(entry, actions) { showResultSheet(entry, actions); }
 
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
@@ -1872,11 +2058,9 @@ const CameraSelection = (() => {
     let devices = await navigator.mediaDevices.enumerateDevices();
     let cams = devices.filter(d => d.kind === 'videoinput');
     if (!cams.length) return [];
-
     const probed = [];
     let permissionGranted = false;
     const remaining = [...cams];
-
     while (remaining.length) {
       const cam = remaining.shift();
       try {
@@ -1900,14 +2084,12 @@ const CameraSelection = (() => {
         console.warn('[ScanLex] Probe failed:', e.message);
       }
     }
-
     try {
       const fresh = await navigator.mediaDevices.enumerateDevices();
       const labelMap = new Map();
       fresh.filter(d => d.kind === 'videoinput').forEach(d => labelMap.set(d.deviceId, d.label));
       probed.forEach(p => { if (labelMap.get(p.deviceId)) p.label = labelMap.get(p.deviceId); });
     } catch {}
-
     probed.forEach(p => { p.score = score(p); });
     probed.sort((a, b) => b.score - a.score);
     return probed;
@@ -2104,7 +2286,6 @@ const CameraService = (() => {
         window.isSecureContext ? MESSAGES.CAMERA_UNSUPPORTED : MESSAGES.CAMERA_INSECURE
       );
     }
-
     videoEl = video;
     await stop();
 
@@ -2254,7 +2435,7 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — multi-pass with auto-level
+ * OCR SERVICE
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -2786,7 +2967,6 @@ const App = (() => {
     const swapped = Math.abs(degrees) === 90;
     const newW = swapped ? h : w;
     const newH = swapped ? w : h;
-
     const temp = document.createElement('canvas');
     temp.width = newW;
     temp.height = newH;
@@ -2802,11 +2982,9 @@ const App = (() => {
       tctx.rotate(Math.PI);
     }
     tctx.drawImage(canvas, 0, 0);
-
     canvas.width = newW;
     canvas.height = newH;
     canvas.getContext('2d').drawImage(temp, 0, 0);
-
     canvas.classList.remove('is-rotating');
     void canvas.offsetWidth;
     canvas.classList.add('is-rotating');
@@ -2830,7 +3008,6 @@ const App = (() => {
       if (!state.cameraReady) openManualSheet(state.lastWord);
       return;
     }
-
     state.busy = true;
     DOM.btnCapture.disabled = true;
     UI.setStatus('Focusing…');
@@ -2888,7 +3065,6 @@ const App = (() => {
     }
 
     if (myId !== state.ocrRequestId) return;
-
     UI.showScanProgress(false);
 
     if (result.rotation && result.rotation !== 0) {
@@ -2921,14 +3097,11 @@ const App = (() => {
     rotateFrozenCanvas(90);
     FrozenViewer.reset();
     layoutFrozenImage();
-
     UI.clearWords();
     UI.hideClearButton();
     UI.showNoText(false);
-
     state.ocrRequestId++;
     state.phase = 'analyzing';
-
     clearTimeout(state.pendingScanTimer);
     state.pendingScanTimer = setTimeout(() => {
       if (state.phase === 'analyzing') startWholeFrameOcr({ skipAutoRotate: true });
@@ -2943,6 +3116,7 @@ const App = (() => {
     state.phase = 'camera';
     state.currentWords = [];
     state.lastWord = '';
+    Pronunciation.stopAll();
 
     FrozenViewer.reset();
     UI.clearActiveWords();
@@ -3051,7 +3225,6 @@ const App = (() => {
     UI.clearInputError();
     DOM.manualInput.value = prefill || '';
     UI.openSheet(DOM.manualSheet);
-    // Belt-and-braces: after keyboard opens, scroll input into view.
     setTimeout(() => {
       try { DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       catch {}
@@ -3063,7 +3236,6 @@ const App = (() => {
     const word = OCRService.sanitizeWord(DOM.manualInput.value);
     if (!word) { UI.showInputError(MESSAGES.BAD_WORD); return; }
     UI.clearInputError();
-    // Blur the input so the keyboard closes before the result sheet opens.
     try { DOM.manualInput.blur(); } catch {}
     UI.closeSheet(DOM.manualSheet);
     state.lastWord = word;
@@ -3199,7 +3371,10 @@ const App = (() => {
       getZoom: () => CameraService.getZoom(),
       setZoom: setZoomRaw,
       onViewfinderTap,
-      onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
+      onCloseResult: () => {
+        Pronunciation.stopAll();
+        UI.closeSheet(DOM.resultSheet);
+      },
       onCloseManual: () => {
         try { DOM.manualInput.blur(); } catch {}
         UI.closeSheet(DOM.manualSheet);
@@ -3229,11 +3404,15 @@ const App = (() => {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         if (CameraService.isActive()) CameraService.stop();
+        Pronunciation.stopAll();
       } else if (state.phase === 'camera' && state.cameraReady) {
         if (!CameraService.isActive()) startCamera();
       }
     });
-    window.addEventListener('pagehide', () => { CameraService.stop(); });
+    window.addEventListener('pagehide', () => {
+      CameraService.stop();
+      Pronunciation.stopAll();
+    });
 
     startCamera();
   }
