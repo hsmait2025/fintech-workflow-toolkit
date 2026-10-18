@@ -378,11 +378,17 @@ button { cursor: pointer; border: 0; background: none; }
   border-top: 1px solid var(--line);
   box-shadow: var(--shadow-sheet);
   transform: translateY(110%); visibility: hidden;
-  transition: transform 0.28s var(--ease-out), visibility 0s linear 0.28s;
+  transition: transform 0.28s var(--ease-out), visibility 0s linear 0.28s,
+              bottom 0.2s var(--ease-out), max-height 0.2s var(--ease-out);
 }
 .sheet.is-open {
   transform: translateY(0); visibility: visible;
-  transition: transform 0.28s var(--ease-out), visibility 0s;
+  transition: transform 0.28s var(--ease-out), visibility 0s,
+              bottom 0.2s var(--ease-out), max-height 0.2s var(--ease-out);
+}
+/* When keyboard is up, sheet is repositioned above it */
+.sheet.is-open.keyboard-active {
+  /* bottom + max-height set inline via JS */
 }
 .sheet-handle {
   width: 44px; height: 4px; border-radius: 2px;
@@ -732,9 +738,6 @@ button { cursor: pointer; border: 0; background: none; }
 <script type="module">
 /* ==========================================================================
  * ScanLex — Visual Scan Dictionary
- * ==========================================================================
- * Auto-level: multi-pass OCR picks the winning rotation, then the DISPLAY
- * canvas is rotated to match — no user prompt, no manual taps required.
  * ========================================================================== */
 
 function computeMaxEdgePx() {
@@ -767,23 +770,27 @@ const CONFIG = Object.freeze({
     LANGUAGE: 'eng',
     OEM: 1,
     PSM: '6',
-    MIN_WORD_CONFIDENCE: 30,
+    PSM_SPARSE: '11',
+    MIN_WORD_CONFIDENCE: 20,   // lowered from 30 — accepts more real words
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
     MAX_EDGE_PX: computeMaxEdgePx(),
     WORD_TAP_PADDING: 8,
-    GOOD_CONF: 75,
-    ACCEPT_CONF: 60,
+    GOOD_CONF: 72,
+    ACCEPT_CONF: 55,
     ACCEPT_MIN_WORDS: 5,
     MAX_ZOOM: 5,
     PREFLIGHT_MAX_DIM: 400,
-    PREFLIGHT_VERTICAL_THRESHOLD: 2.2
+    PREFLIGHT_VERTICAL_THRESHOLD: 2.2,
+    // Whitelist keeps Tesseract focused on English word chars (huge accuracy win)
+    WHITELIST: "'-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
   }),
   CACHE: Object.freeze({ TTL_MS: 60 * 60 * 1000, MAX_ENTRIES: 200 }),
   UI: Object.freeze({
     MAX_MEANINGS: 3, MAX_DEFINITIONS_PER_MEANING: 3, MAX_SYNONYMS: 4,
     TOAST_MS: 2600, WORD_TAP_DELAY_MS: 60,
-    ROTATE_DEBOUNCE_MS: 400
+    ROTATE_DEBOUNCE_MS: 400,
+    KEYBOARD_THRESHOLD_PX: 80
   }),
   SELECTORS: Object.freeze({
     cameraView:      '#cameraView',
@@ -913,6 +920,89 @@ function cacheDom() {
   }
   Object.freeze(DOM);
 }
+
+/* ==========================================================================
+ * KEYBOARD-AWARE SHEET POSITIONING
+ * ==========================================================================
+ * Uses the visualViewport API to detect when the on-screen keyboard appears
+ * and shifts any open .sheet above it. Also falls back to scrollIntoView on
+ * focus for browsers where visualViewport doesn't resize reliably.
+ */
+const KeyboardHandler = (() => {
+  let installed = false;
+  let resizeRaf = null;
+
+  function computeKeyboardHeight() {
+    const vv = window.visualViewport;
+    if (!vv) return 0;
+    // Height of the gap between the layout viewport bottom and the visual
+    // viewport bottom — that's the keyboard.
+    return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  }
+
+  function applyToSheets() {
+    const kb = computeKeyboardHeight();
+    const openSheets = document.querySelectorAll('.sheet.is-open');
+    if (!openSheets.length) return;
+
+    const vv = window.visualViewport;
+    const visibleHeight = vv ? vv.height : window.innerHeight;
+
+    openSheets.forEach((sheet) => {
+      if (kb > CONFIG.UI.KEYBOARD_THRESHOLD_PX) {
+        sheet.style.bottom = kb + 'px';
+        // Let the sheet fill most of the remaining visible area
+        sheet.style.maxHeight = Math.max(220, visibleHeight - 24) + 'px';
+        sheet.classList.add('keyboard-active');
+      } else {
+        sheet.style.bottom = '';
+        sheet.style.maxHeight = '';
+        sheet.classList.remove('keyboard-active');
+      }
+    });
+  }
+
+  function scheduleApply() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = null;
+      applyToSheets();
+    });
+  }
+
+  function install() {
+    if (installed) return;
+    installed = true;
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleApply);
+      window.visualViewport.addEventListener('scroll', scheduleApply);
+    }
+    window.addEventListener('orientationchange', scheduleApply);
+    window.addEventListener('resize', scheduleApply);
+
+    // Backup: when the manual input gets focus, scroll it into view after
+    // the keyboard has finished animating. This catches edge cases where
+    // visualViewport doesn't fire or fires late (some Android WebViews).
+    DOM.manualInput.addEventListener('focus', () => {
+      setTimeout(() => {
+        try {
+          DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } catch { /* older browsers */ }
+        scheduleApply();
+      }, 320);
+    });
+    DOM.manualInput.addEventListener('blur', () => {
+      // Keyboard is dismissing — apply empty state after animation
+      setTimeout(scheduleApply, 120);
+    });
+  }
+
+  /** Called by UI when any sheet opens or closes. */
+  function reflow() { scheduleApply(); }
+
+  return { install, reflow };
+})();
 
 /* ==========================================================================
  * FROZEN VIEWER
@@ -1135,12 +1225,17 @@ const UI = (() => {
     lastFocused = document.activeElement;
     sheet.classList.add('is-open');
     updateScrim();
+    KeyboardHandler.reflow();
     const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
     requestAnimationFrame(() => target?.focus({ preventScroll: true }));
   }
   function closeSheet(sheet) {
     sheet.classList.remove('is-open');
+    sheet.classList.remove('keyboard-active');
+    sheet.style.bottom = '';
+    sheet.style.maxHeight = '';
     updateScrim();
+    KeyboardHandler.reflow();
     if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
   }
   function closeAllSheets() {
@@ -1912,7 +2007,17 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — multi-pass, returns winning rotation for auto-leveling
+ * OCR SERVICE — upgraded precision pipeline
+ * ==========================================================================
+ * Configs tried in order (early exit as soon as a "good" result is found):
+ *   1. Binarized + PSM 6      — uniform block, the fastest & usually best
+ *   2. Binarized + PSM 11     — sparse text, catches isolated words
+ *   3. Enhanced grayscale + PSM 11 — no binarization, survives bad lighting
+ *
+ * All passes set:
+ *   • tessedit_char_whitelist   — English word characters only
+ *   • preserve_interword_spaces — keeps token boundaries clean
+ *   • MIN_WORD_CONFIDENCE = 20  — accepts more real words
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -1951,7 +2056,6 @@ const OCRService = (() => {
         },
         errorHandler: (err) => console.error('[ScanLex][OCR]', err)
       });
-      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM }); } catch {}
       return worker;
     })().catch((err) => {
       workerPromise = null;
@@ -2001,11 +2105,30 @@ const OCRService = (() => {
     return out;
   }
 
+  /** Contrast-stretched grayscale. No binarization — Tesseract handles it. */
+  function enhance(src) {
+    const out = document.createElement('canvas');
+    out.width = src.width; out.height = src.height;
+    const ctx = out.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0);
+    try {
+      const img = ctx.getImageData(0, 0, out.width, out.height);
+      const data = img.data;
+      const c = 1.5, b = 128 * (1 - c);
+      for (let i = 0; i < data.length; i += 4) {
+        const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        const v = clamp(g * c + b, 0, 255);
+        data[i] = v; data[i + 1] = v; data[i + 2] = v;
+      }
+      ctx.putImageData(img, 0, 0);
+    } catch {}
+    return out;
+  }
+
   function projectionOrientation(binaryCanvas) {
     const w = binaryCanvas.width;
     const h = binaryCanvas.height;
     if (w < 20 || h < 20) return 'horizontal';
-
     let data;
     try {
       data = binaryCanvas.getContext('2d', { willReadFrequently: true })
@@ -2016,7 +2139,6 @@ const OCRService = (() => {
     const cols = new Float64Array(w);
     const step = 2;
     let totalDark = 0;
-
     for (let y = 0; y < h; y += step) {
       const rowOff = y * w;
       for (let x = 0; x < w; x += step) {
@@ -2025,7 +2147,6 @@ const OCRService = (() => {
         }
       }
     }
-
     if (totalDark < 100) return 'horizontal';
 
     const variance = (arr) => {
@@ -2035,7 +2156,6 @@ const OCRService = (() => {
       const mean = sum / n;
       return sumSq / n - mean * mean;
     };
-
     const rowVar = variance(rows);
     const colVar = variance(cols);
     return colVar > rowVar * CONFIG.OCR.PREFLIGHT_VERTICAL_THRESHOLD ? 'vertical' : 'horizontal';
@@ -2110,11 +2230,14 @@ const OCRService = (() => {
     return sum / words.length;
   }
 
-  /**
-   * OCR one rotated view. Returns bboxes in the rotated canvas's coordinate
-   * space (no inverse transform). App will rotate the DISPLAY by the same
-   * amount so the displayed canvas has matching dimensions and orientation.
-   */
+  async function configureWorker(worker, psm) {
+    await worker.setParameters({
+      tessedit_pageseg_mode: psm,
+      preserve_interword_spaces: '1',
+      tessedit_char_whitelist: CONFIG.OCR.WHITELIST
+    });
+  }
+
   async function recognizeOne(worker, canvas, rotation) {
     let data;
     try {
@@ -2162,20 +2285,13 @@ const OCRService = (() => {
     return result.words.length * 10 + avgConfidence(result.words);
   }
 
-  /**
-   * Multi-pass OCR. Returns the best result along with the rotation that
-   * produced it, so the App can auto-rotate the display to match.
-   *
-   * options.skipAutoRotate: only try 0° (used after manual rotate so we
-   *   don't undo the user's correction).
-   */
   async function recognizeWithBoxes(canvas, onProgress, options = {}) {
     progressCallback = onProgress || null;
     const skipAutoRotate = options.skipAutoRotate === true;
 
     const worker = await getWorker();
     const binary = binarize(canvas);
-    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
+    const enhanced = enhance(canvas);
 
     let order;
     if (skipAutoRotate) {
@@ -2187,26 +2303,52 @@ const OCRService = (() => {
         : [0, 180, 90, -90];
     }
 
+    // Configurations tried in order of expected quality
+    const configs = [
+      { img: binary,   psm: CONFIG.OCR.PSM,        label: 'binarized-block' },
+      { img: binary,   psm: CONFIG.OCR.PSM_SPARSE, label: 'binarized-sparse' },
+      { img: enhanced, psm: CONFIG.OCR.PSM_SPARSE, label: 'enhanced-sparse' }
+    ];
+
     let best = null;
     let bestScore = -1;
 
-    for (let i = 0; i < order.length; i++) {
-      const rot = order[i];
-      if (onProgress) onProgress(Math.round((i / order.length) * 90));
+    for (let ci = 0; ci < configs.length; ci++) {
+      const cfg = configs[ci];
 
-      const input = rot === 0 ? binary : rotateCanvas(binary, rot);
-      let result;
-      try { result = await recognizeOne(worker, input, rot); }
-      catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
+      for (let ri = 0; ri < order.length; ri++) {
+        const rot = order[ri];
+        const progressPct = Math.round(((ci * order.length + ri) / (configs.length * order.length)) * 100);
+        if (onProgress) onProgress(progressPct);
 
-      const score = scoreOf(result);
-      if (score > bestScore) { best = result; bestScore = score; }
-      if (isGood(result)) break;
+        const input = rot === 0 ? cfg.img : rotateCanvas(cfg.img, rot);
+
+        try { await configureWorker(worker, cfg.psm); }
+        catch (e) { console.warn('[ScanLex] setParameters failed:', e); continue; }
+
+        let result;
+        try { result = await recognizeOne(worker, input, rot); }
+        catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
+
+        const score = scoreOf(result);
+        if (score > bestScore) { best = result; bestScore = score; }
+
+        if (isGood(result)) {
+          if (onProgress) onProgress(100);
+          progressCallback = null;
+          return result;
+        }
+      }
+
+      // After a config level, if we already have a decent result,
+      // don't bother with lower-quality configs (saves time).
+      if (best && best.words.length >= 3 && avgConfidence(best.words) >= 45) {
+        break;
+      }
     }
 
     if (onProgress) onProgress(100);
     progressCallback = null;
-
     return best || {
       words: [], fullText: '', rotation: 0,
       canvasWidth: canvas.width, canvasHeight: canvas.height
@@ -2470,7 +2612,6 @@ const App = (() => {
     if (state.currentWords.length) UI.setAnalyzeHint(wordsHint(state.currentWords.length));
   }
 
-  /* ---- Rotate the display canvas in place ----------------------------- */
   function rotateFrozenCanvas(degrees) {
     const canvas = DOM.frozenCanvas;
     const w = canvas.width;
@@ -2499,7 +2640,6 @@ const App = (() => {
     canvas.height = newH;
     canvas.getContext('2d').drawImage(temp, 0, 0);
 
-    // Subtle fade animation so the rotation isn't jarring
     canvas.classList.remove('is-rotating');
     void canvas.offsetWidth;
     canvas.classList.add('is-rotating');
@@ -2518,7 +2658,6 @@ const App = (() => {
     DOM.frozenWrap.style.height = h + 'px';
   }
 
-  /* ---- Capture → freeze → OCR (auto-level) ---------------------------- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -2559,7 +2698,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Whole-frame OCR with automatic display rotation ----------------- */
   async function startWholeFrameOcr(options = {}) {
     const myId = ++state.ocrRequestId;
     UI.showScanProgress(true, 0);
@@ -2586,9 +2724,6 @@ const App = (() => {
 
     UI.showScanProgress(false);
 
-    // AUTO-LEVEL: rotate the DISPLAY to match the winning OCR pass.
-    // Bboxes are already in the winning rotation's rotated-canvas space,
-    // so after rotating the display canvas by the same amount, they align.
     if (result.rotation && result.rotation !== 0) {
       rotateFrozenCanvas(result.rotation);
       FrozenViewer.reset();
@@ -2614,7 +2749,6 @@ const App = (() => {
     UI.setAnalyzeHint(wordsHint(result.words.length));
   }
 
-  /* ---- Manual rotate (fallback if auto-level gets it wrong) ------------ */
   async function onManualRotate() {
     if (state.busy) return;
     rotateFrozenCanvas(90);
@@ -2631,7 +2765,6 @@ const App = (() => {
     clearTimeout(state.pendingScanTimer);
     state.pendingScanTimer = setTimeout(() => {
       if (state.phase === 'analyzing') {
-        // Skip auto-rotate so the user's manual correction isn't undone.
         startWholeFrameOcr({ skipAutoRotate: true });
       }
     }, CONFIG.UI.ROTATE_DEBOUNCE_MS);
@@ -2882,6 +3015,7 @@ const App = (() => {
     cacheDom();
     warmUpOcr();
     FrozenViewer.init();
+    KeyboardHandler.install();
 
     UI.bindEvents({
       onCapture, onRetake,
