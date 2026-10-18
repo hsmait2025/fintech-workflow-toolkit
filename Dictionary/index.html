@@ -533,23 +533,81 @@ button { cursor: pointer; border: 0; background: none; }
 .result-actions { display: flex; gap: 10px; margin-top: 26px; }
 .result-actions .btn { flex: 1 1 0; }
 
-/* ---- External lookup row --------------------------------------- */
+/* ---- External lookup section ------------------------------------ */
 .result-external {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.result-external-label {
-  font-size: 0.74rem;
+
+.result-external-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-app-btn, .result-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 140px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: transform 0.1s var(--ease-out), background 0.15s,
+    border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.result-app-btn {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+}
+.result-app-btn:active {
+  background: rgba(76, 201, 240, 0.28);
+  transform: scale(0.97);
+}
+.result-copy-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.result-copy-btn:active {
+  background: var(--surface-3);
+  transform: scale(0.97);
+}
+.result-app-btn svg, .result-copy-btn svg {
+  width: 16px; height: 16px; flex: 0 0 auto;
+}
+
+.result-external-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.result-external-web-label {
+  font-size: 0.72rem;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-right: 2px;
+  margin-top: 2px;
+}
+
+.result-external-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .result-external-link {
   display: inline-flex;
@@ -573,10 +631,7 @@ button { cursor: pointer; border: 0; background: none; }
   transform: scale(0.96);
 }
 .result-external-link svg {
-  width: 11px;
-  height: 11px;
-  opacity: 0.75;
-  flex: 0 0 auto;
+  width: 11px; height: 11px; opacity: 0.75; flex: 0 0 auto;
 }
 
 .result-loading {
@@ -1028,7 +1083,12 @@ const ICONS = Object.freeze({
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/>' +
-    '<circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 3.9M15.4 6.6l-6.8 3.9"/></svg>'
+    '<circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 3.9M15.4 6.6l-6.8 3.9"/></svg>',
+  copy:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+    '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
 });
 
 const DOM = {};
@@ -1089,7 +1149,6 @@ const Pronunciation = (() => {
   function pickEnglishVoice() {
     const voices = window.speechSynthesis.getVoices();
     if (!voices || !voices.length) return null;
-    // Prefer natural-sounding English voices
     const preferred = [
       v => v.lang === 'en-US' && /google|microsoft|samantha/i.test(v.name),
       v => v.lang === 'en-GB' && /google|microsoft/i.test(v.name),
@@ -1122,12 +1181,6 @@ const Pronunciation = (() => {
     }
   }
 
-  /**
-   * Play a word. Tries audio URL first (if provided); on any failure
-   * (missing URL, CORS, 404, decode error, autoplay block) falls back
-   * to Web Speech API TTS. Returns a promise that resolves when either
-   * source has been set in motion.
-   */
   function play(word, audioUrl, onStart) {
     stopAll();
     if (!word) return;
@@ -1156,12 +1209,9 @@ const Pronunciation = (() => {
         const p = audio.play();
         if (p && typeof p.catch === 'function') p.catch(fallback);
         return;
-      } catch {
-        // fall through
-      }
+      } catch {}
     }
 
-    // No URL or audio failed to construct — use TTS directly
     if (speakWithTTS(word)) {
       if (typeof onStart === 'function') onStart(true);
     } else {
@@ -1170,7 +1220,6 @@ const Pronunciation = (() => {
     }
   }
 
-  // Voices load asynchronously in some browsers — warm them up
   if (ttsSupported && 'onvoiceschanged' in window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = () => {};
     try { window.speechSynthesis.getVoices(); } catch {}
@@ -1673,20 +1722,113 @@ const UI = (() => {
     }
   }
 
-  /* ---- Build external lookup row ---------------------------------- */
+  /* ---- Share word to a dictionary app (OS app chooser) --------- */
+  async function shareWordToApp(word) {
+    if (!navigator.share) {
+      await copyWord(word, true);
+      return;
+    }
+    try {
+      // Share ONLY the word as plain text — this is what dictionary apps
+      // like WordWeb receive and look up. Do NOT include a URL: some apps
+      // prioritise URL over text and would open a browser instead of
+      // searching the word.
+      await navigator.share({ text: word });
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      // Share failed (no target apps, browser quirk) — fall back to copy
+      await copyWord(word, true);
+    }
+  }
+
+  async function copyWord(word, asFallback = false) {
+    const okMsg = asFallback
+      ? 'Copied — paste into your dictionary app'
+      : 'Word copied to clipboard';
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(word);
+        toast(okMsg);
+        return;
+      }
+      throw new Error('clipboard API unavailable');
+    } catch {
+      // Legacy fallback for insecure contexts / older browsers
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = word;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.width = '1px';
+        ta.style.height = '1px';
+        ta.style.opacity = '0';
+        ta.style.pointerEvents = 'none';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, word.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) toast(okMsg);
+        else toast('Could not copy — please retry');
+      } catch {
+        toast('Could not copy — please retry');
+      }
+    }
+  }
+
+  /* ---- Build external lookup section ---------------------------- */
   function buildExternalRow(word) {
     const encoded = encodeURIComponent(word);
+
+    const section = h('div', { class: 'result-external' });
+
+    // Primary row: open-in-app + copy
+    const primary = h('div', { class: 'result-external-actions' });
+
+    if (navigator.share) {
+      const appBtn = h('button', {
+        class: 'result-app-btn',
+        type: 'button',
+        onClick: () => shareWordToApp(word)
+      }, 'Open in app');
+      appBtn.insertAdjacentHTML('afterbegin', ICONS.share);
+      primary.appendChild(appBtn);
+    }
+
+    const copyBtn = h('button', {
+      class: 'result-copy-btn',
+      type: 'button',
+      onClick: () => copyWord(word)
+    }, 'Copy word');
+    copyBtn.insertAdjacentHTML('afterbegin', ICONS.copy);
+    primary.appendChild(copyBtn);
+
+    section.appendChild(primary);
+
+    // Hint line under the buttons
+    section.appendChild(h('p', {
+      class: 'result-external-hint',
+      text: navigator.share
+        ? 'Opens your app chooser — pick WordWeb, Google, or any installed dictionary'
+        : 'Copies the word — paste into any dictionary app'
+    }));
+
+    // Web fallbacks
+    section.appendChild(h('div', {
+      class: 'result-external-web-label',
+      text: 'Or search the web'
+    }));
+
+    const webRow = h('div', { class: 'result-external-links' });
     const targets = [
       { label: 'Google',   url: `https://www.google.com/search?q=define+${encoded}` },
       { label: 'WordWeb',  url: `https://www.wordwebonline.com/search.pl?w=${encoded}` },
       { label: 'Wiktionary', url: `https://en.wiktionary.org/wiki/${encoded}#English` },
       { label: 'Merriam-Webster', url: `https://www.merriam-webster.com/dictionary/${encoded}` }
     ];
-
-    const row = h('div', { class: 'result-external' },
-      h('span', { class: 'result-external-label', text: 'Look up on' })
-    );
-
     for (const t of targets) {
       const a = document.createElement('a');
       a.className = 'result-external-link';
@@ -1695,45 +1837,13 @@ const UI = (() => {
       a.rel = 'noopener noreferrer';
       a.textContent = t.label;
       a.insertAdjacentHTML('beforeend', ICONS.externalLink);
-      row.appendChild(a);
+      webRow.appendChild(a);
     }
+    section.appendChild(webRow);
 
-    // Share button — reach any installed app (WordWeb app, Google app, etc.)
-    if (navigator.share) {
-      const shareBtn = h('button', {
-        class: 'result-external-link',
-        type: 'button',
-        onClick: () => shareWord(word)
-      }, 'Share');
-      shareBtn.insertAdjacentHTML('beforeend', ICONS.share);
-      row.appendChild(shareBtn);
-    }
-
-    return row;
+    return section;
   }
 
-  async function shareWord(word) {
-    const encoded = encodeURIComponent(word);
-    const shareData = {
-      title: `"${word}"`,
-      text: `Look up the meaning of "${word}"`,
-      url: `https://www.google.com/search?q=define+${encoded}`
-    };
-    try {
-      await navigator.share(shareData);
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        try {
-          await navigator.clipboard.writeText(`${word} — ${shareData.url}`);
-          toast('Link copied to clipboard');
-        } catch {
-          toast('Sharing unavailable on this device');
-        }
-      }
-    }
-  }
-
-  /* ---- Pronunciation button with TTS fallback -------------------- */
   function makeAudioButton(word, audioUrl) {
     const btn = h('button', {
       class: 'audio-btn',
@@ -1743,7 +1853,6 @@ const UI = (() => {
         Pronunciation.play(word, audioUrl, (ok) => {
           if (!ok) return;
           btn.classList.add('is-speaking');
-          // Reset the animation when speech ends (or after a max timeout)
           setTimeout(() => btn.classList.remove('is-speaking'), 2000);
         });
       }
@@ -1766,8 +1875,6 @@ const UI = (() => {
         : null
     );
     const head = h('div', { class: 'result-head' }, headText);
-    // Audio button is always shown — uses entry.audio if available,
-    // otherwise Web Speech API TTS on the English word.
     head.append(makeAudioButton(speakWord, entry.audio || ''));
     nodes.push(head);
 
@@ -1806,7 +1913,6 @@ const UI = (() => {
       )
     );
 
-    // External lookup row — always on the English word
     nodes.push(buildExternalRow(speakWord));
 
     return h('div', { class: 'result-content' }, ...nodes);
