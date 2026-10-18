@@ -225,6 +225,13 @@ button { cursor: pointer; border: 0; background: none; }
   user-select: none; -webkit-user-select: none;
   pointer-events: none;
 }
+.frozen-canvas.is-rotating {
+  animation: canvas-fade 0.24s var(--ease-out);
+}
+@keyframes canvas-fade {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
 
 .word-layer { position: absolute; inset: 0; pointer-events: none; }
 .word-tap {
@@ -269,66 +276,6 @@ button { cursor: pointer; border: 0; background: none; }
   transform: scale(0.95);
 }
 .clear-word-btn svg, .reset-zoom-btn svg { display: block; width: 14px; height: 14px; }
-
-/* ---- Rotation prompt overlay ---------------------------------------- */
-.rotation-prompt {
-  position: absolute;
-  left: 12px; right: 12px; bottom: 12px; z-index: 15;
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  box-shadow: 0 16px 50px rgba(15, 23, 32, 0.35);
-  padding: 20px 20px 16px;
-  animation: slide-up 0.28s var(--ease-out);
-}
-@keyframes slide-up {
-  from { transform: translateY(24px); opacity: 0; }
-  to   { transform: none; opacity: 1; }
-}
-.rotation-prompt-head {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
-}
-.rotation-prompt-icon {
-  width: 40px; height: 40px; border-radius: 12px;
-  display: grid; place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-  flex: 0 0 auto;
-}
-.rotation-prompt-icon svg { width: 22px; height: 22px; }
-.rotation-prompt-title {
-  margin: 0; font-size: 1rem; font-weight: 650; color: var(--text);
-  letter-spacing: -0.01em;
-}
-.rotation-prompt-text {
-  margin: 4px 0 0 0; font-size: 0.82rem; color: var(--muted); line-height: 1.4;
-}
-.rotation-prompt-buttons {
-  display: flex; gap: 10px; margin-bottom: 10px;
-}
-.rotation-prompt-buttons .btn {
-  flex: 1 1 0; height: 52px; border-radius: 14px; font-size: 0.92rem;
-}
-.rotation-prompt-buttons .btn svg {
-  width: 18px; height: 18px; flex: 0 0 auto;
-}
-.rotation-prompt-skip-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 10px; border-top: 1px solid var(--line);
-  gap: 12px;
-}
-.rotation-prompt-skip-row button {
-  background: none; border: 0; padding: 6px 8px;
-  font-size: 0.84rem; font-weight: 600;
-  color: var(--muted); border-radius: 8px;
-  transition: color 0.15s, background 0.15s;
-}
-.rotation-prompt-skip-row button:active {
-  color: var(--text); background: var(--surface-3);
-}
-.rotation-prompt-skip-row button.primary {
-  color: var(--accent);
-}
 
 .scan-progress {
   position: absolute; left: 16px; right: 16px; bottom: 18px;
@@ -696,45 +643,6 @@ button { cursor: pointer; border: 0; background: none; }
         <span>Clear</span>
       </button>
 
-      <div class="rotation-prompt" id="rotationPrompt" hidden role="dialog"
-           aria-modal="false" aria-labelledby="rotationTitle">
-        <div class="rotation-prompt-head">
-          <div class="rotation-prompt-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 18h6M9 22h6M5 14V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" />
-              <path d="M12 8v5M9 10l3-3 3 3" />
-            </svg>
-          </div>
-          <div>
-            <h2 class="rotation-prompt-title" id="rotationTitle">Text appears sideways</h2>
-            <p class="rotation-prompt-text">Rotate the image so the text reads left-to-right.</p>
-          </div>
-        </div>
-        <div class="rotation-prompt-buttons">
-          <button id="btnRotateLeft" class="btn btn-ghost" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            Rotate left
-          </button>
-          <button id="btnRotateRight" class="btn btn-primary" type="button">
-            Rotate right
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-          </button>
-        </div>
-        <div class="rotation-prompt-skip-row">
-          <button id="btnPromptRetake" type="button">Retake</button>
-          <button id="btnScanAnyway" class="primary" type="button">Scan anyway</button>
-        </div>
-      </div>
-
       <div class="scan-progress" id="scanProgress" hidden>
         <p>Scanning text… <span class="pct" id="scanPct">0%</span></p>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -824,6 +732,9 @@ button { cursor: pointer; border: 0; background: none; }
 <script type="module">
 /* ==========================================================================
  * ScanLex — Visual Scan Dictionary
+ * ==========================================================================
+ * Auto-level: multi-pass OCR picks the winning rotation, then the DISPLAY
+ * canvas is rotated to match — no user prompt, no manual taps required.
  * ========================================================================== */
 
 function computeMaxEdgePx() {
@@ -866,7 +777,7 @@ const CONFIG = Object.freeze({
     ACCEPT_MIN_WORDS: 5,
     MAX_ZOOM: 5,
     PREFLIGHT_MAX_DIM: 400,
-    PREFLIGHT_VERTICAL_THRESHOLD: 2.0
+    PREFLIGHT_VERTICAL_THRESHOLD: 2.2
   }),
   CACHE: Object.freeze({ TTL_MS: 60 * 60 * 1000, MAX_ENTRIES: 200 }),
   UI: Object.freeze({
@@ -891,11 +802,6 @@ const CONFIG = Object.freeze({
     wordLayer:       '#wordLayer',
     btnClearWord:    '#btnClearWord',
     btnResetZoom:    '#btnResetZoom',
-    rotationPrompt:  '#rotationPrompt',
-    btnRotateLeft:   '#btnRotateLeft',
-    btnRotateRight:  '#btnRotateRight',
-    btnScanAnyway:   '#btnScanAnyway',
-    btnPromptRetake: '#btnPromptRetake',
     scanProgress:    '#scanProgress',
     scanPct:         '#scanPct',
     progressFill:    '#progressFill',
@@ -1009,7 +915,7 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * FROZEN VIEWER — pinch zoom / pan confined to the analyze view
+ * FROZEN VIEWER
  * ========================================================================== */
 const FrozenViewer = (() => {
   let scale = 1, tx = 0, ty = 0;
@@ -1051,7 +957,6 @@ const FrozenViewer = (() => {
   function onPointerDown(e) {
     if (e.target.closest('button:not(.word-tap)')) return;
     gesture.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
     if (gesture.pointers.size === 2) {
       const [a, b] = [...gesture.pointers.values()];
       gesture.startDist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -1078,7 +983,6 @@ const FrozenViewer = (() => {
       const [a, b] = [...gesture.pointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       if (gesture.startDist === 0) return;
-
       const newScale = clamp(gesture.startScale * (dist / gesture.startDist), MIN_SCALE, MAX_SCALE);
       const rect = DOM.analyzeView.getBoundingClientRect();
       const midX = (a.x + b.x) / 2 - rect.left;
@@ -1342,13 +1246,6 @@ const UI = (() => {
   }
   function showNoText(show) { DOM.noText.hidden = !show; }
 
-  function showRotationPrompt() {
-    DOM.rotationPrompt.hidden = false;
-  }
-  function hideRotationPrompt() {
-    DOM.rotationPrompt.hidden = true;
-  }
-
   function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
     DOM.wordLayer.replaceChildren();
     const sx = displayW / canvasW;
@@ -1487,10 +1384,6 @@ const UI = (() => {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
     DOM.btnRotate.addEventListener('click', handlers.onManualRotate);
-    DOM.btnRotateLeft.addEventListener('click', () => handlers.onRotate(-90));
-    DOM.btnRotateRight.addEventListener('click', () => handlers.onRotate(90));
-    DOM.btnScanAnyway.addEventListener('click', handlers.onScanAnyway);
-    DOM.btnPromptRetake.addEventListener('click', handlers.onRetake);
     DOM.btnClearWord.addEventListener('click', handlers.onClearWord);
     DOM.btnManualFromAnalyze.addEventListener('click', handlers.onManualRequest);
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
@@ -1578,7 +1471,6 @@ const UI = (() => {
     showFocusRing, setTorchUI, setZoomUI, setCamBadge,
     showCameraView, showAnalyzeView,
     showScanProgress, updateScanProgress, showNoText,
-    showRotationPrompt, hideRotationPrompt,
     renderWords, clearWords, clearActiveWords,
     showClearButton, hideClearButton,
     renderLensList, renderResult, bindEvents
@@ -2020,7 +1912,7 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — with fast pre-flight orientation check
+ * OCR SERVICE — multi-pass, returns winning rotation for auto-leveling
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -2112,13 +2004,13 @@ const OCRService = (() => {
   function projectionOrientation(binaryCanvas) {
     const w = binaryCanvas.width;
     const h = binaryCanvas.height;
-    if (w < 20 || h < 20) return { orientation: 'horizontal', ratio: 1 };
+    if (w < 20 || h < 20) return 'horizontal';
 
     let data;
     try {
       data = binaryCanvas.getContext('2d', { willReadFrequently: true })
         .getImageData(0, 0, w, h).data;
-    } catch { return { orientation: 'horizontal', ratio: 1 }; }
+    } catch { return 'horizontal'; }
 
     const rows = new Float64Array(h);
     const cols = new Float64Array(w);
@@ -2134,7 +2026,7 @@ const OCRService = (() => {
       }
     }
 
-    if (totalDark < 100) return { orientation: 'horizontal', ratio: 1 };
+    if (totalDark < 100) return 'horizontal';
 
     const variance = (arr) => {
       let sum = 0, sumSq = 0;
@@ -2146,36 +2038,21 @@ const OCRService = (() => {
 
     const rowVar = variance(rows);
     const colVar = variance(cols);
-    const ratio = colVar / Math.max(rowVar, 1e-6);
-    return {
-      orientation: ratio > CONFIG.OCR.PREFLIGHT_VERTICAL_THRESHOLD ? 'vertical' : 'horizontal',
-      ratio
-    };
+    return colVar > rowVar * CONFIG.OCR.PREFLIGHT_VERTICAL_THRESHOLD ? 'vertical' : 'horizontal';
   }
 
-  /**
-   * Fast pre-flight orientation check. Downscales to 400px, binarizes, and
-   * runs a projection profile. Typically <50 ms on a 1300px image.
-   */
   function detectOrientationFast(sourceCanvas) {
     try {
       const maxDim = CONFIG.OCR.PREFLIGHT_MAX_DIM;
       const scale = Math.min(1, maxDim / Math.max(sourceCanvas.width, sourceCanvas.height));
       const w = Math.max(20, Math.round(sourceCanvas.width * scale));
       const h = Math.max(20, Math.round(sourceCanvas.height * scale));
-
       const small = document.createElement('canvas');
-      small.width = w;
-      small.height = h;
+      small.width = w; small.height = h;
       small.getContext('2d', { willReadFrequently: true })
         .drawImage(sourceCanvas, 0, 0, w, h);
-
-      const binary = binarize(small);
-      return projectionOrientation(binary).orientation;
-    } catch (e) {
-      console.warn('[ScanLex] Pre-flight orientation failed:', e);
-      return 'horizontal';
-    }
+      return projectionOrientation(binarize(small));
+    } catch { return 'horizontal'; }
   }
 
   function rotateCanvas(src, degrees) {
@@ -2199,24 +2076,6 @@ const OCRService = (() => {
       ctx.rotate(Math.PI);
     }
     ctx.drawImage(src, 0, 0);
-    return out;
-  }
-
-  function transformBBoxFromRotated(bbox, rotation, origW, origH) {
-    if (rotation === 0) return bbox;
-    const { x0, y0, x1, y1 } = bbox;
-    let out;
-    if (rotation === 90) {
-      out = { x0: y0, y0: origH - 1 - x1, x1: y1, y1: origH - 1 - x0 };
-    } else if (rotation === -90) {
-      out = { x0: origW - 1 - y1, y0: x0, x1: origW - 1 - y0, y1: x1 };
-    } else if (rotation === 180) {
-      out = { x0: origW - 1 - x1, y0: origH - 1 - y1, x1: origW - 1 - x0, y1: origH - 1 - y0 };
-    } else return bbox;
-    out.x0 = clamp(out.x0, 0, origW - 1);
-    out.y0 = clamp(out.y0, 0, origH - 1);
-    out.x1 = clamp(out.x1, 0, origW - 1);
-    out.y1 = clamp(out.y1, 0, origH - 1);
     return out;
   }
 
@@ -2251,7 +2110,12 @@ const OCRService = (() => {
     return sum / words.length;
   }
 
-  async function recognizeOne(worker, canvas, rotation, origW, origH) {
+  /**
+   * OCR one rotated view. Returns bboxes in the rotated canvas's coordinate
+   * space (no inverse transform). App will rotate the DISPLAY by the same
+   * amount so the displayed canvas has matching dimensions and orientation.
+   */
+  async function recognizeOne(worker, canvas, rotation) {
     let data;
     try {
       const result = await worker.recognize(canvas, {}, { text: true, blocks: true });
@@ -2271,13 +2135,19 @@ const OCRService = (() => {
       if (text.length > CONFIG.OCR.MAX_WORD_LENGTH) continue;
       const confidence = Number(w.confidence) || 0;
       if (confidence < CONFIG.OCR.MIN_WORD_CONFIDENCE) continue;
-      let bbox = getBBox(w);
+      const bbox = getBBox(w);
       if (!bbox) continue;
       if (bbox.x1 - bbox.x0 < 4 || bbox.y1 - bbox.y0 < 4) continue;
-      if (rotation !== 0) bbox = transformBBoxFromRotated(bbox, rotation, origW, origH);
       words.push({ text, confidence, bbox });
     }
-    return { words, fullText: typeof data.text === 'string' ? data.text : '' };
+
+    return {
+      words,
+      fullText: typeof data.text === 'string' ? data.text : '',
+      rotation,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height
+    };
   }
 
   function isGood(result) {
@@ -2292,16 +2162,30 @@ const OCRService = (() => {
     return result.words.length * 10 + avgConfidence(result.words);
   }
 
-  async function recognizeWithBoxes(canvas, onProgress) {
+  /**
+   * Multi-pass OCR. Returns the best result along with the rotation that
+   * produced it, so the App can auto-rotate the display to match.
+   *
+   * options.skipAutoRotate: only try 0° (used after manual rotate so we
+   *   don't undo the user's correction).
+   */
+  async function recognizeWithBoxes(canvas, onProgress, options = {}) {
     progressCallback = onProgress || null;
+    const skipAutoRotate = options.skipAutoRotate === true;
+
     const worker = await getWorker();
     const binary = binarize(canvas);
     await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
 
-    const heuristic = projectionOrientation(binary).orientation;
-    const order = heuristic === 'vertical' ? [90, -90, 0] : [0, 90, -90];
-    const origW = binary.width;
-    const origH = binary.height;
+    let order;
+    if (skipAutoRotate) {
+      order = [0];
+    } else {
+      const preflight = projectionOrientation(binary);
+      order = preflight === 'vertical'
+        ? [90, -90, 0, 180]
+        : [0, 180, 90, -90];
+    }
 
     let best = null;
     let bestScore = -1;
@@ -2312,20 +2196,21 @@ const OCRService = (() => {
 
       const input = rot === 0 ? binary : rotateCanvas(binary, rot);
       let result;
-      try { result = await recognizeOne(worker, input, rot, origW, origH); }
+      try { result = await recognizeOne(worker, input, rot); }
       catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
 
       const score = scoreOf(result);
       if (score > bestScore) { best = result; bestScore = score; }
-
-      if (isGood(result)) {
-        progressCallback = null;
-        return result;
-      }
+      if (isGood(result)) break;
     }
 
+    if (onProgress) onProgress(100);
     progressCallback = null;
-    return best || { words: [], fullText: '' };
+
+    return best || {
+      words: [], fullText: '', rotation: 0,
+      canvasWidth: canvas.width, canvasHeight: canvas.height
+    };
   }
 
   function tokenize(raw) {
@@ -2344,10 +2229,7 @@ const OCRService = (() => {
     return tokens.length ? tokens[0] : '';
   }
 
-  return {
-    getWorker, recognizeWithBoxes, sanitizeWord,
-    detectOrientationFast
-  };
+  return { getWorker, recognizeWithBoxes, sanitizeWord, detectOrientationFast };
 })();
 
 /* ==========================================================================
@@ -2514,7 +2396,7 @@ const DictionaryService = (() => {
 const App = (() => {
   const state = {
     busy: false,
-    phase: 'camera',  // 'camera' | 'analyzing' | 'await-rotation' | 'ready'
+    phase: 'camera',
     cameraReady: false,
     lastWord: '',
     ocrWarmedUp: false,
@@ -2616,6 +2498,12 @@ const App = (() => {
     canvas.width = newW;
     canvas.height = newH;
     canvas.getContext('2d').drawImage(temp, 0, 0);
+
+    // Subtle fade animation so the rotation isn't jarring
+    canvas.classList.remove('is-rotating');
+    void canvas.offsetWidth;
+    canvas.classList.add('is-rotating');
+    setTimeout(() => canvas.classList.remove('is-rotating'), 260);
   }
 
   function layoutFrozenImage() {
@@ -2630,7 +2518,7 @@ const App = (() => {
     DOM.frozenWrap.style.height = h + 'px';
   }
 
-  /* ---- Capture → freeze → pre-flight → auto-scan OR rotation prompt -- */
+  /* ---- Capture → freeze → OCR (auto-level) ---------------------------- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -2656,27 +2544,12 @@ const App = (() => {
       UI.showNoText(false);
       UI.clearWords();
       UI.hideClearButton();
-      UI.hideRotationPrompt();
-      UI.showScanProgress(false);
 
       requestAnimationFrame(() => {
         if (state.phase !== 'analyzing') return;
         try { layoutFrozenImage(); }
         catch (e) { console.warn('[ScanLex] layoutFrozenImage failed', e); }
-
-        // Pre-flight orientation check — fast, off the main OCR path.
-        const orientation = OCRService.detectOrientationFast(DOM.frozenCanvas);
-
-        if (orientation === 'vertical') {
-          // Pause here and let the user rotate.
-          state.busy = false;
-          state.phase = 'await-rotation';
-          UI.showRotationPrompt();
-          UI.setAnalyzeHint('Text appears sideways');
-        } else {
-          // Horizontal — auto-scan without interruption.
-          startWholeFrameOcr();
-        }
+        startWholeFrameOcr();
       });
     } catch (error) {
       handleError(error);
@@ -2686,8 +2559,8 @@ const App = (() => {
     }
   }
 
-  /* ---- Full OCR of the frozen canvas ---------------------------------- */
-  async function startWholeFrameOcr() {
+  /* ---- Whole-frame OCR with automatic display rotation ----------------- */
+  async function startWholeFrameOcr(options = {}) {
     const myId = ++state.ocrRequestId;
     UI.showScanProgress(true, 0);
     UI.setAnalyzeHint('Scanning text…');
@@ -2697,7 +2570,7 @@ const App = (() => {
       result = await OCRService.recognizeWithBoxes(DOM.frozenCanvas, (pct) => {
         if (myId !== state.ocrRequestId) return;
         UI.updateScanProgress(pct);
-      });
+      }, { skipAutoRotate: options.skipAutoRotate === true });
     } catch (error) {
       if (myId !== state.ocrRequestId) return;
       UI.showScanProgress(false);
@@ -2712,6 +2585,16 @@ const App = (() => {
     if (myId !== state.ocrRequestId) return;
 
     UI.showScanProgress(false);
+
+    // AUTO-LEVEL: rotate the DISPLAY to match the winning OCR pass.
+    // Bboxes are already in the winning rotation's rotated-canvas space,
+    // so after rotating the display canvas by the same amount, they align.
+    if (result.rotation && result.rotation !== 0) {
+      rotateFrozenCanvas(result.rotation);
+      FrozenViewer.reset();
+      layoutFrozenImage();
+    }
+
     state.currentWords = result.words;
     state.busy = false;
     state.phase = 'ready';
@@ -2722,54 +2605,36 @@ const App = (() => {
       return;
     }
 
-    const cw = DOM.frozenCanvas.width;
-    const ch = DOM.frozenCanvas.height;
     const dw = DOM.frozenWrap.offsetWidth;
     const dh = DOM.frozenWrap.offsetHeight;
+    const cw = DOM.frozenCanvas.width;
+    const ch = DOM.frozenCanvas.height;
     UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
     UI.hideClearButton();
     UI.setAnalyzeHint(wordsHint(result.words.length));
   }
 
-  /* ---- Rotation handlers ---------------------------------------------- */
-  async function onRotate(direction) {
-    // direction: 90 (CW) or -90 (CCW)
-    rotateFrozenCanvas(direction);
+  /* ---- Manual rotate (fallback if auto-level gets it wrong) ------------ */
+  async function onManualRotate() {
+    if (state.busy) return;
+    rotateFrozenCanvas(90);
     FrozenViewer.reset();
     layoutFrozenImage();
 
-    if (state.phase === 'await-rotation') {
-      // Re-check orientation. If horizontal now, drop the prompt and scan.
-      const orientation = OCRService.detectOrientationFast(DOM.frozenCanvas);
-      if (orientation === 'horizontal') {
-        UI.hideRotationPrompt();
-        state.phase = 'analyzing';
-        startWholeFrameOcr();
-      } else {
-        UI.toast('Still sideways — try rotating again');
-      }
-      return;
-    }
-
-    // Manual rotation during/after a scan — clear overlays and rescan.
     UI.clearWords();
     UI.hideClearButton();
     UI.showNoText(false);
-    UI.hideRotationPrompt();
 
     state.ocrRequestId++;
     state.phase = 'analyzing';
 
     clearTimeout(state.pendingScanTimer);
     state.pendingScanTimer = setTimeout(() => {
-      if (state.phase === 'analyzing') startWholeFrameOcr();
+      if (state.phase === 'analyzing') {
+        // Skip auto-rotate so the user's manual correction isn't undone.
+        startWholeFrameOcr({ skipAutoRotate: true });
+      }
     }, CONFIG.UI.ROTATE_DEBOUNCE_MS);
-  }
-
-  async function onScanAnyway() {
-    UI.hideRotationPrompt();
-    state.phase = 'analyzing';
-    startWholeFrameOcr();
   }
 
   async function onRetake() {
@@ -2782,7 +2647,6 @@ const App = (() => {
     state.lastWord = '';
 
     FrozenViewer.reset();
-    UI.hideRotationPrompt();
     UI.clearActiveWords();
     UI.hideClearButton();
     UI.clearWords();
@@ -3021,9 +2885,8 @@ const App = (() => {
 
     UI.bindEvents({
       onCapture, onRetake,
-      onRotate: (degrees) => onRotate(degrees),
-      onManualRotate: () => onRotate(90),
-      onScanAnyway, onClearWord,
+      onManualRotate,
+      onClearWord,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onOpenLensPicker: openLensPicker,
@@ -3039,7 +2902,7 @@ const App = (() => {
     });
 
     window.addEventListener('resize', () => {
-      if (state.phase === 'ready' || state.phase === 'analyzing' || state.phase === 'await-rotation') {
+      if (state.phase === 'ready' || state.phase === 'analyzing') {
         FrozenViewer.reset();
         layoutFrozenImage();
         if (state.currentWords.length && state.phase === 'ready') {
