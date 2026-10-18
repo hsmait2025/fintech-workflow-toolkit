@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://tessdata.projectnaptha.com" crossorigin />
 <link rel="preconnect" href="https://api.dictionaryapi.dev" crossorigin />
 <link rel="preconnect" href="https://api.datamuse.com" crossorigin />
+<link rel="preconnect" href="https://api.mymemory.translated.net" crossorigin />
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" as="script" crossorigin />
 
 <style>
@@ -48,6 +49,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  --kb-height: 0px;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -225,13 +227,8 @@ button { cursor: pointer; border: 0; background: none; }
   user-select: none; -webkit-user-select: none;
   pointer-events: none;
 }
-.frozen-canvas.is-rotating {
-  animation: canvas-fade 0.24s var(--ease-out);
-}
-@keyframes canvas-fade {
-  from { opacity: 0.55; }
-  to   { opacity: 1; }
-}
+.frozen-canvas.is-rotating { animation: canvas-fade 0.24s var(--ease-out); }
+@keyframes canvas-fade { from { opacity: 0.55; } to { opacity: 1; } }
 
 .word-layer { position: absolute; inset: 0; pointer-events: none; }
 .word-tap {
@@ -367,6 +364,7 @@ button { cursor: pointer; border: 0; background: none; }
   opacity: 1; visibility: visible;
   transition: opacity 0.24s var(--ease-out), visibility 0s;
 }
+
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
   max-height: 84vh; max-height: 84dvh; overflow-y: auto;
@@ -379,13 +377,22 @@ button { cursor: pointer; border: 0; background: none; }
   box-shadow: var(--shadow-sheet);
   transform: translateY(110%); visibility: hidden;
   transition: transform 0.28s var(--ease-out), visibility 0s linear 0.28s,
-              bottom 0.2s var(--ease-out), max-height 0.2s var(--ease-out);
+    bottom 0.22s var(--ease-out);
 }
 .sheet.is-open {
   transform: translateY(0); visibility: visible;
   transition: transform 0.28s var(--ease-out), visibility 0s,
-              bottom 0.2s var(--ease-out), max-height 0.2s var(--ease-out);
+    bottom 0.22s var(--ease-out);
 }
+
+/* Manual sheet needs extra bottom padding so the keyboard doesn't cover the input */
+#manualSheet {
+  /* Raise the sheet above the soft keyboard when it's open */
+  bottom: var(--kb-height, 0px);
+  max-height: min(84dvh, calc(100dvh - var(--kb-height, 0px) - 20px));
+}
+#manualForm { padding-bottom: 4px; }
+
 .sheet-handle {
   width: 44px; height: 4px; border-radius: 2px;
   background: var(--line); margin: 4px auto 14px;
@@ -395,6 +402,7 @@ button { cursor: pointer; border: 0; background: none; }
   width: 40px; height: 40px; display: grid; place-items: center;
   border-radius: 50%; background: var(--surface-3); color: var(--muted);
   font-size: 1.35rem; line-height: 1;
+  z-index: 2;
 }
 .sheet-close:active { background: var(--line); }
 .sheet-title { margin: 0 44px 6px 0; font-size: 1.15rem; letter-spacing: -0.01em; color: var(--text); }
@@ -449,6 +457,39 @@ button { cursor: pointer; border: 0; background: none; }
 .lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
 .lens-badge.nofocus { background: var(--danger-soft); color: var(--danger); }
 
+/* ---- Result sheet with tabs -------------------------------------- */
+.result-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  margin: 4px 52px 16px 0;
+}
+.result-tab {
+  flex: 1;
+  min-height: 42px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out),
+    box-shadow 0.15s var(--ease-out);
+}
+.result-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(15, 23, 32, 0.10);
+}
+.result-tab:active:not(.is-active) {
+  background: var(--surface-3);
+}
+.result-tab[aria-selected="true"] {
+  color: var(--accent);
+}
+
 .result-head {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px; padding-right: 44px; margin-bottom: 6px;
@@ -459,6 +500,10 @@ button { cursor: pointer; border: 0; background: none; }
   color: var(--text);
 }
 .result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; }
+.result-original-word {
+  margin: 6px 0 0; font-size: 0.82rem; color: var(--muted);
+  font-style: italic;
+}
 .audio-btn {
   flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
   border-radius: 50%; background: var(--accent-soft);
@@ -484,6 +529,33 @@ button { cursor: pointer; border: 0; background: none; }
 .result-empty { margin: 20px 0 0; color: var(--muted); font-size: 0.92rem; }
 .result-actions { display: flex; gap: 10px; margin-top: 26px; }
 .result-actions .btn { flex: 1 1 0; }
+
+.result-loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px;
+  padding: 40px 20px; min-height: 200px;
+}
+.spinner-light {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin 0.85s linear infinite;
+}
+.result-loading p {
+  margin: 0; font-size: 0.9rem; color: var(--muted);
+}
+
+.result-error {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 28px 8px; text-align: center;
+}
+.result-error-title {
+  margin: 0; font-size: 1rem; font-weight: 650; color: var(--text);
+}
+.result-error-text {
+  margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5;
+}
+.result-error .btn { align-self: center; min-width: 140px; }
 
 .modal {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
@@ -750,7 +822,9 @@ const CONFIG = Object.freeze({
   API: Object.freeze({
     PRIMARY_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
     FALLBACK_URL: 'https://api.datamuse.com/words',
+    TRANSLATE_URL: 'https://api.mymemory.translated.net/get',
     TIMEOUT_MS: 5000,
+    TRANSLATE_TIMEOUT_MS: 6000,
     HEADERS: Object.freeze({ Accept: 'application/json' })
   }),
   CAMERA: Object.freeze({
@@ -766,17 +840,14 @@ const CONFIG = Object.freeze({
     LANGUAGE: 'eng',
     OEM: 1,
     PSM: '6',
-    PSM_SPARSE: '11',
-    MIN_WORD_CONFIDENCE: 25,
+    MIN_WORD_CONFIDENCE: 30,
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
     MAX_EDGE_PX: computeMaxEdgePx(),
     WORD_TAP_PADDING: 8,
-    // isGood thresholds — conservative, only stop early when we're sure
-    GOOD_CONF: 72,
-    GOOD_MIN_WORDS: 20,
-    VERY_GOOD_CONF: 85,
-    VERY_GOOD_MIN_WORDS: 5,
+    GOOD_CONF: 75,
+    ACCEPT_CONF: 60,
+    ACCEPT_MIN_WORDS: 5,
     MAX_ZOOM: 5,
     PREFLIGHT_MAX_DIM: 400,
     PREFLIGHT_VERTICAL_THRESHOLD: 2.2
@@ -785,8 +856,7 @@ const CONFIG = Object.freeze({
   UI: Object.freeze({
     MAX_MEANINGS: 3, MAX_DEFINITIONS_PER_MEANING: 3, MAX_SYNONYMS: 4,
     TOAST_MS: 2600, WORD_TAP_DELAY_MS: 60,
-    ROTATE_DEBOUNCE_MS: 400,
-    KEYBOARD_THRESHOLD_PX: 80
+    ROTATE_DEBOUNCE_MS: 400
   }),
   SELECTORS: Object.freeze({
     cameraView:      '#cameraView',
@@ -875,7 +945,8 @@ const MESSAGES = Object.freeze({
   NETWORK:          'A network error occurred while contacting the dictionary.',
   NOT_FOUND:        'No definition was found for that word.',
   HTTP_ERROR:       'The dictionary service returned an unexpected response.',
-  BAD_WORD:         'Please enter a single word using letters only.'
+  BAD_WORD:         'Please enter a single word using letters only.',
+  TRANSLATE_FAILED: 'Could not translate to Hindi right now. Please retry.'
 });
 
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -918,68 +989,36 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * KEYBOARD-AWARE SHEET POSITIONING
+ * KEYBOARD WATCHER — raises the manual sheet above the soft keyboard
  * ========================================================================== */
-const KeyboardHandler = (() => {
-  let installed = false;
-  let resizeRaf = null;
-
-  function computeKeyboardHeight() {
-    const vv = window.visualViewport;
-    if (!vv) return 0;
-    return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-  }
-
-  function applyToSheets() {
-    const kb = computeKeyboardHeight();
-    const openSheets = document.querySelectorAll('.sheet.is-open');
-    if (!openSheets.length) return;
-    const vv = window.visualViewport;
-    const visibleHeight = vv ? vv.height : window.innerHeight;
-
-    openSheets.forEach((sheet) => {
-      if (kb > CONFIG.UI.KEYBOARD_THRESHOLD_PX) {
-        sheet.style.bottom = kb + 'px';
-        sheet.style.maxHeight = Math.max(220, visibleHeight - 24) + 'px';
-      } else {
-        sheet.style.bottom = '';
-        sheet.style.maxHeight = '';
-      }
-    });
-  }
-
-  function scheduleApply() {
-    if (resizeRaf) return;
-    resizeRaf = requestAnimationFrame(() => {
-      resizeRaf = null;
-      applyToSheets();
-    });
-  }
-
-  function install() {
-    if (installed) return;
-    installed = true;
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', scheduleApply);
-      window.visualViewport.addEventListener('scroll', scheduleApply);
-    }
-    window.addEventListener('orientationchange', scheduleApply);
-    window.addEventListener('resize', scheduleApply);
-
+function watchKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) {
+    // Fallback for browsers without visualViewport
     DOM.manualInput.addEventListener('focus', () => {
       setTimeout(() => {
         try { DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
         catch {}
-        scheduleApply();
-      }, 320);
+      }, 350);
     });
-    DOM.manualInput.addEventListener('blur', () => {
-      setTimeout(scheduleApply, 120);
-    });
+    return;
   }
-  function reflow() { scheduleApply(); }
-  return { install, reflow };
-})();
+
+  let lastKb = -1;
+  const update = () => {
+    // Height of the soft keyboard (0 when closed). Offset top handles the
+    // case where the address bar collapses on scroll.
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    if (kb === lastKb) return;
+    lastKb = kb;
+    document.documentElement.style.setProperty('--kb-height', kb + 'px');
+    document.body.classList.toggle('kb-open', kb > 120);
+  };
+
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  update();
+}
 
 /* ==========================================================================
  * FROZEN VIEWER
@@ -1167,6 +1206,116 @@ const LookupCache = (() => {
 })();
 
 /* ==========================================================================
+ * TRANSLATION SERVICE — English → Hindi via MyMemory
+ * ========================================================================== */
+const TranslationService = (() => {
+  const memCache = new Map();
+  const POS_HINDI = {
+    noun: 'संज्ञा',
+    verb: 'क्रिया',
+    adjective: 'विशेषण',
+    adverb: 'क्रिया-विशेषण',
+    pronoun: 'सर्वनाम',
+    preposition: 'पूर्वसर्ग',
+    conjunction: 'संयोजक',
+    interjection: 'विस्मयादिबोधक',
+    determiner: 'निर्धारक',
+    numeral: 'अंक'
+  };
+
+  async function translateOne(text, from = 'en', to = 'hi') {
+    if (!text || typeof text !== 'string') return text;
+    const clean = text.trim();
+    if (!clean) return clean;
+    const key = `${from}|${to}|${clean.toLowerCase()}`;
+    if (memCache.has(key)) return memCache.get(key);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.API.TRANSLATE_TIMEOUT_MS);
+
+    try {
+      const url = `${CONFIG.API.TRANSLATE_URL}?q=${encodeURIComponent(clean)}&langpair=${from}|${to}`;
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const translated = data?.responseData?.translatedText;
+      if (typeof translated !== 'string' || !translated.trim()) {
+        throw new Error('Empty translation');
+      }
+      memCache.set(key, translated);
+      return translated;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Translate a whole dictionary entry to Hindi.
+   * Only translates the word + first definition per POS — bounded to 4
+   * requests per lookup so we stay well within MyMemory's free tier.
+   */
+  async function translateEntryToHindi(entry) {
+    const tasks = [];
+    tasks.push(translateOne(entry.word));
+
+    for (const meaning of entry.meanings) {
+      const firstDef = meaning.definitions[0]?.definition;
+      if (firstDef) tasks.push(translateOne(firstDef));
+      else tasks.push(Promise.resolve(null));
+    }
+
+    const results = await Promise.allSettled(tasks);
+    const getText = (i) => {
+      const r = results[i];
+      return r.status === 'fulfilled' ? r.value : null;
+    };
+
+    const hindiWord = getText(0) || entry.word;
+
+    const hindiMeanings = entry.meanings.map((meaning, i) => {
+      const translatedFirst = getText(i + 1);
+      const definitions = meaning.definitions.map((def, di) => {
+        if (di === 0 && translatedFirst) {
+          return {
+            definition: translatedFirst,
+            originalDefinition: def.definition,
+            example: def.example
+          };
+        }
+        return {
+          definition: def.definition,
+          example: def.example,
+          fallbackEnglish: di > 0
+        };
+      });
+      return {
+        partOfSpeech: POS_HINDI[meaning.partOfSpeech] || meaning.partOfSpeech || 'परिभाषा',
+        englishPartOfSpeech: meaning.partOfSpeech,
+        definitions
+      };
+    });
+
+    // If nothing translated at all, that's a failure
+    const anythingTranslated = hindiWord !== entry.word ||
+      hindiMeanings.some(m => m.definitions.some(d => d.originalDefinition));
+    if (!anythingTranslated) {
+      throw new AppError('TRANSLATE_FAILED', MESSAGES.TRANSLATE_FAILED, { retryable: true });
+    }
+
+    return {
+      word: hindiWord,
+      originalWord: entry.word,
+      phonetic: entry.phonetic,
+      audio: entry.audio,
+      meanings: hindiMeanings,
+      isHindi: true
+    };
+  }
+
+  return { translateOne, translateEntryToHindi };
+})();
+
+/* ==========================================================================
  * UI
  * ========================================================================== */
 const UI = (() => {
@@ -1174,6 +1323,7 @@ const UI = (() => {
   let lastFocused = null;
   let retryHandler = null;
   let focusRingTimer = null;
+  let resultSheetState = null;
 
   function setStatus(text) { DOM.statusHint.textContent = text; }
   function setAnalyzeHint(text) { DOM.analyzeHint.textContent = text; }
@@ -1202,16 +1352,12 @@ const UI = (() => {
     lastFocused = document.activeElement;
     sheet.classList.add('is-open');
     updateScrim();
-    KeyboardHandler.reflow();
     const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
     requestAnimationFrame(() => target?.focus({ preventScroll: true }));
   }
   function closeSheet(sheet) {
     sheet.classList.remove('is-open');
-    sheet.style.bottom = '';
-    sheet.style.maxHeight = '';
     updateScrim();
-    KeyboardHandler.reflow();
     if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
   }
   function closeAllSheets() {
@@ -1405,26 +1551,38 @@ const UI = (() => {
     } catch { toast('Pronunciation is unavailable right now.'); }
   }
 
-  function renderResult(entry, actions) {
+  /* ---- Result sheet with EN/HI tabs -------------------------------- */
+  function renderEntryContent(entry, actions, opts = {}) {
+    const isHindi = opts.isHindi === true;
     const nodes = [];
+
     const headText = h('div', {},
       h('h2', { class: 'result-word', id: 'resultTitle', text: entry.word }),
-      entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null
+      entry.phonetic ? h('p', { class: 'result-phonetic', text: entry.phonetic }) : null,
+      (isHindi && entry.originalWord && entry.originalWord !== entry.word)
+        ? h('p', { class: 'result-original-word', text: `English: ${entry.originalWord}` })
+        : null
     );
     const head = h('div', { class: 'result-head' }, headText);
+
     if (entry.audio) {
       const audioBtn = h('button', {
         class: 'audio-btn', type: 'button',
-        'aria-label': `Play pronunciation of ${entry.word}`,
+        'aria-label': `Play pronunciation of ${entry.originalWord || entry.word}`,
         onClick: () => playAudio(entry.audio)
       });
       audioBtn.innerHTML = ICONS.speaker;
       head.append(audioBtn);
     }
     nodes.push(head);
+
     if (!entry.meanings.length) {
-      nodes.push(h('p', { class: 'result-empty', text: 'No definitions were returned for this word.' }));
+      nodes.push(h('p', {
+        class: 'result-empty',
+        text: isHindi ? 'इस शब्द के लिए कोई परिभाषा नहीं मिली।' : 'No definitions were returned for this word.'
+      }));
     }
+
     for (const meaning of entry.meanings) {
       nodes.push(
         h('section', { class: 'meaning' },
@@ -1433,6 +1591,12 @@ const UI = (() => {
             ...meaning.definitions.map((def) =>
               h('li', {},
                 h('span', { text: def.definition }),
+                (def.fallbackEnglish && def.definition !== def.originalDefinition)
+                  ? h('span', {
+                      class: 'example',
+                      text: '(in English)'
+                    })
+                  : null,
                 def.example ? h('em', { class: 'example', text: `“${def.example}”` }) : null
               )
             )
@@ -1440,6 +1604,7 @@ const UI = (() => {
         )
       );
     }
+
     nodes.push(
       h('div', { class: 'result-actions' },
         h('button', { class: 'btn btn-ghost', type: 'button', text: 'Scan another',
@@ -1448,7 +1613,112 @@ const UI = (() => {
           onClick: actions.onTypeWord })
       )
     );
-    DOM.resultBody.replaceChildren(...nodes);
+
+    return h('div', { class: 'result-content' }, ...nodes);
+  }
+
+  function renderLoadingHindi() {
+    return h('div', { class: 'result-loading' },
+      h('div', { class: 'spinner-light', role: 'progressbar', 'aria-label': 'Translating' }),
+      h('p', { text: 'हिंदी में अनुवाद हो रहा है…' })
+    );
+  }
+
+  function renderHindiError() {
+    return h('div', { class: 'result-error' },
+      h('p', { class: 'result-error-title', text: 'हिंदी अनुवाद उपलब्ध नहीं' }),
+      h('p', { class: 'result-error-text', text: 'कृपया इंटरनेट कनेक्शन जाँचें और पुन: प्रयास करें।' }),
+      h('button', {
+        class: 'btn btn-ghost', type: 'button', text: 'पुन: प्रयास करें',
+        onClick: () => loadHindiForCurrent()
+      })
+    );
+  }
+
+  function renderResultBody() {
+    const s = resultSheetState;
+    if (!s) return;
+
+    const tabs = h('div', { class: 'result-tabs', role: 'tablist', 'aria-label': 'Language' },
+      h('button', {
+        class: 'result-tab' + (s.activeTab === 'en' ? ' is-active' : ''),
+        type: 'button', role: 'tab',
+        'aria-selected': String(s.activeTab === 'en'),
+        onClick: () => switchResultTab('en')
+      }, 'English'),
+      h('button', {
+        class: 'result-tab' + (s.activeTab === 'hi' ? ' is-active' : ''),
+        type: 'button', role: 'tab',
+        'aria-selected': String(s.activeTab === 'hi'),
+        onClick: () => switchResultTab('hi')
+      }, 'हिंदी')
+    );
+
+    let content;
+    if (s.activeTab === 'en') {
+      content = renderEntryContent(s.entry, s.actions);
+    } else if (s.hindiLoading) {
+      content = renderLoadingHindi();
+    } else if (s.hindiError) {
+      content = renderHindiError();
+    } else if (s.hindi) {
+      content = renderEntryContent(s.hindi, s.actions, { isHindi: true });
+    } else {
+      content = renderLoadingHindi();
+    }
+
+    DOM.resultBody.replaceChildren(tabs, content);
+  }
+
+  function switchResultTab(tab) {
+    const s = resultSheetState;
+    if (!s || s.activeTab === tab) return;
+    s.activeTab = tab;
+    DOM.resultSheet.scrollTop = 0;
+    renderResultBody();
+    if (tab === 'hi' && !s.hindi && !s.hindiLoading) {
+      loadHindiForCurrent();
+    }
+  }
+
+  async function loadHindiForCurrent() {
+    const s = resultSheetState;
+    if (!s || s.hindi || s.hindiLoading) return;
+    s.hindiLoading = true;
+    s.hindiError = null;
+    renderResultBody();
+
+    try {
+      const hindi = await TranslationService.translateEntryToHindi(s.entry);
+      if (resultSheetState !== s) return;
+      s.hindi = hindi;
+    } catch (err) {
+      if (resultSheetState !== s) return;
+      s.hindiError = err || true;
+    } finally {
+      if (resultSheetState !== s) return;
+      s.hindiLoading = false;
+      renderResultBody();
+    }
+  }
+
+  function showResultSheet(entry, actions) {
+    resultSheetState = {
+      entry,
+      hindi: null,
+      hindiLoading: false,
+      hindiError: null,
+      activeTab: 'en',
+      actions
+    };
+    renderResultBody();
+    openSheet(DOM.resultSheet);
+    DOM.resultSheet.scrollTop = 0;
+  }
+
+  // Backwards-compatible alias used by App
+  function renderResult(entry, actions) {
+    showResultSheet(entry, actions);
   }
 
   function bindEvents(handlers) {
@@ -1544,7 +1814,8 @@ const UI = (() => {
     showScanProgress, updateScanProgress, showNoText,
     renderWords, clearWords, clearActiveWords,
     showClearButton, hideClearButton,
-    renderLensList, renderResult, bindEvents
+    renderLensList, renderResult, showResultSheet, switchResultTab,
+    bindEvents
   };
 })();
 
@@ -1983,13 +2254,7 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — restored pipeline (whitelist removed)
- * ==========================================================================
- * Tier 1: PSM 6 (uniform block) across all rotations — the workhorse.
- * Tier 2: PSM 11 (sparse text) on the winning rotation only, only if
- *         tier 1 didn't clearly succeed. Catches isolated words PSM 6
- *         misses, without the whitelist penalty that crippled the
- *         previous build.
+ * OCR SERVICE — multi-pass with auto-level
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -2028,10 +2293,7 @@ const OCRService = (() => {
         },
         errorHandler: (err) => console.error('[ScanLex][OCR]', err)
       });
-      // Set a sane default. No whitelist — it destroys accuracy.
-      try {
-        await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
-      } catch {}
+      try { await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM }); } catch {}
       return worker;
     })().catch((err) => {
       workerPromise = null;
@@ -2090,7 +2352,6 @@ const OCRService = (() => {
       data = binaryCanvas.getContext('2d', { willReadFrequently: true })
         .getImageData(0, 0, w, h).data;
     } catch { return 'horizontal'; }
-
     const rows = new Float64Array(h);
     const cols = new Float64Array(w);
     const step = 2;
@@ -2098,13 +2359,10 @@ const OCRService = (() => {
     for (let y = 0; y < h; y += step) {
       const rowOff = y * w;
       for (let x = 0; x < w; x += step) {
-        if (data[(rowOff + x) * 4] < 128) {
-          rows[y]++; cols[x]++; totalDark++;
-        }
+        if (data[(rowOff + x) * 4] < 128) { rows[y]++; cols[x]++; totalDark++; }
       }
     }
     if (totalDark < 100) return 'horizontal';
-
     const variance = (arr) => {
       let sum = 0, sumSq = 0;
       const n = arr.length;
@@ -2186,16 +2444,6 @@ const OCRService = (() => {
     return sum / words.length;
   }
 
-  async function setPsm(worker, psm) {
-    try {
-      await worker.setParameters({ tessedit_pageseg_mode: psm });
-      return true;
-    } catch (e) {
-      console.warn('[ScanLex] setParameters failed:', e);
-      return false;
-    }
-  }
-
   async function recognizeOne(worker, canvas, rotation) {
     let data;
     try {
@@ -2205,7 +2453,6 @@ const OCRService = (() => {
       const result = await worker.recognize(canvas);
       data = result.data;
     }
-
     const rawWords = collectWords(data);
     const words = [];
     for (const w of rawWords) {
@@ -2221,7 +2468,6 @@ const OCRService = (() => {
       if (bbox.x1 - bbox.x0 < 4 || bbox.y1 - bbox.y0 < 4) continue;
       words.push({ text, confidence, bbox });
     }
-
     return {
       words,
       fullText: typeof data.text === 'string' ? data.text : '',
@@ -2231,87 +2477,49 @@ const OCRService = (() => {
     };
   }
 
-  // Conservative — stop early ONLY for truly great results.
   function isGood(result) {
-    if (!result || !result.words.length) return false;
+    if (!result.words.length) return false;
     const conf = avgConfidence(result.words);
-    const count = result.words.length;
-    if (count >= CONFIG.OCR.GOOD_MIN_WORDS && conf >= CONFIG.OCR.GOOD_CONF) return true;
-    if (count >= CONFIG.OCR.VERY_GOOD_MIN_WORDS && conf >= CONFIG.OCR.VERY_GOOD_CONF) return true;
+    if (conf >= CONFIG.OCR.GOOD_CONF) return true;
+    if (conf >= CONFIG.OCR.ACCEPT_CONF && result.words.length >= CONFIG.OCR.ACCEPT_MIN_WORDS) return true;
     return false;
   }
-
   function scoreOf(result) {
-    if (!result) return -1;
     return result.words.length * 10 + avgConfidence(result.words);
   }
 
   async function recognizeWithBoxes(canvas, onProgress, options = {}) {
     progressCallback = onProgress || null;
     const skipAutoRotate = options.skipAutoRotate === true;
-
     const worker = await getWorker();
     const binary = binarize(canvas);
+    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
 
     let order;
-    if (skipAutoRotate) {
-      order = [0];
-    } else {
+    if (skipAutoRotate) order = [0];
+    else {
       const preflight = projectionOrientation(binary);
-      order = preflight === 'vertical'
-        ? [90, -90, 0, 180]
-        : [0, 180, 90, -90];
+      order = preflight === 'vertical' ? [90, -90, 0, 180] : [0, 180, 90, -90];
     }
 
-    // ---- Tier 1: PSM 6 on all rotations --------------------------------
-    let psmOk = await setPsm(worker, CONFIG.OCR.PSM);
     let best = null;
     let bestScore = -1;
 
     for (let i = 0; i < order.length; i++) {
       const rot = order[i];
-      if (onProgress) onProgress(Math.round(((i + 1) / (order.length * 1.5)) * 100));
-
+      if (onProgress) onProgress(Math.round((i / order.length) * 90));
       const input = rot === 0 ? binary : rotateCanvas(binary, rot);
       let result;
       try { result = await recognizeOne(worker, input, rot); }
       catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
-
       const score = scoreOf(result);
       if (score > bestScore) { best = result; bestScore = score; }
+      if (isGood(result)) break;
     }
-
-    if (best && isGood(best)) {
-      if (onProgress) onProgress(100);
-      progressCallback = null;
-      return best;
-    }
-
-    // ---- Tier 2: PSM 11 on winning rotation only -----------------------
-    // Only reached if tier 1 was weak. Uses the winning rotation from
-    // tier 1, so this is just 1 extra pass — fast.
-    const tier2Rot = best ? best.rotation : 0;
-    await setPsm(worker, CONFIG.OCR.PSM_SPARSE);
-
-    const tier2Input = tier2Rot === 0 ? binary : rotateCanvas(binary, tier2Rot);
-    if (onProgress) onProgress(85);
-    let tier2Result = null;
-    try { tier2Result = await recognizeOne(worker, tier2Input, tier2Rot); }
-    catch (e) { console.warn('[ScanLex] Tier 2 failed:', e); }
-
-    if (tier2Result && scoreOf(tier2Result) > bestScore) {
-      best = tier2Result;
-    }
-
-    // Restore PSM 6 for next scan
-    await setPsm(worker, CONFIG.OCR.PSM);
 
     if (onProgress) onProgress(100);
     progressCallback = null;
-    return best || {
-      words: [], fullText: '', rotation: 0,
-      canvasWidth: canvas.width, canvasHeight: canvas.height
-    };
+    return best || { words: [], fullText: '', rotation: 0, canvasWidth: canvas.width, canvasHeight: canvas.height };
   }
 
   function tokenize(raw) {
@@ -2723,9 +2931,7 @@ const App = (() => {
 
     clearTimeout(state.pendingScanTimer);
     state.pendingScanTimer = setTimeout(() => {
-      if (state.phase === 'analyzing') {
-        startWholeFrameOcr({ skipAutoRotate: true });
-      }
+      if (state.phase === 'analyzing') startWholeFrameOcr({ skipAutoRotate: true });
     }, CONFIG.UI.ROTATE_DEBOUNCE_MS);
   }
 
@@ -2784,7 +2990,6 @@ const App = (() => {
           openManualSheet('');
         }
       });
-      UI.openSheet(DOM.resultSheet);
     } catch (error) {
       if (myId !== state.lookupRequestId) return;
       UI.showScanProgress(false);
@@ -2846,6 +3051,11 @@ const App = (() => {
     UI.clearInputError();
     DOM.manualInput.value = prefill || '';
     UI.openSheet(DOM.manualSheet);
+    // Belt-and-braces: after keyboard opens, scroll input into view.
+    setTimeout(() => {
+      try { DOM.manualInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      catch {}
+    }, 300);
   }
 
   async function onManualSubmit(event) {
@@ -2853,6 +3063,8 @@ const App = (() => {
     const word = OCRService.sanitizeWord(DOM.manualInput.value);
     if (!word) { UI.showInputError(MESSAGES.BAD_WORD); return; }
     UI.clearInputError();
+    // Blur the input so the keyboard closes before the result sheet opens.
+    try { DOM.manualInput.blur(); } catch {}
     UI.closeSheet(DOM.manualSheet);
     state.lastWord = word;
 
@@ -2868,7 +3080,6 @@ const App = (() => {
           openManualSheet('');
         }
       });
-      UI.openSheet(DOM.resultSheet);
     } catch (error) {
       if (myId !== state.lookupRequestId) return;
       handleError(error, word);
@@ -2974,7 +3185,7 @@ const App = (() => {
     cacheDom();
     warmUpOcr();
     FrozenViewer.init();
-    KeyboardHandler.install();
+    watchKeyboard();
 
     UI.bindEvents({
       onCapture, onRetake,
@@ -2989,7 +3200,10 @@ const App = (() => {
       setZoom: setZoomRaw,
       onViewfinderTap,
       onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
-      onCloseManual: () => UI.closeSheet(DOM.manualSheet),
+      onCloseManual: () => {
+        try { DOM.manualInput.blur(); } catch {}
+        UI.closeSheet(DOM.manualSheet);
+      },
       onAfterSheetsClosed: () => {},
       onManualSubmit
     });
