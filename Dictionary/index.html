@@ -25,30 +25,24 @@
   --surface-3: #e9eef3;
   --line: #d9e1e8;
   --line-strong: #c4cfd9;
-
   --text: #0d1720;
   --muted: #5a6b7c;
   --placeholder: #94a3b3;
-
   --accent: #0a7dab;
   --accent-bright: #4cc9f0;
   --accent-soft: rgba(76, 201, 240, 0.16);
   --accent-line: rgba(76, 201, 240, 0.38);
-
   --danger: #d93d3d;
   --danger-soft: rgba(217, 61, 61, 0.10);
   --danger-line: rgba(217, 61, 61, 0.28);
   --success: #16a35c;
-
   --overlay-dark: rgba(15, 23, 32, 0.75);
   --overlay-dark-strong: rgba(15, 23, 32, 0.88);
   --overlay-text: #e9f0f7;
   --overlay-muted: #b0c0cd;
-
   --toast-bg: #1e2936;
   --toast-border: #334155;
   --toast-text: #ffffff;
-
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
@@ -60,20 +54,14 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* ==========================================================================
-   2. RESET
-   ========================================================================== */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 16px; line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -86,9 +74,6 @@ button { cursor: pointer; border: 0; background: none; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* ==========================================================================
-   3. APP SHELL
-   ========================================================================== */
 .app {
   display: flex; flex-direction: column;
   height: 100vh; height: 100dvh;
@@ -101,8 +86,7 @@ button { cursor: pointer; border: 0; background: none; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot {
   width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
 }
 .brand h1 {
   margin: 0; font-size: 1.05rem; font-weight: 650;
@@ -112,33 +96,20 @@ button { cursor: pointer; border: 0; background: none; }
 .icon-btn {
   display: grid; place-items: center;
   width: 44px; height: 44px; border-radius: 14px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: var(--surface-2); border: 1px solid var(--line);
   color: var(--text);
   transition: background 0.18s var(--ease-out), transform 0.12s var(--ease-out);
 }
 .icon-btn:active { transform: scale(0.94); background: var(--surface-3); }
 .icon-btn svg { width: 20px; height: 20px; }
-.icon-btn.is-on {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-  color: var(--accent);
-}
+.icon-btn.is-on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 
-/* ==========================================================================
-   4. OFFLINE BANNER
-   ========================================================================== */
 .offline-banner {
   margin: 0 16px 10px; padding: 10px 14px; border-radius: var(--radius-sm);
-  background: var(--danger-soft);
-  border: 1px solid var(--danger-line);
-  color: #a82323;
-  font-size: 0.85rem; text-align: center;
+  background: var(--danger-soft); border: 1px solid var(--danger-line);
+  color: #a82323; font-size: 0.85rem; text-align: center;
 }
 
-/* ==========================================================================
-   5. STAGE + VIEWS
-   ========================================================================== */
 .stage {
   flex: 1 1 auto; display: flex; flex-direction: column;
   min-height: 0; padding: 0 12px calc(var(--safe-bottom) + 12px); gap: 12px;
@@ -147,8 +118,7 @@ button { cursor: pointer; border: 0; background: none; }
 .camera-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   border-radius: var(--radius-lg); overflow: hidden;
-  background: #000;
-  border: 1px solid var(--line);
+  background: #000; border: 1px solid var(--line);
   isolation: isolate; touch-action: none;
 }
 .video {
@@ -170,13 +140,10 @@ button { cursor: pointer; border: 0; background: none; }
 }
 .cam-badge .dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--success);
-  flex: 0 0 auto;
+  background: var(--success); flex: 0 0 auto;
 }
 .cam-badge .dot.warn { background: var(--danger); }
-.cam-badge-text {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+.cam-badge-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .zoom-bar {
   position: absolute; top: 12px; right: 12px; z-index: 6;
@@ -190,8 +157,7 @@ button { cursor: pointer; border: 0; background: none; }
   width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center;
   font-size: 1.35rem; font-weight: 400; line-height: 1;
-  color: var(--overlay-text);
-  background: transparent;
+  color: var(--overlay-text); background: transparent;
   transition: background 0.15s;
 }
 .zoom-btn:active { background: rgba(255, 255, 255, 0.14); }
@@ -246,10 +212,8 @@ button { cursor: pointer; border: 0; background: none; }
 .analyze-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-lg);
-  background: #000;
-  border: 1px solid var(--line);
-  overflow: hidden;
+  border-radius: var(--radius-lg); background: #000;
+  border: 1px solid var(--line); overflow: hidden;
 }
 .frozen-wrap { position: relative; }
 .frozen-canvas {
@@ -281,37 +245,22 @@ button { cursor: pointer; border: 0; background: none; }
   box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.9);
 }
 
-/* Clear-selection pill — floats in the top-right of the analyze view */
 .clear-word-btn {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 10;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
+  top: 14px; right: 14px; z-index: 10;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px;
   background: var(--overlay-dark);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--overlay-text);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em;
   transition: background 0.15s, transform 0.12s var(--ease-out);
   -webkit-tap-highlight-color: transparent;
   animation: fade-in 0.15s var(--ease-out);
 }
-.clear-word-btn:active {
-  background: var(--overlay-dark-strong);
-  transform: scale(0.95);
-}
-.clear-word-btn svg {
-  display: block;
-  width: 14px;
-  height: 14px;
-}
+.clear-word-btn:active { background: var(--overlay-dark-strong); transform: scale(0.95); }
+.clear-word-btn svg { display: block; width: 14px; height: 14px; }
 
 .scan-progress {
   position: absolute; left: 16px; right: 16px; bottom: 18px;
@@ -325,10 +274,7 @@ button { cursor: pointer; border: 0; background: none; }
   margin: 0 0 8px 0; font-size: 0.86rem; color: var(--overlay-text);
   display: flex; justify-content: space-between;
 }
-.scan-progress .pct {
-  color: var(--accent-bright);
-  font-variant-numeric: tabular-nums; font-weight: 650;
-}
+.scan-progress .pct { color: var(--accent-bright); font-variant-numeric: tabular-nums; font-weight: 650; }
 .progress-bar {
   height: 4px; border-radius: 2px;
   background: rgba(255, 255, 255, 0.12); overflow: hidden;
@@ -342,17 +288,13 @@ button { cursor: pointer; border: 0; background: none; }
 .no-text {
   position: absolute; inset: 0; z-index: 9;
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 12px; padding: 32px 24px;
-  text-align: center;
+  justify-content: center; gap: 12px; padding: 32px 24px; text-align: center;
   background: var(--overlay-dark-strong);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
 .no-text h2 { margin: 0; font-size: 1.1rem; color: var(--overlay-text); }
 .no-text p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
 
-/* ==========================================================================
-   6. CONTROLS
-   ========================================================================== */
 .controls {
   flex: 0 0 auto; display: flex; flex-direction: column;
   align-items: center; gap: 10px;
@@ -382,9 +324,6 @@ button { cursor: pointer; border: 0; background: none; }
   text-align: center; min-height: 1.2em; max-width: 44ch;
 }
 
-/* ==========================================================================
-   7. BUTTONS
-   ========================================================================== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 46px; padding: 0 20px; border-radius: 14px;
@@ -393,20 +332,10 @@ button { cursor: pointer; border: 0; background: none; }
 }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary {
-  background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%);
-  color: #04121a;
-}
-.btn-ghost {
-  background: var(--surface-3);
-  border: 1px solid var(--line);
-  color: var(--text);
-}
+.btn-primary { background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%); color: #04121a; }
+.btn-ghost { background: var(--surface-3); border: 1px solid var(--line); color: var(--text); }
 .btn-block { width: 100%; }
 
-/* ==========================================================================
-   8. SCRIM + SHEETS
-   ========================================================================== */
 .scrim {
   position: fixed; inset: 0; z-index: 40;
   background: rgba(15, 23, 32, 0.42);
@@ -451,15 +380,12 @@ button { cursor: pointer; border: 0; background: none; }
 
 .text-input {
   width: 100%; height: 54px; padding: 0 16px; border-radius: 14px;
-  background: var(--surface-2);
-  border: 1.5px solid var(--line);
-  color: var(--text); font-size: 1rem;
-  transition: border-color 0.18s;
+  background: var(--surface-2); border: 1.5px solid var(--line);
+  color: var(--text); font-size: 1rem; transition: border-color 0.18s;
 }
 .text-input::placeholder { color: var(--placeholder); }
 .text-input:focus {
-  outline: none;
-  border-color: var(--accent);
+  outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .text-input[aria-invalid="true"] { border-color: var(--danger); }
@@ -472,28 +398,19 @@ button { cursor: pointer; border: 0; background: none; }
   padding: 14px 16px; width: 100%; text-align: left;
   background: var(--surface-2);
   border: 1.5px solid var(--line);
-  border-radius: 14px;
-  color: var(--text);
+  border-radius: 14px; color: var(--text);
   transition: background 0.15s, border-color 0.15s;
 }
-.lens-item.is-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
+.lens-item.is-active { border-color: var(--accent); background: var(--accent-soft); }
 .lens-item:active { background: var(--surface-3); }
 .lens-icon {
   width: 42px; height: 42px; border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--accent);
+  background: var(--surface-3); color: var(--accent);
   display: grid; place-items: center;
-  flex: 0 0 auto;
-  font-weight: 700; font-size: 0.78rem;
+  flex: 0 0 auto; font-weight: 700; font-size: 0.78rem;
   letter-spacing: 0.02em;
 }
-.lens-item.is-active .lens-icon {
-  background: var(--accent-bright);
-  color: #04121a;
-}
+.lens-item.is-active .lens-icon { background: var(--accent-bright); color: #04121a; }
 .lens-body { flex: 1; min-width: 0; }
 .lens-name {
   font-weight: 600; font-size: 0.94rem; color: var(--text);
@@ -506,15 +423,11 @@ button { cursor: pointer; border: 0; background: none; }
 .lens-badge {
   display: inline-block; padding: 2px 7px; border-radius: 6px;
   background: var(--surface-3); color: var(--muted);
-  font-size: 0.68rem; font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em;
 }
 .lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
 .lens-badge.nofocus { background: var(--danger-soft); color: var(--danger); }
 
-/* ==========================================================================
-   9. RESULT
-   ========================================================================== */
 .result-head {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px; padding-right: 44px; margin-bottom: 6px;
@@ -527,20 +440,16 @@ button { cursor: pointer; border: 0; background: none; }
 .result-phonetic { margin: 6px 0 0; color: var(--accent); font-size: 0.98rem; }
 .audio-btn {
   flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  color: var(--accent);
+  border-radius: 50%; background: var(--accent-soft);
+  border: 1px solid var(--accent-line); color: var(--accent);
   transition: transform 0.12s var(--ease-out), background 0.18s;
 }
 .audio-btn:active { transform: scale(0.92); background: rgba(76, 201, 240, 0.24); }
 .meaning { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .pos-badge {
   display: inline-block; padding: 5px 11px; border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  color: var(--accent);
-  font-size: 0.7rem; font-weight: 650;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  color: var(--accent); font-size: 0.7rem; font-weight: 650;
   letter-spacing: 0.09em; text-transform: uppercase;
 }
 .def-list { margin: 12px 0 0; padding-left: 20px; list-style: decimal; }
@@ -548,28 +457,22 @@ button { cursor: pointer; border: 0; background: none; }
 .def-list li::marker { color: var(--accent); font-weight: 600; }
 .example {
   display: block; margin-top: 6px; padding-left: 10px;
-  border-left: 2px solid var(--line);
-  color: var(--muted);
+  border-left: 2px solid var(--line); color: var(--muted);
   font-size: 0.89rem; font-style: italic;
 }
 .result-empty { margin: 20px 0 0; color: var(--muted); font-size: 0.92rem; }
 .result-actions { display: flex; gap: 10px; margin-top: 26px; }
 .result-actions .btn { flex: 1 1 0; }
 
-/* ==========================================================================
-   10. MODAL
-   ========================================================================== */
 .modal {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
-  padding: 24px;
-  background: rgba(15, 23, 32, 0.48);
+  padding: 24px; background: rgba(15, 23, 32, 0.48);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   animation: fade-in 0.15s var(--ease-out);
 }
 .modal-card {
   width: 100%; max-width: 380px; padding: 26px 22px 20px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  border-radius: var(--radius-lg); background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: 0 24px 70px rgba(15, 23, 32, 0.28);
   text-align: center; animation: pop-in 0.22s var(--ease-out);
@@ -581,23 +484,18 @@ button { cursor: pointer; border: 0; background: none; }
 .modal-icon {
   width: 52px; height: 52px; margin: 0 auto 14px;
   display: grid; place-items: center; border-radius: 50%;
-  background: var(--danger-soft);
-  border: 1px solid var(--danger-line);
+  background: var(--danger-soft); border: 1px solid var(--danger-line);
   color: var(--danger); font-size: 1.5rem; font-weight: 700;
 }
 .modal-title { margin: 0 0 8px; font-size: 1.08rem; color: var(--text); }
 .modal-text { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
 
-/* ==========================================================================
-   11. TOAST
-   ========================================================================== */
 .toast {
   position: fixed; left: 50%; bottom: calc(28px + var(--safe-bottom));
   transform: translate(-50%, 20px); z-index: 80;
   max-width: min(90vw, 420px); padding: 12px 20px; border-radius: 14px;
-  background: var(--toast-bg);
-  border: 1px solid var(--toast-border);
+  background: var(--toast-bg); border: 1px solid var(--toast-border);
   color: var(--toast-text);
   font-size: 0.87rem; text-align: center;
   opacity: 0; visibility: hidden;
@@ -610,9 +508,6 @@ button { cursor: pointer; border: 0; background: none; }
   transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out), visibility 0s;
 }
 
-/* ==========================================================================
-   12. RESPONSIVE
-   ========================================================================== */
 @media (min-width: 720px) {
   .stage { padding: 0 24px calc(var(--safe-bottom) + 20px); }
   .app-bar { padding-left: 24px; padding-right: 24px; }
@@ -756,7 +651,7 @@ button { cursor: pointer; border: 0; background: none; }
   <div class="sheet-handle" aria-hidden="true"></div>
   <button class="sheet-close" id="btnLensClose" type="button" aria-label="Close">×</button>
   <h2 class="sheet-title" id="lensTitle">Choose camera</h2>
-  <p class="sheet-sub">Pick the lens that gives the sharpest close-up view. Lenses marked "Autofocus" work best for reading text.</p>
+  <p class="sheet-sub">Pick the lens that gives the sharpest close-up view.</p>
   <div class="lens-list" id="lensList"></div>
 </section>
 
@@ -803,9 +698,6 @@ button { cursor: pointer; border: 0; background: none; }
  * ScanLex — Visual Scan Dictionary
  * ========================================================================== */
 
-/* ==========================================================================
- * 0. DEVICE-ADAPTIVE TUNING
- * ========================================================================== */
 function computeMaxEdgePx() {
   try {
     const cores = navigator.hardwareConcurrency || 4;
@@ -813,14 +705,9 @@ function computeMaxEdgePx() {
     if (cores <= 3 || mem <= 2) return 900;
     if (cores <= 5 || mem <= 3) return 1100;
     return 1300;
-  } catch {
-    return 1200;
-  }
+  } catch { return 1200; }
 }
 
-/* ==========================================================================
- * 1. CONFIG
- * ========================================================================== */
 const CONFIG = Object.freeze({
   API: Object.freeze({
     PRIMARY_URL: 'https://api.dictionaryapi.dev/api/v2/entries/en',
@@ -836,7 +723,8 @@ const CONFIG = Object.freeze({
     HIGH_HEIGHT: 2160,
     FOCUS_SETTLE_MS: 500,
     ZOOM_STEP_FRACTION: 0.15,
-    PROBE_DELAY_MS: 100
+    PROBE_DELAY_MS: 50,
+    STORAGE_KEY: 'scanlex.bestCamera.v1'
   }),
 
   OCR: Object.freeze({
@@ -848,7 +736,10 @@ const CONFIG = Object.freeze({
     MIN_WORD_LENGTH: 2,
     MAX_WORD_LENGTH: 45,
     MAX_EDGE_PX: computeMaxEdgePx(),
-    WORD_TAP_PADDING: 8
+    WORD_TAP_PADDING: 8,
+    // If initial horizontal OCR finds at least this many words, we accept
+    // it and skip vertical retries.
+    ACCEPT_MIN_WORDS: 5
   }),
 
   CACHE: Object.freeze({
@@ -923,9 +814,6 @@ const CONFIG = Object.freeze({
   })
 });
 
-/* ==========================================================================
- * 2. ERRORS
- * ========================================================================== */
 class AppError extends Error {
   constructor(code, message, options = {}) {
     super(message);
@@ -955,9 +843,6 @@ const MESSAGES = Object.freeze({
   BAD_WORD:         'Please enter a single word using letters only.'
 });
 
-/* ==========================================================================
- * 3. UTILITIES
- * ========================================================================== */
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -998,7 +883,7 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * 4. LOOKUP CACHE
+ * LOOKUP CACHE
  * ========================================================================== */
 const LookupCache = (() => {
   const KEY = 'scanlex.cache.v1';
@@ -1016,9 +901,8 @@ const LookupCache = (() => {
           map.set(word, entry);
         }
       }
-    } catch { /* corrupt or quota — start fresh */ }
+    } catch {}
   }
-
   function save() {
     try {
       const obj = {};
@@ -1027,8 +911,7 @@ const LookupCache = (() => {
     } catch {
       try {
         const trimmed = [...map.entries()].slice(-50);
-        const obj = Object.fromEntries(trimmed);
-        sessionStorage.setItem(KEY, JSON.stringify(obj));
+        sessionStorage.setItem(KEY, JSON.stringify(Object.fromEntries(trimmed)));
       } catch {}
     }
   }
@@ -1039,11 +922,7 @@ const LookupCache = (() => {
     get(word) {
       const e = map.get(word);
       if (!e) return null;
-      if (Date.now() - e.ts > CONFIG.CACHE.TTL_MS) {
-        map.delete(word);
-        save();
-        return null;
-      }
+      if (Date.now() - e.ts > CONFIG.CACHE.TTL_MS) { map.delete(word); save(); return null; }
       return e.data;
     },
     set(word, data) {
@@ -1058,7 +937,7 @@ const LookupCache = (() => {
 })();
 
 /* ==========================================================================
- * 5. UI
+ * UI
  * ========================================================================== */
 const UI = (() => {
   let toastTimer = null;
@@ -1096,13 +975,11 @@ const UI = (() => {
     const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
     requestAnimationFrame(() => target?.focus({ preventScroll: true }));
   }
-
   function closeSheet(sheet) {
     sheet.classList.remove('is-open');
     updateScrim();
     if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
   }
-
   function closeAllSheets() {
     [DOM.resultSheet, DOM.manualSheet, DOM.lensSheet].forEach((s) => {
       if (s.classList.contains('is-open')) closeSheet(s);
@@ -1129,7 +1006,6 @@ const UI = (() => {
       (retryHandler ? DOM.errorRetry : DOM.errorDismiss).focus({ preventScroll: true });
     });
   }
-
   function hideError() { DOM.errorModal.hidden = true; retryHandler = null; updateScrim(); }
   function triggerRetry() { const fn = retryHandler; hideError(); if (fn) fn(); }
 
@@ -1187,7 +1063,6 @@ const UI = (() => {
     DOM.cameraControls.hidden = false;
     DOM.analyzeControls.hidden = true;
   }
-
   function showAnalyzeView() {
     DOM.cameraView.hidden = true;
     DOM.analyzeView.hidden = false;
@@ -1202,15 +1077,12 @@ const UI = (() => {
       DOM.scanPct.textContent = pct + '%';
     }
   }
-
   function updateScanProgress(pct) {
     DOM.progressFill.style.width = pct + '%';
     DOM.scanPct.textContent = pct + '%';
   }
-
   function showNoText(show) { DOM.noText.hidden = !show; }
 
-  /* ---- Word overlays ---------------------------------------------------- */
   function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
     DOM.wordLayer.replaceChildren();
     const sx = displayW / canvasW;
@@ -1237,13 +1109,11 @@ const UI = (() => {
       btn.dataset.word = w.text;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Auto-clear any previously selected word.
         DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
           if (b !== btn) b.classList.remove('is-active');
         });
         btn.classList.add('is-active');
         setTimeout(() => {
-          // If the user cleared the selection during the delay, skip the lookup.
           if (!btn.classList.contains('is-active')) return;
           onWordTap(w.text);
         }, CONFIG.UI.WORD_TAP_DELAY_MS);
@@ -1255,41 +1125,30 @@ const UI = (() => {
   }
 
   function clearWords() { DOM.wordLayer.replaceChildren(); }
-
   function clearActiveWords() {
-    DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => {
-      b.classList.remove('is-active');
-    });
+    DOM.wordLayer.querySelectorAll('.word-tap.is-active').forEach((b) => b.classList.remove('is-active'));
   }
-
   function showClearButton() { DOM.btnClearWord.hidden = false; }
   function hideClearButton() { DOM.btnClearWord.hidden = true; }
 
-  /* ---- Lens list ------------------------------------------------------- */
   function renderLensList(cameras, activeId, onPick) {
     DOM.lensList.replaceChildren();
     for (const cam of cameras) {
       const isActive = cam.deviceId === activeId;
       const hasFocus = cam.focusModes.some(m => ['continuous', 'single-shot', 'manual'].includes(m));
-
       const metaBits = [];
       metaBits.push(h('span', {
         class: 'lens-badge ' + (hasFocus ? 'focus' : 'nofocus'),
         text: hasFocus ? 'Autofocus' : 'Fixed focus'
       }));
       if (cam.maxWidth) {
-        metaBits.push(h('span', {
-          class: 'lens-badge',
-          text: `${Math.round(cam.maxWidth)}×${Math.round(cam.maxHeight)}`
-        }));
+        metaBits.push(h('span', { class: 'lens-badge',
+          text: `${Math.round(cam.maxWidth)}×${Math.round(cam.maxHeight)}` }));
       }
       if (cam.zoomMax > 1.5) {
-        metaBits.push(h('span', {
-          class: 'lens-badge',
-          text: `Zoom ${cam.zoomMax.toFixed(1)}×`
-        }));
+        metaBits.push(h('span', { class: 'lens-badge',
+          text: `Zoom ${cam.zoomMax.toFixed(1)}×` }));
       }
-
       const item = h('button', {
         class: 'lens-item' + (isActive ? ' is-active' : ''),
         type: 'button',
@@ -1305,7 +1164,6 @@ const UI = (() => {
     }
   }
 
-  /* ---- Result rendering ------------------------------------------------- */
   function playAudio(url) {
     try {
       const audio = new Audio(url);
@@ -1331,7 +1189,6 @@ const UI = (() => {
       head.append(audioBtn);
     }
     nodes.push(head);
-
     if (!entry.meanings.length) {
       nodes.push(h('p', { class: 'result-empty', text: 'No definitions were returned for this word.' }));
     }
@@ -1365,7 +1222,6 @@ const UI = (() => {
     DOM.resultBody.replaceChildren(...nodes);
   }
 
-  /* ---- Bindings --------------------------------------------------------- */
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
@@ -1399,7 +1255,6 @@ const UI = (() => {
       if (e.target.closest('button')) return;
       DOM.cameraView.setPointerCapture?.(e.pointerId);
       pointerMap.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
       if (pointerMap.size === 2) {
         const [a, b] = [...pointerMap.values()];
         pinch = {
@@ -1465,7 +1320,7 @@ const UI = (() => {
 })();
 
 /* ==========================================================================
- * 6. CAMERA SELECTION
+ * CAMERA SELECTION — fast probe (skip junk after first probe reveals labels)
  * ========================================================================== */
 const CameraSelection = (() => {
   async function probe(deviceId) {
@@ -1476,7 +1331,6 @@ const CameraSelection = (() => {
     const track = stream.getVideoTracks()[0];
     const caps = track.getCapabilities?.() || {};
     const settings = track.getSettings?.() || {};
-
     const info = {
       deviceId,
       label: track.label || 'Camera',
@@ -1515,39 +1369,52 @@ const CameraSelection = (() => {
     return s;
   }
 
-  async function ensurePermission() {
-    const s = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } }
-    });
-    s.getTracks().forEach(t => t.stop());
-    await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
-  }
-
   async function probeAll() {
-    await ensurePermission();
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter(d => d.kind === 'videoinput');
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    let cams = devices.filter(d => d.kind === 'videoinput');
     if (!cams.length) return [];
 
-    const toProbe = cams.filter(c => {
-      const L = (c.label || '').toLowerCase();
-      return !/\b(depth|mono|tof|ir)\b/.test(L);
-    });
-    if (!toProbe.length) toProbe.push(...cams);
-
     const probed = [];
-    for (const cam of toProbe) {
+    let permissionGranted = false;
+    const remaining = [...cams];
+
+    while (remaining.length) {
+      const cam = remaining.shift();
       try {
         const info = await probe(cam.deviceId);
-        if (cam.label) info.label = cam.label;
-        info.score = score(info);
+
+        // After first probe (which triggers the permission prompt),
+        // labels are now populated — use them to skip junk for the rest.
+        if (!permissionGranted) {
+          permissionGranted = true;
+          try {
+            const fresh = await navigator.mediaDevices.enumerateDevices();
+            const labelMap = new Map();
+            fresh.filter(d => d.kind === 'videoinput').forEach(d => labelMap.set(d.deviceId, d.label));
+            if (labelMap.get(cam.deviceId)) info.label = labelMap.get(cam.deviceId);
+            for (let i = remaining.length - 1; i >= 0; i--) {
+              const L = (labelMap.get(remaining[i].deviceId) || '').toLowerCase();
+              if (/\b(depth|mono|tof|ir)\b/.test(L)) remaining.splice(i, 1);
+            }
+          } catch {}
+        }
+
         probed.push(info);
         await sleep(CONFIG.CAMERA.PROBE_DELAY_MS);
       } catch (e) {
-        console.warn('[ScanLex] Probe failed for', cam.label, e.message);
+        console.warn('[ScanLex] Probe failed:', e.message);
       }
     }
 
+    // Final label refresh
+    try {
+      const fresh = await navigator.mediaDevices.enumerateDevices();
+      const labelMap = new Map();
+      fresh.filter(d => d.kind === 'videoinput').forEach(d => labelMap.set(d.deviceId, d.label));
+      probed.forEach(p => { if (labelMap.get(p.deviceId)) p.label = labelMap.get(p.deviceId); });
+    } catch {}
+
+    probed.forEach(p => { p.score = score(p); });
     probed.sort((a, b) => b.score - a.score);
     return probed;
   }
@@ -1556,19 +1423,29 @@ const CameraSelection = (() => {
 })();
 
 /* ==========================================================================
- * 7. CAMERA SERVICE
+ * CAMERA SERVICE — cached best deviceId + full stop/start
  * ========================================================================== */
 const CameraService = (() => {
   let stream = null;
   let videoEl = null;
   let facingMode = 'environment';
-  let paused = false;
   let torchOn = false;
   let zoomInfo = { min: 1, max: 1, step: 0.1, native: false };
   let currentZoom = 1;
   let digitalZoom = 1;
   let allCameras = [];
   let selectedCamera = null;
+
+  function getBestCamCache() {
+    try { return localStorage.getItem(CONFIG.CAMERA.STORAGE_KEY); } catch { return null; }
+  }
+  function setBestCamCache(id) {
+    if (!id) return;
+    try { localStorage.setItem(CONFIG.CAMERA.STORAGE_KEY, id); } catch {}
+  }
+  function clearBestCamCache() {
+    try { localStorage.removeItem(CONFIG.CAMERA.STORAGE_KEY); } catch {}
+  }
 
   function getTrack() {
     const track = stream?.getVideoTracks()[0];
@@ -1706,6 +1583,7 @@ const CameraService = (() => {
     try { await track.applyConstraints({ advanced: [{ torch: Boolean(on) }] }); torchOn = Boolean(on); return true; }
     catch { return false; }
   }
+
   async function openCamera(deviceId) {
     const attempts = [];
     if (deviceId) {
@@ -1724,6 +1602,7 @@ const CameraService = (() => {
     }
     throw translateError(lastErr);
   }
+
   async function start(video, options = {}) {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new AppError(
@@ -1731,66 +1610,134 @@ const CameraService = (() => {
         window.isSecureContext ? MESSAGES.CAMERA_UNSUPPORTED : MESSAGES.CAMERA_INSECURE
       );
     }
+
     videoEl = video;
     await stop();
-    if (!allCameras.length || options.refresh) {
-      try { allCameras = await CameraSelection.probeAll(); }
-      catch (e) { throw translateError(e); }
-    }
+
+    // Fast path: try cached deviceId first (survives page reloads)
     let targetId = options.deviceId || null;
-    if (!targetId && allCameras.length) { targetId = allCameras[0].deviceId; selectedCamera = allCameras[0]; }
-    else if (targetId) {
-      selectedCamera = allCameras.find(c => c.deviceId === targetId) || {
-        deviceId: targetId, label: 'Camera', focusModes: [], maxWidth: 0, maxHeight: 0,
-        zoomMin: 1, zoomMax: 1, hasTorch: false
-      };
+    if (!targetId) targetId = getBestCamCache();
+    if (!targetId && allCameras.length) targetId = allCameras[0].deviceId;
+
+    let opened = false;
+    if (targetId) {
+      try {
+        stream = await openCamera(targetId);
+        opened = true;
+      } catch {
+        clearBestCamCache();
+        targetId = null;
+      }
     }
-    stream = await openCamera(targetId);
+
+    // Slow path: probe all cameras (first launch or cache miss)
+    if (!opened) {
+      try {
+        allCameras = await CameraSelection.probeAll();
+      } catch (e) {
+        throw translateError(e);
+      }
+      if (!allCameras.length) {
+        throw new AppError('CAMERA_NOT_FOUND', MESSAGES.CAMERA_NOT_FOUND);
+      }
+      targetId = allCameras[0].deviceId;
+      try {
+        stream = await openCamera(targetId);
+      } catch (e) {
+        throw translateError(e);
+      }
+    }
+
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', '');
     videoEl.muted = true;
     try { await videoEl.play(); } catch {}
+
     await waitForMetadata(videoEl);
     await sleep(150);
     await applyContinuousFocus();
     refreshZoomInfo();
-    paused = false;
     torchOn = false;
+
     stream.getVideoTracks().forEach((track) => {
       track.enabled = true;
-      const liveLabel = track.label;
-      if (selectedCamera && liveLabel) selectedCamera.label = liveLabel;
       track.addEventListener('ended', () => {
         if (stream && stream.getVideoTracks().every((t) => t.readyState === 'ended')) stream = null;
       });
     });
+
+    // Update selectedCamera from live track (labels, focus, zoom — all reliable here)
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities?.() || {};
+    const settings = track.getSettings?.() || {};
+    const liveId = settings.deviceId || targetId;
+
+    const existing = allCameras.find(c => c.deviceId === liveId);
+    if (existing) {
+      existing.focusModes = Array.isArray(caps.focusMode) ? caps.focusMode : existing.focusModes;
+      existing.zoomMin = caps.zoom?.min ?? existing.zoomMin;
+      existing.zoomMax = caps.zoom?.max ?? existing.zoomMax;
+      existing.hasTorch = caps.torch === true;
+      if (track.label) existing.label = track.label;
+      selectedCamera = existing;
+    } else {
+      selectedCamera = {
+        deviceId: liveId || 'default',
+        label: track.label || 'Camera',
+        focusModes: Array.isArray(caps.focusMode) ? caps.focusMode : [],
+        zoomMin: caps.zoom?.min ?? 1,
+        zoomMax: caps.zoom?.max ?? 1,
+        hasTorch: caps.torch === true,
+        maxWidth: settings.width || 0,
+        maxHeight: settings.height || 0
+      };
+      if (selectedCamera.deviceId !== 'default') {
+        allCameras = [selectedCamera, ...allCameras.filter(c => c.deviceId !== selectedCamera.deviceId)];
+      }
+    }
+
+    // Cache this camera for next launch
+    if (selectedCamera.deviceId && selectedCamera.deviceId !== 'default') {
+      setBestCamCache(selectedCamera.deviceId);
+    }
+
     return stream;
   }
+
+  /** Full release — turns off the green privacy indicator. */
   async function stop() {
     if (stream) {
       stream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
       stream = null;
     }
-    if (videoEl) { videoEl.pause(); videoEl.srcObject = null; }
-    paused = false; torchOn = false;
+    if (videoEl) {
+      try { videoEl.pause(); } catch {}
+      videoEl.srcObject = null;
+    }
+    torchOn = false;
   }
-  function pause() {
-    if (!stream || paused) return;
-    stream.getVideoTracks().forEach((t) => { t.enabled = false; });
-    if (videoEl) videoEl.pause();
-    paused = true;
+
+  /** On-demand probe (used by lens picker on subsequent launches). */
+  async function refreshCameras() {
+    const wasActive = isActive();
+    const currentId = selectedCamera?.deviceId;
+    if (wasActive) await stop();
+    try {
+      allCameras = await CameraSelection.probeAll();
+    } catch (e) {
+      if (wasActive && videoEl && currentId) {
+        try { await start(videoEl, { deviceId: currentId }); } catch {}
+      }
+      throw e;
+    }
+    return allCameras.slice();
   }
-  async function resume() {
-    if (!stream || !paused) return;
-    stream.getVideoTracks().forEach((t) => { t.enabled = true; });
-    if (videoEl) { try { await videoEl.play(); } catch {} }
-    paused = false;
-    applyContinuousFocus();
-  }
+
   async function switchTo(deviceId) {
     if (!videoEl) return;
-    await start(videoEl, { deviceId, refresh: false });
+    await start(videoEl, { deviceId });
   }
+
   function isActive() {
     return Boolean(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
   }
@@ -1800,6 +1747,7 @@ const CameraService = (() => {
     const modes = selectedCamera?.focusModes || [];
     return { hasAutoFocus: modes.some(m => ['continuous', 'single-shot', 'manual'].includes(m)), modes };
   }
+
   function captureFrame(targetCanvas) {
     if (!videoEl) throw new AppError('CAMERA_NOT_READY', MESSAGES.CAMERA_NOT_READY);
     const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
@@ -1824,8 +1772,9 @@ const CameraService = (() => {
     ctx.drawImage(videoEl, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
     return targetCanvas;
   }
+
   return {
-    start, stop, pause, resume, switchTo, isActive,
+    start, stop, refreshCameras, switchTo, isActive,
     triggerAutofocus, tapToFocus,
     hasTorch, setTorch, isTorchOn,
     setZoom, getZoom, getZoomInfo,
@@ -1835,7 +1784,7 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * 8. OCR SERVICE
+ * OCR SERVICE — with orientation detection & rotation fallback
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -1924,6 +1873,99 @@ const OCRService = (() => {
     return out;
   }
 
+  /**
+   * Projection-profile heuristic.
+   * Horizontal text → row histogram has peaks at each line → high rowVar.
+   * Vertical text   → column histogram peaks → high colVar.
+   */
+  function detectOrientation(binaryCanvas) {
+    const w = binaryCanvas.width;
+    const h = binaryCanvas.height;
+    if (w < 20 || h < 20) return 'horizontal';
+
+    const ctx = binaryCanvas.getContext('2d', { willReadFrequently: true });
+    let data;
+    try { data = ctx.getImageData(0, 0, w, h).data; }
+    catch { return 'horizontal'; }
+
+    const rows = new Uint32Array(h);
+    const cols = new Uint32Array(w);
+    const step = 2;
+    let totalDark = 0;
+
+    for (let y = 0; y < h; y += step) {
+      const rowOff = y * w;
+      for (let x = 0; x < w; x += step) {
+        const idx = (rowOff + x) * 4;
+        if (data[idx] < 128) {
+          rows[y]++;
+          cols[x]++;
+          totalDark++;
+        }
+      }
+    }
+
+    if (totalDark < 100) return 'horizontal';
+
+    const variance = (arr) => {
+      let sum = 0, sumSq = 0;
+      const n = arr.length;
+      for (let i = 0; i < n; i++) { sum += arr[i]; sumSq += arr[i] * arr[i]; }
+      const mean = sum / n;
+      return sumSq / n - mean * mean;
+    };
+
+    const rowVar = variance(rows);
+    const colVar = variance(cols);
+
+    return colVar > rowVar * 1.5 ? 'vertical' : 'horizontal';
+  }
+
+  function rotateCanvas(src, degrees) {
+    const out = document.createElement('canvas');
+    const ctx = out.getContext('2d', { willReadFrequently: true });
+
+    if (degrees === 90 || degrees === -90) {
+      out.width = src.height;
+      out.height = src.width;
+    } else if (degrees === 180) {
+      out.width = src.width;
+      out.height = src.height;
+    }
+
+    if (degrees === 90) {
+      ctx.translate(out.width, 0);
+      ctx.rotate(Math.PI / 2);
+    } else if (degrees === -90) {
+      ctx.translate(0, out.height);
+      ctx.rotate(-Math.PI / 2);
+    } else if (degrees === 180) {
+      ctx.translate(out.width, out.height);
+      ctx.rotate(Math.PI);
+    }
+
+    ctx.drawImage(src, 0, 0);
+    return out;
+  }
+
+  /**
+   * Transform a bbox from rotated-space back to original-space.
+   * origW, origH are the dimensions of the ORIGINAL (pre-rotation) image.
+   */
+  function transformBBoxFromRotated(bbox, rotation, origW, origH) {
+    if (rotation === 0) return bbox;
+    const { x0, y0, x1, y1 } = bbox;
+    if (rotation === 90) {
+      // 90° CW: original (ox,oy) → rotated (H-1-oy, ox)
+      return { x0: y0, y0: origH - 1 - x1, x1: y1, y1: origH - 1 - x0 };
+    }
+    if (rotation === -90) {
+      // 90° CCW: original (ox,oy) → rotated (oy, W-1-ox)
+      return { x0: origW - 1 - y1, y0: x0, x1: origW - 1 - y0, y1: x1 };
+    }
+    return bbox;
+  }
+
   function getBBox(node) {
     const b = node?.bbox || node?.boundingBox || {};
     if (typeof b.x0 === 'number' && typeof b.x1 === 'number') {
@@ -1948,18 +1990,14 @@ const OCRService = (() => {
     return words;
   }
 
-  async function recognizeWithBoxes(canvas, onProgress) {
-    progressCallback = onProgress || null;
-    const worker = await getWorker();
-    const binary = binarize(canvas);
-    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
-
+  /** Runs OCR on one canvas; returns normalised word list (bboxes in ORIGINAL space). */
+  async function recognizeOne(worker, canvas, rotation = 0, origW = 0, origH = 0) {
     let data;
     try {
-      const result = await worker.recognize(binary, {}, { text: true, blocks: true });
+      const result = await worker.recognize(canvas, {}, { text: true, blocks: true });
       data = result.data;
     } catch {
-      const result = await worker.recognize(binary);
+      const result = await worker.recognize(canvas);
       data = result.data;
     }
 
@@ -1973,14 +2011,56 @@ const OCRService = (() => {
       if (text.length > CONFIG.OCR.MAX_WORD_LENGTH) continue;
       const confidence = Number(w.confidence) || 0;
       if (confidence < CONFIG.OCR.MIN_WORD_CONFIDENCE) continue;
-      const bbox = getBBox(w);
+      let bbox = getBBox(w);
       if (!bbox) continue;
       if (bbox.x1 - bbox.x0 < 4 || bbox.y1 - bbox.y0 < 4) continue;
+      if (rotation !== 0 && origW && origH) {
+        bbox = transformBBoxFromRotated(bbox, rotation, origW, origH);
+      }
       words.push({ text, confidence, bbox });
     }
 
-    progressCallback = null;
     return { words, fullText: typeof data.text === 'string' ? data.text : '' };
+  }
+
+  async function recognizeWithBoxes(canvas, onProgress) {
+    progressCallback = onProgress || null;
+    const worker = await getWorker();
+
+    // 1. Binarize once — reused across all passes
+    const binary = binarize(canvas);
+    await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
+
+    // 2. First pass — as-is (horizontal)
+    const initial = await recognizeOne(worker, binary, 0, 0, 0);
+    if (initial.words.length >= CONFIG.OCR.ACCEPT_MIN_WORDS) {
+      progressCallback = null;
+      return initial;
+    }
+
+    // 3. Poor result — check orientation
+    const orientation = detectOrientation(binary);
+    if (orientation !== 'vertical') {
+      progressCallback = null;
+      return initial;
+    }
+
+    if (onProgress) onProgress(60);
+
+    // 4. Vertical detected — try 90° CW first
+    const cw = rotateCanvas(binary, 90);
+    const rCW = await recognizeOne(worker, cw, 90, binary.width, binary.height);
+    let best = rCW.words.length > initial.words.length ? rCW : initial;
+
+    if (best.words.length < CONFIG.OCR.ACCEPT_MIN_WORDS) {
+      if (onProgress) onProgress(80);
+      const ccw = rotateCanvas(binary, -90);
+      const rCCW = await recognizeOne(worker, ccw, -90, binary.width, binary.height);
+      if (rCCW.words.length > best.words.length) best = rCCW;
+    }
+
+    progressCallback = null;
+    return best;
   }
 
   function tokenize(raw) {
@@ -2003,7 +2083,7 @@ const OCRService = (() => {
 })();
 
 /* ==========================================================================
- * 9. DICTIONARY SERVICE — parallel race + cache
+ * DICTIONARY SERVICE — parallel race + cache
  * ========================================================================== */
 const DictionaryService = (() => {
   const POS_MAP = Object.freeze({
@@ -2135,7 +2215,6 @@ const DictionaryService = (() => {
   async function lookup(word) {
     const cached = LookupCache.get(word);
     if (cached) return cached;
-
     if (!navigator.onLine) throw new AppError('OFFLINE', MESSAGES.OFFLINE, { retryable: true });
 
     return new Promise((resolve, reject) => {
@@ -2168,7 +2247,7 @@ const DictionaryService = (() => {
 })();
 
 /* ==========================================================================
- * 10. APP CONTROLLER
+ * APP CONTROLLER
  * ========================================================================== */
 const App = (() => {
   const state = {
@@ -2179,7 +2258,8 @@ const App = (() => {
     ocrWarmedUp: false,
     currentWords: [],
     ocrRequestId: 0,
-    lookupRequestId: 0
+    lookupRequestId: 0,
+    probeStoppedCamera: false
   };
 
   async function startCamera() {
@@ -2189,8 +2269,9 @@ const App = (() => {
       UI.hideCameraError();
       DOM.btnCapture.disabled = false;
 
-      const cams = CameraService.getAllCameras();
-      DOM.btnLens.hidden = cams.length < 2;
+      // Always show lens button once camera is ready — probing on demand
+      // if the camera list is incomplete.
+      DOM.btnLens.hidden = false;
 
       UI.setTorchUI(CameraService.isTorchOn(), CameraService.hasTorch());
       const zi = CameraService.getZoomInfo();
@@ -2235,13 +2316,11 @@ const App = (() => {
     OCRService.getWorker().catch(() => { state.ocrWarmedUp = false; });
   }
 
-  /* ---- Word-count helper for hint text --------------------------------- */
   function wordsHint(n) {
     if (!n) return 'Tap any word to look it up';
     return `${n} word${n === 1 ? '' : 's'} found — tap one`;
   }
 
-  /* ---- Reset the clear button + highlight after a result session ------- */
   function resetWordSelection() {
     UI.clearActiveWords();
     UI.hideClearButton();
@@ -2251,7 +2330,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Capture → freeze → OCR whole frame → word overlays --------------- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -2265,7 +2343,9 @@ const App = (() => {
     try {
       await CameraService.triggerAutofocus();
       const frozen = CameraService.captureFrame(DOM.cropCanvas);
-      CameraService.pause();
+
+      // FULLY release the camera — turns off the Android green indicator.
+      await CameraService.stop();
 
       DOM.frozenCanvas.width = frozen.width;
       DOM.frozenCanvas.height = frozen.height;
@@ -2348,7 +2428,6 @@ const App = (() => {
     UI.setAnalyzeHint(wordsHint(result.words.length));
   }
 
-  /* ---- Retake ----------------------------------------------------------- */
   async function onRetake() {
     state.ocrRequestId++;
     state.lookupRequestId++;
@@ -2366,7 +2445,8 @@ const App = (() => {
 
     DOM.btnCapture.disabled = true;
     try {
-      await CameraService.resume();
+      // Camera was fully released on capture — need a fresh start.
+      await startCamera();
     } catch (error) {
       console.warn('[ScanLex] Camera resume failed on retake', error);
     } finally {
@@ -2375,9 +2455,7 @@ const App = (() => {
     }
   }
 
-  /* ---- Clear selected word --------------------------------------------- */
   function onClearWord() {
-    // Invalidate any in-flight lookup so its result can't reopen the sheet.
     state.lookupRequestId++;
     if (DOM.resultSheet.classList.contains('is-open')) {
       UI.closeSheet(DOM.resultSheet);
@@ -2385,7 +2463,6 @@ const App = (() => {
     resetWordSelection();
   }
 
-  /* ---- Lookup ----------------------------------------------------------- */
   async function lookupWord(rawWord) {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) return;
@@ -2402,10 +2479,7 @@ const App = (() => {
       UI.showScanProgress(false);
       UI.setAnalyzeHint(wordsHint(state.currentWords.length));
       UI.renderResult(entry, {
-        onScanAnother: () => {
-          UI.closeSheet(DOM.resultSheet);
-          onRetake();
-        },
+        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
         onTypeWord: () => {
           UI.closeSheet(DOM.resultSheet);
           resetWordSelection();
@@ -2421,7 +2495,6 @@ const App = (() => {
     }
   }
 
-  /* ---- Error handling --------------------------------------------------- */
   function describeError(error, attemptedWord) {
     const code = error instanceof AppError ? error.code : 'UNKNOWN';
     const fallback = error instanceof AppError ? error.message : 'An unexpected error occurred.';
@@ -2504,13 +2577,40 @@ const App = (() => {
     }
   }
 
-  /* ---- Lens picker ----------------------------------------------------- */
-  function openLensPicker() {
-    const cams = CameraService.getAllCameras();
-    if (cams.length < 2) { UI.toast('Only one camera available.'); return; }
+  /* ---- Lens picker (on-demand probe) ----------------------------------- */
+  async function openLensPicker() {
+    let cams = CameraService.getAllCameras();
+
+    // If we don't know all cameras yet (fast-launch path), probe on demand.
+    if (cams.length < 2) {
+      state.probeStoppedCamera = CameraService.isActive();
+      UI.toast('Scanning available cameras…');
+      try {
+        await CameraService.refreshCameras();
+        cams = CameraService.getAllCameras();
+      } catch (e) {
+        UI.toast('Could not list cameras.');
+        if (state.probeStoppedCamera) {
+          try { await startCamera(); } catch {}
+        }
+        state.probeStoppedCamera = false;
+        return;
+      }
+    }
+
+    if (cams.length < 2) {
+      if (state.probeStoppedCamera) {
+        try { await startCamera(); } catch {}
+      }
+      state.probeStoppedCamera = false;
+      UI.toast('Only one camera available.');
+      return;
+    }
+
     const sel = CameraService.getSelectedCamera();
     UI.renderLensList(cams, sel?.deviceId, async (deviceId) => {
       UI.closeSheet(DOM.lensSheet);
+      state.probeStoppedCamera = false;
       await onPickLens(deviceId);
     });
     UI.openSheet(DOM.lensSheet);
@@ -2536,6 +2636,16 @@ const App = (() => {
       UI.showCameraError(msg);
       UI.setStatus('Could not switch lens — try another.');
     }
+  }
+
+  function closeLensPicker() {
+    UI.closeSheet(DOM.lensSheet);
+    // If we stopped the camera for a probe and user closed without picking,
+    // restart the previous camera.
+    if (state.probeStoppedCamera && state.phase === 'camera' && !CameraService.isActive()) {
+      startCamera().catch(() => {});
+    }
+    state.probeStoppedCamera = false;
   }
 
   async function onTorchToggle() {
@@ -2584,19 +2694,14 @@ const App = (() => {
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onOpenLensPicker: openLensPicker,
-      onCloseLensPicker: () => UI.closeSheet(DOM.lensSheet),
+      onCloseLensPicker: closeLensPicker,
       onTorchToggle,
       onZoomIn,
       onZoomOut,
       getZoom: () => CameraService.getZoom(),
       setZoom: setZoomRaw,
       onViewfinderTap,
-      onCloseResult: () => {
-        // Closing the result sheet leaves the tapped word highlighted so the
-        // user can see which word they looked up. Tapping another word, or
-        // pressing Clear, resets it.
-        UI.closeSheet(DOM.resultSheet);
-      },
+      onCloseResult: () => { UI.closeSheet(DOM.resultSheet); },
       onCloseManual: () => UI.closeSheet(DOM.manualSheet),
       onAfterSheetsClosed: () => {},
       onManualSubmit
@@ -2620,8 +2725,12 @@ const App = (() => {
     syncOnlineState();
 
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) CameraService.pause();
-      else if (state.phase === 'camera') CameraService.resume();
+      if (document.hidden) {
+        // Fully release the camera so the green indicator goes off.
+        if (CameraService.isActive()) CameraService.stop();
+      } else if (state.phase === 'camera' && state.cameraReady) {
+        if (!CameraService.isActive()) startCamera();
+      }
     });
     window.addEventListener('pagehide', () => { CameraService.stop(); });
 
@@ -2631,9 +2740,6 @@ const App = (() => {
   return { init, onCapture };
 })();
 
-/* ==========================================================================
- * 11. BOOTSTRAP
- * ========================================================================== */
 try { App.init(); }
 catch (error) {
   console.error('[ScanLex] Fatal initialisation error', error);
