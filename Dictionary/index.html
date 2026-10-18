@@ -206,20 +206,17 @@ button { cursor: pointer; border: 0; background: none; }
 .camera-error p { margin: 0; color: var(--overlay-muted); font-size: 0.9rem; max-width: 34ch; }
 .camera-error .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
 
-/* ---- Analyze view — pinch zoom happens HERE, not on the page ------- */
 .analyze-view {
   position: relative; flex: 1 1 auto; min-height: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-lg); background: #000;
   border: 1px solid var(--line); overflow: hidden;
-  /* Critical: stops browser page-level pinch zoom */
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .frozen-wrap {
   position: relative;
-  /* Transform-origin at top-left makes the pinch math straightforward */
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -272,6 +269,66 @@ button { cursor: pointer; border: 0; background: none; }
   transform: scale(0.95);
 }
 .clear-word-btn svg, .reset-zoom-btn svg { display: block; width: 14px; height: 14px; }
+
+/* ---- Rotation prompt overlay ---------------------------------------- */
+.rotation-prompt {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 12px; z-index: 15;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 50px rgba(15, 23, 32, 0.35);
+  padding: 20px 20px 16px;
+  animation: slide-up 0.28s var(--ease-out);
+}
+@keyframes slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.rotation-prompt-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.rotation-prompt-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.rotation-prompt-icon svg { width: 22px; height: 22px; }
+.rotation-prompt-title {
+  margin: 0; font-size: 1rem; font-weight: 650; color: var(--text);
+  letter-spacing: -0.01em;
+}
+.rotation-prompt-text {
+  margin: 4px 0 0 0; font-size: 0.82rem; color: var(--muted); line-height: 1.4;
+}
+.rotation-prompt-buttons {
+  display: flex; gap: 10px; margin-bottom: 10px;
+}
+.rotation-prompt-buttons .btn {
+  flex: 1 1 0; height: 52px; border-radius: 14px; font-size: 0.92rem;
+}
+.rotation-prompt-buttons .btn svg {
+  width: 18px; height: 18px; flex: 0 0 auto;
+}
+.rotation-prompt-skip-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 10px; border-top: 1px solid var(--line);
+  gap: 12px;
+}
+.rotation-prompt-skip-row button {
+  background: none; border: 0; padding: 6px 8px;
+  font-size: 0.84rem; font-weight: 600;
+  color: var(--muted); border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.rotation-prompt-skip-row button:active {
+  color: var(--text); background: var(--surface-3);
+}
+.rotation-prompt-skip-row button.primary {
+  color: var(--accent);
+}
 
 .scan-progress {
   position: absolute; left: 16px; right: 16px; bottom: 18px;
@@ -327,9 +384,14 @@ button { cursor: pointer; border: 0; background: none; }
   box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.16);
 }
 .analyze-actions {
-  display: flex; gap: 10px; width: 100%; max-width: 440px;
+  display: flex; gap: 8px; width: 100%; max-width: 440px;
 }
-.analyze-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.96rem; }
+.analyze-actions .btn { flex: 1 1 0; height: 56px; border-radius: 28px; font-size: 0.94rem; }
+.analyze-actions .btn.btn-icon {
+  flex: 0 0 auto; width: 56px; padding: 0;
+  display: inline-grid; place-items: center;
+}
+.analyze-actions .btn.btn-icon svg { width: 22px; height: 22px; }
 .status-hint {
   margin: 0; font-size: 0.82rem; color: var(--muted);
   text-align: center; min-height: 1.2em; max-width: 44ch;
@@ -634,6 +696,45 @@ button { cursor: pointer; border: 0; background: none; }
         <span>Clear</span>
       </button>
 
+      <div class="rotation-prompt" id="rotationPrompt" hidden role="dialog"
+           aria-modal="false" aria-labelledby="rotationTitle">
+        <div class="rotation-prompt-head">
+          <div class="rotation-prompt-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18h6M9 22h6M5 14V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" />
+              <path d="M12 8v5M9 10l3-3 3 3" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="rotation-prompt-title" id="rotationTitle">Text appears sideways</h2>
+            <p class="rotation-prompt-text">Rotate the image so the text reads left-to-right.</p>
+          </div>
+        </div>
+        <div class="rotation-prompt-buttons">
+          <button id="btnRotateLeft" class="btn btn-ghost" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Rotate left
+          </button>
+          <button id="btnRotateRight" class="btn btn-primary" type="button">
+            Rotate right
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </button>
+        </div>
+        <div class="rotation-prompt-skip-row">
+          <button id="btnPromptRetake" type="button">Retake</button>
+          <button id="btnScanAnyway" class="primary" type="button">Scan anyway</button>
+        </div>
+      </div>
+
       <div class="scan-progress" id="scanProgress" hidden>
         <p>Scanning text… <span class="pct" id="scanPct">0%</span></p>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -658,6 +759,13 @@ button { cursor: pointer; border: 0; background: none; }
     <div class="controls" id="analyzeControls" hidden>
       <div class="analyze-actions">
         <button id="btnRetake" class="btn btn-ghost" type="button">Retake</button>
+        <button id="btnRotate" class="btn btn-ghost btn-icon" type="button" aria-label="Rotate image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
+        </button>
         <button id="btnManualFromAnalyze" class="btn btn-ghost" type="button">Type word</button>
       </div>
       <p class="status-hint" id="analyzeHint">Tap any word to look it up</p>
@@ -753,18 +861,18 @@ const CONFIG = Object.freeze({
     MAX_WORD_LENGTH: 45,
     MAX_EDGE_PX: computeMaxEdgePx(),
     WORD_TAP_PADDING: 8,
-    // A pass is "good enough" if confidence >= GOOD_CONF regardless of count,
-    // or >= ACCEPT_CONF with >= ACCEPT_MIN_WORDS words.
     GOOD_CONF: 75,
     ACCEPT_CONF: 60,
     ACCEPT_MIN_WORDS: 5,
-    // Multi-orientation fallback bounds
-    MAX_ZOOM: 5
+    MAX_ZOOM: 5,
+    PREFLIGHT_MAX_DIM: 400,
+    PREFLIGHT_VERTICAL_THRESHOLD: 2.0
   }),
   CACHE: Object.freeze({ TTL_MS: 60 * 60 * 1000, MAX_ENTRIES: 200 }),
   UI: Object.freeze({
     MAX_MEANINGS: 3, MAX_DEFINITIONS_PER_MEANING: 3, MAX_SYNONYMS: 4,
-    TOAST_MS: 2600, WORD_TAP_DELAY_MS: 60
+    TOAST_MS: 2600, WORD_TAP_DELAY_MS: 60,
+    ROTATE_DEBOUNCE_MS: 400
   }),
   SELECTORS: Object.freeze({
     cameraView:      '#cameraView',
@@ -783,6 +891,11 @@ const CONFIG = Object.freeze({
     wordLayer:       '#wordLayer',
     btnClearWord:    '#btnClearWord',
     btnResetZoom:    '#btnResetZoom',
+    rotationPrompt:  '#rotationPrompt',
+    btnRotateLeft:   '#btnRotateLeft',
+    btnRotateRight:  '#btnRotateRight',
+    btnScanAnyway:   '#btnScanAnyway',
+    btnPromptRetake: '#btnPromptRetake',
     scanProgress:    '#scanProgress',
     scanPct:         '#scanPct',
     progressFill:    '#progressFill',
@@ -796,6 +909,7 @@ const CONFIG = Object.freeze({
     btnCameraManual: '#btnCameraManual',
     btnCapture:      '#btnCapture',
     btnRetake:       '#btnRetake',
+    btnRotate:       '#btnRotate',
     btnManualFromAnalyze: '#btnManualFromAnalyze',
     cameraControls:  '#cameraControls',
     analyzeControls: '#analyzeControls',
@@ -895,12 +1009,10 @@ function cacheDom() {
 }
 
 /* ==========================================================================
- * FROZEN VIEWER — pinch-zoom & pan confined to the analyze view
+ * FROZEN VIEWER — pinch zoom / pan confined to the analyze view
  * ========================================================================== */
 const FrozenViewer = (() => {
-  let scale = 1;
-  let tx = 0;
-  let ty = 0;
+  let scale = 1, tx = 0, ty = 0;
   const MIN_SCALE = 1;
   const MAX_SCALE = CONFIG.OCR.MAX_ZOOM;
 
@@ -914,15 +1026,10 @@ const FrozenViewer = (() => {
   };
 
   function apply() {
-    DOM.frozenWrap.style.transform =
-      `translate(${tx}px, ${ty}px) scale(${scale})`;
+    DOM.frozenWrap.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
     if (DOM.btnResetZoom) DOM.btnResetZoom.hidden = scale <= 1.01;
   }
-
-  function reset() {
-    scale = 1; tx = 0; ty = 0;
-    apply();
-  }
+  function reset() { scale = 1; tx = 0; ty = 0; apply(); }
 
   function clampTx(value, s) {
     const viewW = DOM.analyzeView.offsetWidth;
@@ -932,7 +1039,6 @@ const FrozenViewer = (() => {
     if (scaledW <= viewW) return (viewW - scaledW) / 2 - wrapOffX;
     return clamp(value, viewW - scaledW - wrapOffX, -wrapOffX);
   }
-
   function clampTy(value, s) {
     const viewH = DOM.analyzeView.offsetHeight;
     const wrapH = DOM.frozenWrap.offsetHeight;
@@ -943,17 +1049,14 @@ const FrozenViewer = (() => {
   }
 
   function onPointerDown(e) {
-    // Never interfere with toolbar buttons (Clear, Reset)
     if (e.target.closest('button:not(.word-tap)')) return;
-
     gesture.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (gesture.pointers.size === 2) {
       const [a, b] = [...gesture.pointers.values()];
       gesture.startDist = Math.hypot(a.x - b.x, a.y - b.y);
       gesture.startScale = scale;
-      gesture.startTx = tx;
-      gesture.startTy = ty;
+      gesture.startTx = tx; gesture.startTy = ty;
       const rect = DOM.analyzeView.getBoundingClientRect();
       gesture.startMidX = (a.x + b.x) / 2 - rect.left;
       gesture.startMidY = (a.y + b.y) / 2 - rect.top;
@@ -962,8 +1065,7 @@ const FrozenViewer = (() => {
     } else if (gesture.pointers.size === 1) {
       gesture.dragStartX = e.clientX;
       gesture.dragStartY = e.clientY;
-      gesture.startTx = tx;
-      gesture.startTy = ty;
+      gesture.startTx = tx; gesture.startTy = ty;
       gesture.didGesture = false;
     }
   }
@@ -977,28 +1079,20 @@ const FrozenViewer = (() => {
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       if (gesture.startDist === 0) return;
 
-      const newScale = clamp(
-        gesture.startScale * (dist / gesture.startDist),
-        MIN_SCALE, MAX_SCALE
-      );
-
+      const newScale = clamp(gesture.startScale * (dist / gesture.startDist), MIN_SCALE, MAX_SCALE);
       const rect = DOM.analyzeView.getBoundingClientRect();
       const midX = (a.x + b.x) / 2 - rect.left;
       const midY = (a.y + b.y) / 2 - rect.top;
-
       const viewW = DOM.analyzeView.offsetWidth;
       const viewH = DOM.analyzeView.offsetHeight;
       const wrapW = DOM.frozenWrap.offsetWidth;
       const wrapH = DOM.frozenWrap.offsetHeight;
       const wrapOffX = (viewW - wrapW) / 2;
       const wrapOffY = (viewH - wrapH) / 2;
-
       const lx = (gesture.startMidX - wrapOffX - gesture.startTx) / gesture.startScale;
       const ly = (gesture.startMidY - wrapOffY - gesture.startTy) / gesture.startScale;
-
-      let newTx = gesture.startMidX - wrapOffX - lx * newScale + (midX - gesture.startMidX);
-      let newTy = gesture.startMidY - wrapOffY - ly * newScale + (midY - gesture.startMidY);
-
+      const newTx = gesture.startMidX - wrapOffX - lx * newScale + (midX - gesture.startMidX);
+      const newTy = gesture.startMidY - wrapOffY - ly * newScale + (midY - gesture.startMidY);
       scale = newScale;
       tx = clampTx(newTx, scale);
       ty = clampTy(newTy, scale);
@@ -1047,7 +1141,6 @@ const FrozenViewer = (() => {
     DOM.analyzeView.addEventListener('click', onClickCapture, true);
     DOM.btnResetZoom.addEventListener('click', reset);
   }
-
   return { init, reset };
 })();
 
@@ -1057,7 +1150,6 @@ const FrozenViewer = (() => {
 const LookupCache = (() => {
   const KEY = 'scanlex.cache.v1';
   const map = new Map();
-
   function load() {
     try {
       const raw = sessionStorage.getItem(KEY);
@@ -1085,7 +1177,6 @@ const LookupCache = (() => {
     }
   }
   load();
-
   return {
     get(word) {
       const e = map.get(word);
@@ -1251,10 +1342,13 @@ const UI = (() => {
   }
   function showNoText(show) { DOM.noText.hidden = !show; }
 
-  /* ---- Word overlays --------------------------------------------------- */
-  // displayW / displayH MUST be untransformed (offsetWidth/offsetHeight),
-  // not getBoundingClientRect — the latter returns transformed dimensions
-  // when the wrap is zoomed, which would double-count scale.
+  function showRotationPrompt() {
+    DOM.rotationPrompt.hidden = false;
+  }
+  function hideRotationPrompt() {
+    DOM.rotationPrompt.hidden = true;
+  }
+
   function renderWords(words, canvasW, canvasH, displayW, displayH, onWordTap) {
     DOM.wordLayer.replaceChildren();
     const sx = displayW / canvasW;
@@ -1392,6 +1486,11 @@ const UI = (() => {
   function bindEvents(handlers) {
     DOM.btnCapture.addEventListener('click', handlers.onCapture);
     DOM.btnRetake.addEventListener('click', handlers.onRetake);
+    DOM.btnRotate.addEventListener('click', handlers.onManualRotate);
+    DOM.btnRotateLeft.addEventListener('click', () => handlers.onRotate(-90));
+    DOM.btnRotateRight.addEventListener('click', () => handlers.onRotate(90));
+    DOM.btnScanAnyway.addEventListener('click', handlers.onScanAnyway);
+    DOM.btnPromptRetake.addEventListener('click', handlers.onRetake);
     DOM.btnClearWord.addEventListener('click', handlers.onClearWord);
     DOM.btnManualFromAnalyze.addEventListener('click', handlers.onManualRequest);
     DOM.btnManual.addEventListener('click', handlers.onManualRequest);
@@ -1414,7 +1513,6 @@ const UI = (() => {
       handlers.onErrorDismissed?.();
     });
 
-    // Camera view pointer gestures (pinch + tap-to-focus)
     const pointerMap = new Map();
     let pinch = null;
     let tapCandidate = null;
@@ -1480,6 +1578,7 @@ const UI = (() => {
     showFocusRing, setTorchUI, setZoomUI, setCamBadge,
     showCameraView, showAnalyzeView,
     showScanProgress, updateScanProgress, showNoText,
+    showRotationPrompt, hideRotationPrompt,
     renderWords, clearWords, clearActiveWords,
     showClearButton, hideClearButton,
     renderLensList, renderResult, bindEvents
@@ -1781,13 +1880,8 @@ const CameraService = (() => {
 
     let opened = false;
     if (targetId) {
-      try {
-        stream = await openCamera(targetId);
-        opened = true;
-      } catch {
-        clearBestCamCache();
-        targetId = null;
-      }
+      try { stream = await openCamera(targetId); opened = true; }
+      catch { clearBestCamCache(); targetId = null; }
     }
 
     if (!opened) {
@@ -1868,9 +1962,8 @@ const CameraService = (() => {
     const wasActive = isActive();
     const currentId = selectedCamera?.deviceId;
     if (wasActive) await stop();
-    try {
-      allCameras = await CameraSelection.probeAll();
-    } catch (e) {
+    try { allCameras = await CameraSelection.probeAll(); }
+    catch (e) {
       if (wasActive && videoEl && currentId) {
         try { await start(videoEl, { deviceId: currentId }); } catch {}
       }
@@ -1927,7 +2020,7 @@ const CameraService = (() => {
 })();
 
 /* ==========================================================================
- * OCR SERVICE — orientation detection + multi-pass rotation fallback
+ * OCR SERVICE — with fast pre-flight orientation check
  * ========================================================================== */
 const OCRService = (() => {
   let workerPromise = null;
@@ -2016,25 +2109,16 @@ const OCRService = (() => {
     return out;
   }
 
-  /**
-   * Projection-profile orientation heuristic.
-   * A block of horizontal text has high variance in row dark-pixel counts
-   * (bands of text separated by whitespace rows). Vertical text has high
-   * variance in column dark-pixel counts.
-   * Returns 'vertical' only when the signal is strong (2×), so false
-   * positives on horizontal scans are rare — the multi-pass fallback in
-   * `recognizeWithBoxes` covers the remaining cases regardless.
-   */
-  function detectOrientation(binaryCanvas) {
+  function projectionOrientation(binaryCanvas) {
     const w = binaryCanvas.width;
     const h = binaryCanvas.height;
-    if (w < 20 || h < 20) return 'horizontal';
+    if (w < 20 || h < 20) return { orientation: 'horizontal', ratio: 1 };
 
     let data;
     try {
       data = binaryCanvas.getContext('2d', { willReadFrequently: true })
         .getImageData(0, 0, w, h).data;
-    } catch { return 'horizontal'; }
+    } catch { return { orientation: 'horizontal', ratio: 1 }; }
 
     const rows = new Float64Array(h);
     const cols = new Float64Array(w);
@@ -2050,7 +2134,7 @@ const OCRService = (() => {
       }
     }
 
-    if (totalDark < 100) return 'horizontal';
+    if (totalDark < 100) return { orientation: 'horizontal', ratio: 1 };
 
     const variance = (arr) => {
       let sum = 0, sumSq = 0;
@@ -2062,7 +2146,36 @@ const OCRService = (() => {
 
     const rowVar = variance(rows);
     const colVar = variance(cols);
-    return colVar > rowVar * 2.0 ? 'vertical' : 'horizontal';
+    const ratio = colVar / Math.max(rowVar, 1e-6);
+    return {
+      orientation: ratio > CONFIG.OCR.PREFLIGHT_VERTICAL_THRESHOLD ? 'vertical' : 'horizontal',
+      ratio
+    };
+  }
+
+  /**
+   * Fast pre-flight orientation check. Downscales to 400px, binarizes, and
+   * runs a projection profile. Typically <50 ms on a 1300px image.
+   */
+  function detectOrientationFast(sourceCanvas) {
+    try {
+      const maxDim = CONFIG.OCR.PREFLIGHT_MAX_DIM;
+      const scale = Math.min(1, maxDim / Math.max(sourceCanvas.width, sourceCanvas.height));
+      const w = Math.max(20, Math.round(sourceCanvas.width * scale));
+      const h = Math.max(20, Math.round(sourceCanvas.height * scale));
+
+      const small = document.createElement('canvas');
+      small.width = w;
+      small.height = h;
+      small.getContext('2d', { willReadFrequently: true })
+        .drawImage(sourceCanvas, 0, 0, w, h);
+
+      const binary = binarize(small);
+      return projectionOrientation(binary).orientation;
+    } catch (e) {
+      console.warn('[ScanLex] Pre-flight orientation failed:', e);
+      return 'horizontal';
+    }
   }
 
   function rotateCanvas(src, degrees) {
@@ -2081,15 +2194,14 @@ const OCRService = (() => {
     } else if (degrees === -90) {
       ctx.translate(0, out.height);
       ctx.rotate(-Math.PI / 2);
+    } else if (degrees === 180) {
+      ctx.translate(out.width, out.height);
+      ctx.rotate(Math.PI);
     }
     ctx.drawImage(src, 0, 0);
     return out;
   }
 
-  /**
-   * CW-90° and CCW-90° inverse transforms. Input bbox is in ROTATED space;
-   * output bbox is in ORIGINAL-image space.
-   */
   function transformBBoxFromRotated(bbox, rotation, origW, origH) {
     if (rotation === 0) return bbox;
     const { x0, y0, x1, y1 } = bbox;
@@ -2098,9 +2210,9 @@ const OCRService = (() => {
       out = { x0: y0, y0: origH - 1 - x1, x1: y1, y1: origH - 1 - x0 };
     } else if (rotation === -90) {
       out = { x0: origW - 1 - y1, y0: x0, x1: origW - 1 - y0, y1: x1 };
-    } else {
-      return bbox;
-    }
+    } else if (rotation === 180) {
+      out = { x0: origW - 1 - x1, y0: origH - 1 - y1, x1: origW - 1 - x0, y1: origH - 1 - y0 };
+    } else return bbox;
     out.x0 = clamp(out.x0, 0, origW - 1);
     out.y0 = clamp(out.y0, 0, origH - 1);
     out.x1 = clamp(out.x1, 0, origW - 1);
@@ -2132,7 +2244,7 @@ const OCRService = (() => {
     return words;
   }
 
-  function averageConfidence(words) {
+  function avgConfidence(words) {
     if (!words.length) return 0;
     let sum = 0;
     for (const w of words) sum += w.confidence;
@@ -2170,30 +2282,23 @@ const OCRService = (() => {
 
   function isGood(result) {
     if (!result.words.length) return false;
-    const conf = averageConfidence(result.words);
+    const conf = avgConfidence(result.words);
     if (conf >= CONFIG.OCR.GOOD_CONF) return true;
     if (conf >= CONFIG.OCR.ACCEPT_CONF && result.words.length >= CONFIG.OCR.ACCEPT_MIN_WORDS) return true;
     return false;
   }
 
   function scoreOf(result) {
-    return result.words.length * 10 + averageConfidence(result.words);
+    return result.words.length * 10 + avgConfidence(result.words);
   }
 
-  /**
-   * Multi-pass OCR.
-   * Priority order is chosen by the projection-profile heuristic, but ALL
-   * three orientations (0 / +90 / -90) are evaluated unless an earlier pass
-   * already produces a high-confidence result. This is what makes vertical
-   * text work even when the heuristic guesses wrong.
-   */
   async function recognizeWithBoxes(canvas, onProgress) {
     progressCallback = onProgress || null;
     const worker = await getWorker();
     const binary = binarize(canvas);
     await worker.setParameters({ tessedit_pageseg_mode: CONFIG.OCR.PSM });
 
-    const heuristic = detectOrientation(binary);
+    const heuristic = projectionOrientation(binary).orientation;
     const order = heuristic === 'vertical' ? [90, -90, 0] : [0, 90, -90];
     const origW = binary.width;
     const origH = binary.height;
@@ -2207,17 +2312,12 @@ const OCRService = (() => {
 
       const input = rot === 0 ? binary : rotateCanvas(binary, rot);
       let result;
-      try {
-        result = await recognizeOne(worker, input, rot, origW, origH);
-      } catch (e) {
-        console.warn('[ScanLex] OCR pass failed:', rot, e);
-        continue;
-      }
+      try { result = await recognizeOne(worker, input, rot, origW, origH); }
+      catch (e) { console.warn('[ScanLex] OCR pass failed:', rot, e); continue; }
 
       const score = scoreOf(result);
       if (score > bestScore) { best = result; bestScore = score; }
 
-      // Fast exit once we hit a high-confidence, well-populated result.
       if (isGood(result)) {
         progressCallback = null;
         return result;
@@ -2244,7 +2344,10 @@ const OCRService = (() => {
     return tokens.length ? tokens[0] : '';
   }
 
-  return { getWorker, recognizeWithBoxes, sanitizeWord };
+  return {
+    getWorker, recognizeWithBoxes, sanitizeWord,
+    detectOrientationFast
+  };
 })();
 
 /* ==========================================================================
@@ -2386,7 +2489,6 @@ const DictionaryService = (() => {
       let settled = false;
       let primaryErr = null;
       let fallbackErr = null;
-
       const tryResolve = (entry, source) => {
         if (settled) return;
         settled = true;
@@ -2396,10 +2498,7 @@ const DictionaryService = (() => {
       };
       const tryReject = () => {
         if (settled) return;
-        if (primaryErr && fallbackErr) {
-          settled = true;
-          reject(primaryErr);
-        }
+        if (primaryErr && fallbackErr) { settled = true; reject(primaryErr); }
       };
       fetchPrimary(word).then((r) => tryResolve(r, 'primary')).catch((e) => { primaryErr = e; tryReject(); });
       fetchFallback(word).then((r) => tryResolve(r, 'fallback')).catch((e) => { fallbackErr = e; tryReject(); });
@@ -2415,13 +2514,14 @@ const DictionaryService = (() => {
 const App = (() => {
   const state = {
     busy: false,
-    phase: 'camera',
+    phase: 'camera',  // 'camera' | 'analyzing' | 'await-rotation' | 'ready'
     cameraReady: false,
     lastWord: '',
     ocrWarmedUp: false,
     currentWords: [],
     ocrRequestId: 0,
     lookupRequestId: 0,
+    pendingScanTimer: null,
     probeStoppedCamera: false
   };
 
@@ -2488,6 +2588,49 @@ const App = (() => {
     if (state.currentWords.length) UI.setAnalyzeHint(wordsHint(state.currentWords.length));
   }
 
+  /* ---- Rotate the display canvas in place ----------------------------- */
+  function rotateFrozenCanvas(degrees) {
+    const canvas = DOM.frozenCanvas;
+    const w = canvas.width;
+    const h = canvas.height;
+    const swapped = Math.abs(degrees) === 90;
+    const newW = swapped ? h : w;
+    const newH = swapped ? w : h;
+
+    const temp = document.createElement('canvas');
+    temp.width = newW;
+    temp.height = newH;
+    const tctx = temp.getContext('2d');
+    if (degrees === 90) {
+      tctx.translate(newW, 0);
+      tctx.rotate(Math.PI / 2);
+    } else if (degrees === -90) {
+      tctx.translate(0, newH);
+      tctx.rotate(-Math.PI / 2);
+    } else if (degrees === 180) {
+      tctx.translate(newW, newH);
+      tctx.rotate(Math.PI);
+    }
+    tctx.drawImage(canvas, 0, 0);
+
+    canvas.width = newW;
+    canvas.height = newH;
+    canvas.getContext('2d').drawImage(temp, 0, 0);
+  }
+
+  function layoutFrozenImage() {
+    const stage = DOM.analyzeView.getBoundingClientRect();
+    const canvas = DOM.frozenCanvas;
+    const aspect = canvas.width / canvas.height;
+    const stageAspect = stage.width / stage.height;
+    let w, h;
+    if (aspect > stageAspect) { w = stage.width; h = stage.width / aspect; }
+    else { h = stage.height; w = stage.height * aspect; }
+    DOM.frozenWrap.style.width = w + 'px';
+    DOM.frozenWrap.style.height = h + 'px';
+  }
+
+  /* ---- Capture → freeze → pre-flight → auto-scan OR rotation prompt -- */
   async function onCapture() {
     if (state.busy || state.phase !== 'camera' || !state.cameraReady) {
       if (!state.cameraReady) openManualSheet(state.lastWord);
@@ -2513,12 +2656,27 @@ const App = (() => {
       UI.showNoText(false);
       UI.clearWords();
       UI.hideClearButton();
+      UI.hideRotationPrompt();
+      UI.showScanProgress(false);
 
       requestAnimationFrame(() => {
         if (state.phase !== 'analyzing') return;
         try { layoutFrozenImage(); }
         catch (e) { console.warn('[ScanLex] layoutFrozenImage failed', e); }
-        startWholeFrameOcr(frozen);
+
+        // Pre-flight orientation check — fast, off the main OCR path.
+        const orientation = OCRService.detectOrientationFast(DOM.frozenCanvas);
+
+        if (orientation === 'vertical') {
+          // Pause here and let the user rotate.
+          state.busy = false;
+          state.phase = 'await-rotation';
+          UI.showRotationPrompt();
+          UI.setAnalyzeHint('Text appears sideways');
+        } else {
+          // Horizontal — auto-scan without interruption.
+          startWholeFrameOcr();
+        }
       });
     } catch (error) {
       handleError(error);
@@ -2528,26 +2686,15 @@ const App = (() => {
     }
   }
 
-  function layoutFrozenImage() {
-    const stage = DOM.analyzeView.getBoundingClientRect();
-    const canvas = DOM.frozenCanvas;
-    const aspect = canvas.width / canvas.height;
-    const stageAspect = stage.width / stage.height;
-    let w, h;
-    if (aspect > stageAspect) { w = stage.width; h = stage.width / aspect; }
-    else { h = stage.height; w = stage.height * aspect; }
-    DOM.frozenWrap.style.width = w + 'px';
-    DOM.frozenWrap.style.height = h + 'px';
-  }
-
-  async function startWholeFrameOcr(frozen) {
+  /* ---- Full OCR of the frozen canvas ---------------------------------- */
+  async function startWholeFrameOcr() {
     const myId = ++state.ocrRequestId;
     UI.showScanProgress(true, 0);
     UI.setAnalyzeHint('Scanning text…');
 
     let result;
     try {
-      result = await OCRService.recognizeWithBoxes(frozen, (pct) => {
+      result = await OCRService.recognizeWithBoxes(DOM.frozenCanvas, (pct) => {
         if (myId !== state.ocrRequestId) return;
         UI.updateScanProgress(pct);
       });
@@ -2577,8 +2724,6 @@ const App = (() => {
 
     const cw = DOM.frozenCanvas.width;
     const ch = DOM.frozenCanvas.height;
-    // Use offsetWidth/offsetHeight, NOT getBoundingClientRect — the latter
-    // returns transformed dimensions which would double-count any zoom.
     const dw = DOM.frozenWrap.offsetWidth;
     const dh = DOM.frozenWrap.offsetHeight;
     UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
@@ -2586,15 +2731,58 @@ const App = (() => {
     UI.setAnalyzeHint(wordsHint(result.words.length));
   }
 
+  /* ---- Rotation handlers ---------------------------------------------- */
+  async function onRotate(direction) {
+    // direction: 90 (CW) or -90 (CCW)
+    rotateFrozenCanvas(direction);
+    FrozenViewer.reset();
+    layoutFrozenImage();
+
+    if (state.phase === 'await-rotation') {
+      // Re-check orientation. If horizontal now, drop the prompt and scan.
+      const orientation = OCRService.detectOrientationFast(DOM.frozenCanvas);
+      if (orientation === 'horizontal') {
+        UI.hideRotationPrompt();
+        state.phase = 'analyzing';
+        startWholeFrameOcr();
+      } else {
+        UI.toast('Still sideways — try rotating again');
+      }
+      return;
+    }
+
+    // Manual rotation during/after a scan — clear overlays and rescan.
+    UI.clearWords();
+    UI.hideClearButton();
+    UI.showNoText(false);
+    UI.hideRotationPrompt();
+
+    state.ocrRequestId++;
+    state.phase = 'analyzing';
+
+    clearTimeout(state.pendingScanTimer);
+    state.pendingScanTimer = setTimeout(() => {
+      if (state.phase === 'analyzing') startWholeFrameOcr();
+    }, CONFIG.UI.ROTATE_DEBOUNCE_MS);
+  }
+
+  async function onScanAnyway() {
+    UI.hideRotationPrompt();
+    state.phase = 'analyzing';
+    startWholeFrameOcr();
+  }
+
   async function onRetake() {
     state.ocrRequestId++;
     state.lookupRequestId++;
+    clearTimeout(state.pendingScanTimer);
     state.busy = false;
     state.phase = 'camera';
     state.currentWords = [];
     state.lastWord = '';
 
     FrozenViewer.reset();
+    UI.hideRotationPrompt();
     UI.clearActiveWords();
     UI.hideClearButton();
     UI.clearWords();
@@ -2603,11 +2791,9 @@ const App = (() => {
     UI.showCameraView();
 
     DOM.btnCapture.disabled = true;
-    try {
-      await startCamera();
-    } catch (error) {
-      console.warn('[ScanLex] Camera resume failed on retake', error);
-    } finally {
+    try { await startCamera(); }
+    catch (error) { console.warn('[ScanLex] Camera resume failed on retake', error); }
+    finally {
       DOM.btnCapture.disabled = false;
       UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
     }
@@ -2834,7 +3020,10 @@ const App = (() => {
     FrozenViewer.init();
 
     UI.bindEvents({
-      onCapture, onRetake, onClearWord,
+      onCapture, onRetake,
+      onRotate: (degrees) => onRotate(degrees),
+      onManualRotate: () => onRotate(90),
+      onScanAnyway, onClearWord,
       onManualRequest: () => openManualSheet(state.lastWord),
       onCameraRetry: () => startCamera(),
       onOpenLensPicker: openLensPicker,
@@ -2850,10 +3039,10 @@ const App = (() => {
     });
 
     window.addEventListener('resize', () => {
-      if (state.phase === 'ready' || state.phase === 'analyzing') {
+      if (state.phase === 'ready' || state.phase === 'analyzing' || state.phase === 'await-rotation') {
         FrozenViewer.reset();
         layoutFrozenImage();
-        if (state.currentWords.length) {
+        if (state.currentWords.length && state.phase === 'ready') {
           const cw = DOM.frozenCanvas.width;
           const ch = DOM.frozenCanvas.height;
           const dw = DOM.frozenWrap.offsetWidth;
