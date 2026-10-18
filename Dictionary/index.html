@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
 <meta name="theme-color" content="#f3f6f9" />
 <meta name="color-scheme" content="light" />
-<meta name="description" content="ScanLex — tap any word in a photo to see its definition." />
+<meta name="description" content="ScanLex — scan words from books, get their meanings, build your vocabulary." />
 <title>ScanLex — Visual Scan Dictionary</title>
 
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
@@ -82,17 +82,20 @@ button { cursor: pointer; border: 0; background: none; }
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: calc(var(--safe-top) + 12px) 16px 12px; flex: 0 0 auto;
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-dot {
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
+  flex: 0 0 auto;
 }
 .brand h1 {
   margin: 0; font-size: 1.05rem; font-weight: 650;
   letter-spacing: -0.01em; white-space: nowrap; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis;
 }
-.app-actions { display: flex; gap: 8px; }
+.app-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .icon-btn {
+  position: relative;
   display: grid; place-items: center;
   width: 44px; height: 44px; border-radius: 14px;
   background: var(--surface-2); border: 1px solid var(--line);
@@ -102,6 +105,22 @@ button { cursor: pointer; border: 0; background: none; }
 .icon-btn:active { transform: scale(0.94); background: var(--surface-3); }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn.is-on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+
+.history-badge {
+  position: absolute;
+  top: -3px; right: -3px;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  display: grid; place-items: center;
+  border: 2px solid var(--bg);
+  pointer-events: none;
+}
 
 .offline-banner {
   margin: 0 16px 10px; padding: 10px 14px; border-radius: var(--radius-sm);
@@ -351,6 +370,10 @@ button { cursor: pointer; border: 0; background: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-primary { background: linear-gradient(135deg, #6ee7ff 0%, #4cc9f0 100%); color: #04121a; }
 .btn-ghost { background: var(--surface-3); border: 1px solid var(--line); color: var(--text); }
+.btn-danger {
+  background: linear-gradient(135deg, #ff8888 0%, #d93d3d 100%);
+  color: #ffffff;
+}
 .btn-block { width: 100%; }
 
 .scrim {
@@ -455,7 +478,113 @@ button { cursor: pointer; border: 0; background: none; }
 .lens-badge.focus { background: var(--accent-soft); color: var(--accent); }
 .lens-badge.nofocus { background: var(--danger-soft); color: var(--danger); }
 
-/* ---- Result sheet with tabs -------------------------------------- */
+/* ---- History sheet ---------------------------------------------- */
+.history-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.history-actions .btn {
+  flex: 1;
+  height: 48px;
+  font-size: 0.9rem;
+  padding: 0 14px;
+}
+.history-actions .btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.history-item:active { border-color: var(--accent-line); }
+
+.history-item-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  text-align: left;
+  background: transparent;
+  min-width: 0;
+  cursor: pointer;
+}
+.history-word {
+  font-size: 1.02rem;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+.history-def {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.history-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.history-meta-count {
+  color: var(--accent);
+  font-weight: 650;
+}
+.history-meta-pos {
+  font-style: italic;
+}
+
+.history-item-delete {
+  flex: 0 0 auto;
+  width: 46px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.history-item-delete:active {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.history-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.history-empty svg {
+  display: block;
+  width: 44px; height: 44px;
+  margin: 0 auto 14px;
+  opacity: 0.4;
+}
+
+/* ---- Result sheet ------------------------------------------------ */
 .result-tabs {
   display: flex;
   gap: 6px;
@@ -533,7 +662,6 @@ button { cursor: pointer; border: 0; background: none; }
 .result-actions { display: flex; gap: 10px; margin-top: 26px; }
 .result-actions .btn { flex: 1 1 0; }
 
-/* ---- External lookup section ------------------------------------ */
 .result-external {
   margin-top: 22px;
   padding-top: 18px;
@@ -542,13 +670,11 @@ button { cursor: pointer; border: 0; background: none; }
   flex-direction: column;
   gap: 14px;
 }
-
 .result-external-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
-
 .result-app-btn, .result-copy-btn {
   display: inline-flex;
   align-items: center;
@@ -586,7 +712,6 @@ button { cursor: pointer; border: 0; background: none; }
 .result-app-btn svg, .result-copy-btn svg {
   width: 16px; height: 16px; flex: 0 0 auto;
 }
-
 .result-external-hint {
   margin: 0;
   font-size: 0.78rem;
@@ -594,7 +719,6 @@ button { cursor: pointer; border: 0; background: none; }
   line-height: 1.4;
   text-align: center;
 }
-
 .result-external-web-label {
   font-size: 0.72rem;
   font-weight: 650;
@@ -603,7 +727,6 @@ button { cursor: pointer; border: 0; background: none; }
   color: var(--muted);
   margin-top: 2px;
 }
-
 .result-external-links {
   display: flex;
   flex-wrap: wrap;
@@ -699,6 +822,12 @@ button { cursor: pointer; border: 0; background: none; }
   transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out), visibility 0s;
 }
 
+@media (max-width: 380px) {
+  .app-actions { gap: 6px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .brand h1 { font-size: 0.98rem; }
+}
 @media (min-width: 720px) {
   .stage { padding: 0 24px calc(var(--safe-bottom) + 20px); }
   .app-bar { padding-left: 24px; padding-right: 24px; }
@@ -740,6 +869,15 @@ button { cursor: pointer; border: 0; background: none; }
           <path d="M21 4v6h-6" />
           <path d="M3 20v-6h6" />
         </svg>
+      </button>
+      <button id="btnHistory" class="icon-btn" type="button" aria-label="View vocabulary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 19.5V5a2 2 0 0 1 2-2h13" />
+          <path d="M6 17h14V21H6a2 2 0 0 1-2-2V19.5" />
+          <path d="M9 7h7M9 11h7M9 15h4" />
+        </svg>
+        <span id="historyBadge" class="history-badge" hidden>0</span>
       </button>
       <button id="btnManual" class="icon-btn" type="button" aria-label="Type a word">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -855,6 +993,34 @@ button { cursor: pointer; border: 0; background: none; }
 
 <div class="scrim" id="scrim" aria-hidden="true"></div>
 
+<section class="sheet" id="historySheet" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <button class="sheet-close" id="btnHistoryClose" type="button" aria-label="Close">×</button>
+  <h2 class="sheet-title" id="historyTitle">Your vocabulary</h2>
+  <p class="sheet-sub" id="historySub">Words you have looked up</p>
+  <div class="history-actions">
+    <button id="btnHistoryCopy" class="btn btn-primary" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copy for Excel
+    </button>
+    <button id="btnHistoryClear" class="btn btn-ghost" type="button">Clear</button>
+  </div>
+  <div class="history-list" id="historyList" hidden></div>
+  <div class="history-empty" id="historyEmpty" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 19.5V5a2 2 0 0 1 2-2h13" />
+      <path d="M6 17h14V21H6a2 2 0 0 1-2-2V19.5" />
+    </svg>
+    <div>No words yet.</div>
+    <div style="margin-top:6px;font-size:0.84rem;">Look up any word — from a scan or by typing — and it'll appear here.</div>
+  </div>
+</section>
+
 <section class="sheet" id="lensSheet" role="dialog" aria-modal="true" aria-labelledby="lensTitle">
   <div class="sheet-handle" aria-hidden="true"></div>
   <button class="sheet-close" id="btnLensClose" type="button" aria-label="Close">×</button>
@@ -951,6 +1117,10 @@ const CONFIG = Object.freeze({
     PREFLIGHT_VERTICAL_THRESHOLD: 2.2
   }),
   CACHE: Object.freeze({ TTL_MS: 60 * 60 * 1000, MAX_ENTRIES: 200 }),
+  HISTORY: Object.freeze({
+    STORAGE_KEY: 'scanlex.history.v1',
+    MAX_ENTRIES: 2000
+  }),
   UI: Object.freeze({
     MAX_MEANINGS: 3, MAX_DEFINITIONS_PER_MEANING: 3, MAX_SYNONYMS: 4,
     TOAST_MS: 2600, WORD_TAP_DELAY_MS: 60,
@@ -992,6 +1162,8 @@ const CONFIG = Object.freeze({
     analyzeControls: '#analyzeControls',
     btnLens:         '#btnLens',
     btnTorch:        '#btnTorch',
+    btnHistory:      '#btnHistory',
+    historyBadge:    '#historyBadge',
     btnManual:       '#btnManual',
     statusHint:      '#statusHint',
     analyzeHint:     '#analyzeHint',
@@ -999,6 +1171,13 @@ const CONFIG = Object.freeze({
     lensSheet:       '#lensSheet',
     lensList:        '#lensList',
     btnLensClose:    '#btnLensClose',
+    historySheet:    '#historySheet',
+    historySub:      '#historySub',
+    historyList:     '#historyList',
+    historyEmpty:    '#historyEmpty',
+    btnHistoryCopy:  '#btnHistoryCopy',
+    btnHistoryClear: '#btnHistoryClear',
+    btnHistoryClose: '#btnHistoryClose',
     resultSheet:     '#resultSheet',
     resultBody:      '#resultBody',
     btnResultClose:  '#btnResultClose',
@@ -1127,6 +1306,173 @@ function watchKeyboard() {
   vv.addEventListener('scroll', update);
   update();
 }
+
+/* ==========================================================================
+ * CLIPBOARD SERVICE
+ * ========================================================================== */
+const ClipboardService = (() => {
+  async function write(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '0';
+      ta.style.width = '1px';
+      ta.style.height = '1px';
+      ta.style.opacity = '0';
+      ta.style.pointerEvents = 'none';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+  return { write };
+})();
+
+/* ==========================================================================
+ * HISTORY SERVICE — persistent vocabulary list
+ * ========================================================================== */
+const HistoryService = (() => {
+  let data = { version: 1, words: {} };
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(CONFIG.HISTORY.STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.words &&
+          typeof parsed.words === 'object') {
+        data = parsed;
+      }
+    } catch {
+      data = { version: 1, words: {} };
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(CONFIG.HISTORY.STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Quota — drop oldest half and retry once
+      const entries = Object.entries(data.words);
+      if (entries.length > 50) {
+        entries.sort((a, b) => (b[1].lastSeen || 0) - (a[1].lastSeen || 0));
+        const keep = entries.slice(0, Math.floor(entries.length / 2));
+        data.words = Object.fromEntries(keep);
+        try {
+          localStorage.setItem(CONFIG.HISTORY.STORAGE_KEY, JSON.stringify(data));
+        } catch {}
+      }
+    }
+  }
+
+  function extractShortDef(entry) {
+    const m = entry.meanings && entry.meanings[0];
+    if (!m) return { pos: '', def: '' };
+    const pos = m.partOfSpeech || '';
+    const d = m.definitions && m.definitions[0] && m.definitions[0].definition;
+    if (!d) return { pos, def: '' };
+    const clean = String(d).replace(/[\t\n\r]/g, ' ').trim();
+    return { pos, def: clean.length > 100 ? clean.slice(0, 97) + '…' : clean };
+  }
+
+  function record(entry, source = 'camera') {
+    if (!entry || !entry.word) return;
+    const key = String(entry.word).toLowerCase().trim();
+    if (!key) return;
+
+    const now = Date.now();
+    const { pos, def } = extractShortDef(entry);
+    const existing = data.words[key];
+
+    if (existing) {
+      existing.lastSeen = now;
+      existing.count = (existing.count || 1) + 1;
+      if (def) existing.shortDef = def;
+      if (pos) existing.partOfSpeech = pos;
+      existing.source = source;
+    } else {
+      data.words[key] = {
+        word: entry.word,
+        phonetic: entry.phonetic || '',
+        partOfSpeech: pos,
+        shortDef: def,
+        firstSeen: now,
+        lastSeen: now,
+        count: 1,
+        source
+      };
+    }
+
+    const keys = Object.keys(data.words);
+    if (keys.length > CONFIG.HISTORY.MAX_ENTRIES) {
+      const sorted = keys
+        .map(k => [k, data.words[k].lastSeen || 0])
+        .sort((a, b) => a[1] - b[1]);
+      const toRemove = sorted.slice(0, keys.length - CONFIG.HISTORY.MAX_ENTRIES);
+      for (const [k] of toRemove) delete data.words[k];
+    }
+
+    save();
+  }
+
+  function getAll() {
+    return Object.values(data.words).sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+  }
+
+  function remove(word) {
+    const key = String(word).toLowerCase().trim();
+    if (data.words[key]) {
+      delete data.words[key];
+      save();
+    }
+  }
+
+  function clear() {
+    data = { version: 1, words: {} };
+    save();
+  }
+
+  function count() {
+    return Object.keys(data.words).length;
+  }
+
+  function exportTSV() {
+    const rows = getAll();
+    const header = ['Word', 'Part of Speech', 'Definition', 'Last Looked Up', 'Times', 'Source'];
+    const lines = [header.join('\t')];
+    for (const r of rows) {
+      const date = r.lastSeen ? new Date(r.lastSeen).toISOString().slice(0, 10) : '';
+      const cells = [
+        r.word || '',
+        r.partOfSpeech || '',
+        (r.shortDef || '').replace(/[\t\n\r]/g, ' '),
+        date,
+        String(r.count || 1),
+        r.source === 'manual' ? 'Typed' : r.source === 'history' ? 'History' : 'Camera'
+      ];
+      lines.push(cells.join('\t'));
+    }
+    return lines.join('\n');
+  }
+
+  load();
+  return { record, getAll, remove, clear, count, exportTSV };
+})();
 
 /* ==========================================================================
  * PRONUNCIATION — audio URL with TTS fallback
@@ -1503,6 +1849,8 @@ const UI = (() => {
   let retryHandler = null;
   let focusRingTimer = null;
   let resultSheetState = null;
+  let historyTapHandler = null;
+  let historyClearHandler = null;
 
   function setStatus(text) { DOM.statusHint.textContent = text; }
   function setAnalyzeHint(text) { DOM.analyzeHint.textContent = text; }
@@ -1517,19 +1865,22 @@ const UI = (() => {
     return DOM.resultSheet.classList.contains('is-open') ||
            DOM.manualSheet.classList.contains('is-open') ||
            DOM.lensSheet.classList.contains('is-open') ||
+           DOM.historySheet.classList.contains('is-open') ||
            !DOM.errorModal.hidden;
   }
 
   function updateScrim() {
     const open = DOM.resultSheet.classList.contains('is-open') ||
                  DOM.manualSheet.classList.contains('is-open') ||
-                 DOM.lensSheet.classList.contains('is-open');
+                 DOM.lensSheet.classList.contains('is-open') ||
+                 DOM.historySheet.classList.contains('is-open');
     DOM.scrim.classList.toggle('is-open', open);
   }
 
   function openSheet(sheet) {
     lastFocused = document.activeElement;
     sheet.classList.add('is-open');
+    sheet.scrollTop = 0;
     updateScrim();
     const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('.sheet-close');
     requestAnimationFrame(() => target?.focus({ preventScroll: true }));
@@ -1540,7 +1891,7 @@ const UI = (() => {
     if (lastFocused?.focus) { lastFocused.focus({ preventScroll: true }); lastFocused = null; }
   }
   function closeAllSheets() {
-    [DOM.resultSheet, DOM.manualSheet, DOM.lensSheet].forEach((s) => {
+    [DOM.resultSheet, DOM.manualSheet, DOM.lensSheet, DOM.historySheet].forEach((s) => {
       if (s.classList.contains('is-open')) closeSheet(s);
     });
   }
@@ -1553,12 +1904,14 @@ const UI = (() => {
     toastTimer = setTimeout(() => DOM.toast.classList.remove('is-visible'), CONFIG.UI.TOAST_MS);
   }
 
-  function showError({ title, message, retryLabel, onRetry }) {
+  function showError({ title, message, retryLabel, onRetry, danger }) {
     DOM.errorTitle.textContent = title;
     DOM.errorText.textContent = message;
     retryHandler = typeof onRetry === 'function' ? onRetry : null;
     DOM.errorRetry.hidden = !retryHandler;
     if (retryHandler) DOM.errorRetry.textContent = retryLabel || 'Retry';
+    DOM.errorRetry.classList.toggle('btn-danger', Boolean(danger));
+    DOM.errorRetry.classList.toggle('btn-primary', !danger);
     DOM.errorModal.hidden = false;
     updateScrim();
     requestAnimationFrame(() => {
@@ -1722,70 +2075,150 @@ const UI = (() => {
     }
   }
 
-  /* ---- Share word to a dictionary app (OS app chooser) --------- */
+  /* ---- History sheet ------------------------------------------------- */
+  function formatShortDate(ts) {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    } catch { return ''; }
+  }
+
+  function updateHistoryBadge() {
+    const n = HistoryService.count();
+    if (n > 0) {
+      DOM.historyBadge.hidden = false;
+      DOM.historyBadge.textContent = n > 99 ? '99+' : String(n);
+    } else {
+      DOM.historyBadge.hidden = true;
+    }
+    DOM.btnHistory.setAttribute('aria-label',
+      n > 0 ? `View vocabulary (${n} words)` : 'View vocabulary');
+  }
+
+  function renderHistorySheet() {
+    const words = HistoryService.getAll();
+    const total = words.length;
+
+    DOM.historySub.textContent = total === 0
+      ? 'Words you have looked up'
+      : `${total} word${total === 1 ? '' : 's'} · tap any to re-open`;
+
+    if (!total) {
+      DOM.historyList.hidden = true;
+      DOM.historyList.replaceChildren();
+      DOM.historyEmpty.hidden = false;
+      DOM.btnHistoryCopy.disabled = true;
+      DOM.btnHistoryClear.disabled = true;
+      return;
+    }
+
+    DOM.historyList.hidden = false;
+    DOM.historyEmpty.hidden = true;
+    DOM.btnHistoryCopy.disabled = false;
+    DOM.btnHistoryClear.disabled = false;
+
+    DOM.historyList.replaceChildren();
+    const frag = document.createDocumentFragment();
+
+    for (const r of words) {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+
+      const main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'history-item-main';
+      main.addEventListener('click', () => {
+        if (typeof historyTapHandler === 'function') {
+          historyTapHandler(r.word);
+        }
+      });
+
+      const wordEl = document.createElement('div');
+      wordEl.className = 'history-word';
+      wordEl.textContent = r.word;
+      main.appendChild(wordEl);
+
+      if (r.shortDef) {
+        const defEl = document.createElement('div');
+        defEl.className = 'history-def';
+        defEl.textContent = r.shortDef;
+        main.appendChild(defEl);
+      }
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'history-meta';
+
+      if (r.partOfSpeech) {
+        const posEl = document.createElement('span');
+        posEl.className = 'history-meta-pos';
+        posEl.textContent = r.partOfSpeech;
+        metaEl.appendChild(posEl);
+      }
+
+      const dateEl = document.createElement('span');
+      dateEl.textContent = formatShortDate(r.lastSeen);
+      metaEl.appendChild(dateEl);
+
+      if (r.count && r.count > 1) {
+        const countEl = document.createElement('span');
+        countEl.className = 'history-meta-count';
+        countEl.textContent = `${r.count}×`;
+        metaEl.appendChild(countEl);
+      }
+
+      main.appendChild(metaEl);
+      item.appendChild(main);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'history-item-delete';
+      del.setAttribute('aria-label', `Remove ${r.word} from vocabulary`);
+      del.textContent = '×';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        HistoryService.remove(r.word);
+        renderHistorySheet();
+        updateHistoryBadge();
+      });
+      item.appendChild(del);
+
+      frag.appendChild(item);
+    }
+
+    DOM.historyList.appendChild(frag);
+  }
+
+  function showHistorySheet(tapHandler, clearHandler) {
+    historyTapHandler = tapHandler;
+    historyClearHandler = clearHandler;
+    renderHistorySheet();
+    updateHistoryBadge();
+    openSheet(DOM.historySheet);
+  }
+
+  /* ---- External lookup section --------------------------------------- */
+  async function copyWord(word) {
+    const ok = await ClipboardService.write(word);
+    if (ok) toast('Word copied — paste into your dictionary app');
+    else toast('Could not copy — please retry');
+  }
+
   async function shareWordToApp(word) {
     if (!navigator.share) {
-      await copyWord(word, true);
+      await copyWord(word);
       return;
     }
     try {
-      // Share ONLY the word as plain text — this is what dictionary apps
-      // like WordWeb receive and look up. Do NOT include a URL: some apps
-      // prioritise URL over text and would open a browser instead of
-      // searching the word.
       await navigator.share({ text: word });
     } catch (e) {
       if (e && e.name === 'AbortError') return;
-      // Share failed (no target apps, browser quirk) — fall back to copy
-      await copyWord(word, true);
+      await copyWord(word);
     }
   }
 
-  async function copyWord(word, asFallback = false) {
-    const okMsg = asFallback
-      ? 'Copied — paste into your dictionary app'
-      : 'Word copied to clipboard';
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(word);
-        toast(okMsg);
-        return;
-      }
-      throw new Error('clipboard API unavailable');
-    } catch {
-      // Legacy fallback for insecure contexts / older browsers
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = word;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'fixed';
-        ta.style.top = '0';
-        ta.style.left = '0';
-        ta.style.width = '1px';
-        ta.style.height = '1px';
-        ta.style.opacity = '0';
-        ta.style.pointerEvents = 'none';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        ta.setSelectionRange(0, word.length);
-        const ok = document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (ok) toast(okMsg);
-        else toast('Could not copy — please retry');
-      } catch {
-        toast('Could not copy — please retry');
-      }
-    }
-  }
-
-  /* ---- Build external lookup section ---------------------------- */
   function buildExternalRow(word) {
     const encoded = encodeURIComponent(word);
-
     const section = h('div', { class: 'result-external' });
-
-    // Primary row: open-in-app + copy
     const primary = h('div', { class: 'result-external-actions' });
 
     if (navigator.share) {
@@ -1808,7 +2241,6 @@ const UI = (() => {
 
     section.appendChild(primary);
 
-    // Hint line under the buttons
     section.appendChild(h('p', {
       class: 'result-external-hint',
       text: navigator.share
@@ -1816,7 +2248,6 @@ const UI = (() => {
         : 'Copies the word — paste into any dictionary app'
     }));
 
-    // Web fallbacks
     section.appendChild(h('div', {
       class: 'result-external-web-label',
       text: 'Or search the web'
@@ -1861,7 +2292,7 @@ const UI = (() => {
     return btn;
   }
 
-  /* ---- Result sheet with EN/HI tabs ------------------------------ */
+  /* ---- Result sheet -------------------------------------------------- */
   function renderEntryContent(entry, actions, opts = {}) {
     const isHindi = opts.isHindi === true;
     const speakWord = entry.originalWord || entry.word;
@@ -2028,6 +2459,11 @@ const UI = (() => {
     DOM.btnZoomIn.addEventListener('click', handlers.onZoomIn);
     DOM.btnZoomOut.addEventListener('click', handlers.onZoomOut);
 
+    DOM.btnHistory.addEventListener('click', handlers.onOpenHistory);
+    DOM.btnHistoryClose.addEventListener('click', handlers.onCloseHistory);
+    DOM.btnHistoryCopy.addEventListener('click', handlers.onCopyHistory);
+    DOM.btnHistoryClear.addEventListener('click', handlers.onClearHistory);
+
     DOM.btnResultClose.addEventListener('click', handlers.onCloseResult);
     DOM.btnManualClose.addEventListener('click', handlers.onCloseManual);
     DOM.scrim.addEventListener('click', () => { closeAllSheets(); handlers.onAfterSheetsClosed?.(); });
@@ -2089,6 +2525,7 @@ const UI = (() => {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (!DOM.errorModal.hidden) { hideError(); handlers.onErrorDismissed?.(); }
+      else if (DOM.historySheet.classList.contains('is-open')) handlers.onCloseHistory();
       else if (DOM.lensSheet.classList.contains('is-open')) handlers.onCloseLensPicker();
       else if (DOM.manualSheet.classList.contains('is-open')) handlers.onCloseManual();
       else if (DOM.resultSheet.classList.contains('is-open')) handlers.onCloseResult();
@@ -2106,7 +2543,9 @@ const UI = (() => {
     showScanProgress, updateScanProgress, showNoText,
     renderWords, clearWords, clearActiveWords,
     showClearButton, hideClearButton,
-    renderLensList, renderResult, showResultSheet, switchResultTab,
+    renderLensList,
+    showHistorySheet, renderHistorySheet, updateHistoryBadge,
+    renderResult, showResultSheet, switchResultTab,
     bindEvents
   };
 })();
@@ -3193,7 +3632,7 @@ const App = (() => {
     const dh = DOM.frozenWrap.offsetHeight;
     const cw = DOM.frozenCanvas.width;
     const ch = DOM.frozenCanvas.height;
-    UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word));
+    UI.renderWords(result.words, cw, ch, dw, dh, (word) => lookupWord(word, 'camera'));
     UI.hideClearButton();
     UI.setAnalyzeHint(wordsHint(result.words.length));
   }
@@ -3233,8 +3672,9 @@ const App = (() => {
     UI.showCameraView();
 
     DOM.btnCapture.disabled = true;
-    try { await startCamera(); }
-    catch (error) { console.warn('[ScanLex] Camera resume failed on retake', error); }
+    try {
+      if (!CameraService.isActive()) await startCamera();
+    } catch (error) { console.warn('[ScanLex] Camera resume failed on retake', error); }
     finally {
       DOM.btnCapture.disabled = false;
       UI.setStatus('Point at the page, zoom if needed, then tap Capture.');
@@ -3247,7 +3687,23 @@ const App = (() => {
     resetWordSelection();
   }
 
-  async function lookupWord(rawWord) {
+  function resultActions() {
+    return {
+      onScanAnother: () => {
+        UI.closeSheet(DOM.resultSheet);
+        if (state.phase === 'analyzing' || state.phase === 'ready') {
+          onRetake();
+        }
+      },
+      onTypeWord: () => {
+        UI.closeSheet(DOM.resultSheet);
+        resetWordSelection();
+        openManualSheet('');
+      }
+    };
+  }
+
+  async function lookupWord(rawWord, source = 'camera') {
     const word = OCRService.sanitizeWord(rawWord);
     if (!word) return;
 
@@ -3260,20 +3716,33 @@ const App = (() => {
     try {
       const entry = await DictionaryService.lookup(word);
       if (myId !== state.lookupRequestId) return;
+      HistoryService.record(entry, source);
+      UI.updateHistoryBadge();
       UI.showScanProgress(false);
       UI.setAnalyzeHint(wordsHint(state.currentWords.length));
-      UI.renderResult(entry, {
-        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
-        onTypeWord: () => {
-          UI.closeSheet(DOM.resultSheet);
-          resetWordSelection();
-          openManualSheet('');
-        }
-      });
+      UI.renderResult(entry, resultActions());
     } catch (error) {
       if (myId !== state.lookupRequestId) return;
       UI.showScanProgress(false);
       UI.setAnalyzeHint('Tap a word to look it up');
+      handleError(error, word);
+    }
+  }
+
+  async function lookupFromHistory(word) {
+    if (!word) return;
+    UI.closeSheet(DOM.historySheet);
+
+    const myId = ++state.lookupRequestId;
+    state.lastWord = word;
+    try {
+      const entry = await DictionaryService.lookup(word);
+      if (myId !== state.lookupRequestId) return;
+      HistoryService.record(entry, 'history');
+      UI.updateHistoryBadge();
+      UI.renderResult(entry, resultActions());
+    } catch (error) {
+      if (myId !== state.lookupRequestId) return;
       handleError(error, word);
     }
   }
@@ -3350,20 +3819,57 @@ const App = (() => {
     try {
       const entry = await DictionaryService.lookup(word);
       if (myId !== state.lookupRequestId) return;
-      UI.renderResult(entry, {
-        onScanAnother: () => { UI.closeSheet(DOM.resultSheet); onRetake(); },
-        onTypeWord: () => {
-          UI.closeSheet(DOM.resultSheet);
-          resetWordSelection();
-          openManualSheet('');
-        }
-      });
+      HistoryService.record(entry, 'manual');
+      UI.updateHistoryBadge();
+      UI.renderResult(entry, resultActions());
     } catch (error) {
       if (myId !== state.lookupRequestId) return;
       handleError(error, word);
     }
   }
 
+  /* ---- History ------------------------------------------------------- */
+  function onOpenHistory() {
+    UI.showHistorySheet(lookupFromHistory, onClearHistory);
+  }
+
+  function onCloseHistory() {
+    UI.closeSheet(DOM.historySheet);
+  }
+
+  async function onCopyHistory() {
+    const total = HistoryService.count();
+    if (total === 0) {
+      UI.toast('No words to copy yet');
+      return;
+    }
+    const tsv = HistoryService.exportTSV();
+    const ok = await ClipboardService.write(tsv);
+    if (ok) {
+      UI.toast(`Copied ${total} word${total === 1 ? '' : 's'} — paste into Excel or Sheets`);
+    } else {
+      UI.toast('Could not copy — please try again');
+    }
+  }
+
+  function onClearHistory() {
+    const total = HistoryService.count();
+    if (total === 0) return;
+    UI.showError({
+      title: 'Clear your vocabulary?',
+      message: `This will remove all ${total} word${total === 1 ? '' : 's'} from your list. You can't undo this.`,
+      retryLabel: 'Clear all',
+      danger: true,
+      onRetry: () => {
+        HistoryService.clear();
+        UI.renderHistorySheet();
+        UI.updateHistoryBadge();
+        UI.toast('Vocabulary cleared');
+      }
+    });
+  }
+
+  /* ---- Lens picker --------------------------------------------------- */
   async function openLensPicker() {
     let cams = CameraService.getAllCameras();
     if (cams.length < 2) {
@@ -3464,6 +3970,7 @@ const App = (() => {
     warmUpOcr();
     FrozenViewer.init();
     watchKeyboard();
+    UI.updateHistoryBadge();
 
     UI.bindEvents({
       onCapture, onRetake,
@@ -3477,6 +3984,10 @@ const App = (() => {
       getZoom: () => CameraService.getZoom(),
       setZoom: setZoomRaw,
       onViewfinderTap,
+      onOpenHistory,
+      onCloseHistory,
+      onCopyHistory,
+      onClearHistory,
       onCloseResult: () => {
         Pronunciation.stopAll();
         UI.closeSheet(DOM.resultSheet);
@@ -3498,7 +4009,7 @@ const App = (() => {
           const ch = DOM.frozenCanvas.height;
           const dw = DOM.frozenWrap.offsetWidth;
           const dh = DOM.frozenWrap.offsetHeight;
-          UI.renderWords(state.currentWords, cw, ch, dw, dh, lookupWord);
+          UI.renderWords(state.currentWords, cw, ch, dw, dh, (word) => lookupWord(word, 'camera'));
         }
       }
     });
