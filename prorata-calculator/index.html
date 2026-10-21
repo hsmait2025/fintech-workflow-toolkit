@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none';">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Pro-Rata Calculator by FY and Month</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,12 +13,109 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
+    /* ---------- Theme tokens (light default) ---------- */
     :root {
+      color-scheme: light dark;
+
       --primary-color: #007acc;
       --primary-hover: #cce8ff;
+      --primary-fg: #005a99;
+
       --bg-color: #f0f2f5;
       --text-color: #1a1a1a;
+      --muted-text: #666;
+      --subtle-text: #999;
       --card-bg: #fff;
+
+      --border-subtle: #e0e0e0;
+      --border-input: #ccc;
+      --surface-muted: #f7f9fc;
+      --surface-muted-border: #e8edf2;
+      --hover-bg: #f5f5f5;
+
+      --table-head-bg: #eaf4ff;
+      --table-head-border: #d0e8f8;
+      --row-border: #f0f0f0;
+      --row-current-bg: #f0faf4;
+      --row-current-hover: #e6f7ee;
+      --row-prior-bg: #fffbf0;
+      --row-future-bg: #f0f5ff;
+
+      --error-fg: #c53030;
+      --error-bg: #fff5f5;
+      --error-border: #fca5a5;
+
+      --btn-primary-bg: #e6f4ff;
+      --btn-primary-hover: #cce8ff;
+      --btn-download-bg: #f0faf4;
+      --btn-download-border: #28a745;
+      --btn-download-fg: #1a7a35;
+      --btn-download-hover: #d4f0de;
+      --btn-danger-bg: #fff5f5;
+      --btn-danger-border: #e53e3e;
+      --btn-danger-fg: #c53030;
+      --btn-danger-hover: #ffe0e0;
+
+      --badge-current-bg: #d4edda; --badge-current-fg: #1a7a35;
+      --badge-prior-bg: #fff3cd;   --badge-prior-fg: #856404;
+      --badge-future-bg: #cce5ff;  --badge-future-fg: #004085;
+
+      --focus-ring: rgba(0,122,204,0.15);
+      --notice-bg: #eaf4ff;
+      --notice-border: #b6dcff;
+      --notice-fg: #005a99;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #4db8ff;
+        --primary-hover: #1a3d54;
+        --primary-fg: #a8daff;
+
+        --bg-color: #121212;
+        --text-color: #e8e8e8;
+        --muted-text: #aaa;
+        --subtle-text: #888;
+        --card-bg: #1e1e1e;
+
+        --border-subtle: #333;
+        --border-input: #444;
+        --surface-muted: #252525;
+        --surface-muted-border: #333;
+        --hover-bg: #2a2a2a;
+
+        --table-head-bg: #1a2c3d;
+        --table-head-border: #2a4560;
+        --row-border: #2a2a2a;
+        --row-current-bg: #16281d;
+        --row-current-hover: #1d3326;
+        --row-prior-bg: #2a2415;
+        --row-future-bg: #16213d;
+
+        --error-fg: #ff8a8a;
+        --error-bg: #2a1515;
+        --error-border: #5a2020;
+
+        --btn-primary-bg: #16324a;
+        --btn-primary-hover: #1d3f5a;
+        --btn-download-bg: #14301f;
+        --btn-download-border: #2a7a45;
+        --btn-download-fg: #7ee6a4;
+        --btn-download-hover: #1a4229;
+        --btn-danger-bg: #2a1515;
+        --btn-danger-border: #8a2a2a;
+        --btn-danger-fg: #ff8a8a;
+        --btn-danger-hover: #3d1c1c;
+
+        --badge-current-bg: #1f4a2c; --badge-current-fg: #7ee6a4;
+        --badge-prior-bg: #4a3d1c;   --badge-prior-fg: #ffd97a;
+        --badge-future-bg: #1c2a4a;  --badge-future-fg: #7ee6ff;
+
+        --focus-ring: rgba(77,184,255,0.25);
+        --notice-bg: #16324a;
+        --notice-border: #2a5670;
+        --notice-fg: #a8daff;
+      }
     }
 
     body {
@@ -25,12 +125,10 @@
       background: var(--bg-color);
       color: var(--text-color);
       line-height: 1.5;
+      transition: background 0.2s, color 0.2s;
     }
 
-    .container {
-      max-width: 1050px;
-      margin: 0 auto;
-    }
+    .container { max-width: 1050px; margin: 0 auto; }
 
     h2 {
       font-size: clamp(20px, 5vw, 24px);
@@ -41,7 +139,7 @@
 
     .subtitle {
       font-size: clamp(11px, 2.5vw, 13px);
-      color: #666;
+      color: var(--muted-text);
       margin: 0 0 24px;
     }
 
@@ -50,7 +148,7 @@
       font-size: 10px;
       font-weight: 600;
       background: rgba(0,90,153,0.12);
-      color: #005a99;
+      color: var(--primary-fg);
       border: 1px solid rgba(0,90,153,0.25);
       border-radius: 4px;
       padding: 1px 5px;
@@ -63,7 +161,7 @@
     .input-card {
       background: var(--card-bg);
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-subtle);
       padding: clamp(16px, 4vw, 24px);
       margin-bottom: 24px;
     }
@@ -75,26 +173,19 @@
       margin: 0 0 16px;
       min-inline-size: 0;
     }
-
     .term-field legend {
       font-size: 13px;
-      color: #555;
+      color: var(--muted-text);
       font-weight: 500;
       padding: 0;
       margin-bottom: 6px;
     }
-
     .term-options {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       gap: 8px;
     }
-
-    .term-option {
-      position: relative;
-      display: block;
-    }
-
+    .term-option { position: relative; display: block; }
     .term-option input {
       position: absolute;
       opacity: 0;
@@ -102,143 +193,185 @@
       height: 1px;
       pointer-events: none;
     }
-
     .term-option span {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 44px; /* Mobile Friendly Touch Target */
+      min-height: 44px;
       padding: 8px 12px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-input);
       border-radius: 8px;
-      background: #fff;
+      background: var(--card-bg);
+      color: var(--text-color);
       font-size: 14px;
       font-weight: 500;
-      color: #444;
       cursor: pointer;
       user-select: none;
       transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
     }
-
-    .term-option span:hover { background: #f5f5f5; }
-
+    .term-option span:hover { background: var(--hover-bg); }
     .term-option input:checked + span {
-      background: #e6f4ff;
+      background: var(--btn-primary-bg);
       border-color: var(--primary-color);
-      color: #005a99;
+      color: var(--primary-fg);
       box-shadow: inset 0 0 0 1px var(--primary-color);
     }
-
     .term-option input:focus-visible + span {
       outline: 2px solid var(--primary-color);
       outline-offset: 2px;
     }
-
     .term-option input:active + span { transform: scale(0.98); }
-    /* ------------------------------------------------ */
 
+    .term-summary {
+      font-size: 12.5px;
+      color: var(--muted-text);
+      margin: 10px 0 0;
+      min-height: 1.5em;
+    }
+
+    /* ---------- Fields ---------- */
     .grid2 {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 16px;
       margin-bottom: 16px;
     }
-
     .field label {
       display: block;
       font-size: 13px;
-      color: #555;
+      color: var(--muted-text);
       margin-bottom: 6px;
       font-weight: 500;
     }
-
     .field input {
       width: 100%;
       padding: 12px;
       font-size: 14px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-input);
       border-radius: 8px;
       outline: none;
+      background: var(--card-bg);
+      color: var(--text-color);
       transition: border-color 0.2s, box-shadow 0.2s;
-      font-family: 'Roboto', Arial, sans-serif;
-      min-height: 44px; /* Mobile Friendly Touch Target */
+      font-family: inherit;
+      min-height: 44px;
     }
-
     .field input:focus {
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(0,122,204,0.15);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    .field input[aria-invalid="true"] {
+      border-color: var(--error-border);
+      box-shadow: 0 0 0 3px rgba(229,62,62,0.10);
+    }
+    .field-inline {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .field-inline input { flex: 1 1 auto; min-width: 0; }
+
+    .btn-chip {
+      flex: 0 0 auto;
+      padding: 0 14px;
+      min-height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border-input);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-chip:hover { background: var(--hover-bg); }
+    .btn-chip:active { transform: scale(0.98); }
+
+    .field-err {
+      display: none;
+      font-size: 12px;
+      color: var(--error-fg);
+      margin-top: 4px;
+    }
+    .field-err:not(:empty) { display: block; }
+
+    .preview {
+      font-size: 12.5px;
+      color: var(--muted-text);
+      margin: 6px 0 0;
+      min-height: 1.5em;
     }
 
+    /* ---------- Buttons ---------- */
     .btn-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 12px;
       margin-top: 20px;
     }
-
     .btn {
       width: 100%;
-      min-height: 44px; /* Mobile Friendly Touch Target */
+      min-height: 44px;
       padding: 10px 16px;
       font-size: 14px;
       font-weight: 500;
       border-radius: 8px;
-      border: 1px solid #ccc;
-      background: #fff;
+      border: 1px solid var(--border-input);
+      background: var(--card-bg);
+      color: var(--text-color);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 7px;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s, transform 0.1s, opacity 0.15s;
+      font-family: inherit;
     }
-
-    .btn:hover { background: #f5f5f5; }
-    .btn:active { transform: scale(0.98); }
+    .btn:hover:not(:disabled) { background: var(--hover-bg); }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .btn-primary {
-      background: #e6f4ff;
+      background: var(--btn-primary-bg);
       border-color: var(--primary-color);
-      color: #005a99;
+      color: var(--primary-fg);
     }
-    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover); }
 
     .btn-download {
-      background: #f0faf4;
-      border-color: #28a745;
-      color: #1a7a35;
+      background: var(--btn-download-bg);
+      border-color: var(--btn-download-border);
+      color: var(--btn-download-fg);
     }
-    .btn-download:hover { background: #d4f0de; }
+    .btn-download:hover:not(:disabled) { background: var(--btn-download-hover); }
 
     .btn-danger {
-      background: #fff5f5;
-      border-color: #e53e3e;
-      color: #c53030;
+      background: var(--btn-danger-bg);
+      border-color: var(--btn-danger-border);
+      color: var(--btn-danger-fg);
     }
-    .btn-danger:hover { background: #ffe0e0; }
+    .btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover); }
 
-    /* Summary metric cards responsive layouts */
+    /* ---------- Results ---------- */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
       margin-bottom: 24px;
     }
-
     .metric-card {
-      background: #f7f9fc;
+      background: var(--surface-muted);
       border-radius: 8px;
       padding: 14px 16px;
-      border: 1px solid #e8edf2;
+      border: 1px solid var(--surface-muted-border);
     }
-
     .metric-card .lbl {
       font-size: 13px;
-      color: #666;
+      color: var(--muted-text);
       margin-bottom: 4px;
       font-weight: 500;
     }
-
     .metric-card .val {
       font-size: clamp(15px, 4vw, 18px);
       font-weight: 600;
@@ -256,58 +389,50 @@
       gap: 8px;
     }
 
-    /* Overflow containers keep tables readable on ultra-narrow phones */
     .table-container {
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-subtle);
       background: var(--card-bg);
-      margin-bottom: 24px;
+      margin-bottom: 12px;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px; /* Scaled down for better desktop/mobile default */
+      font-size: 14px;
       text-align: left;
     }
-
     thead th {
-      background: #eaf4ff;
-      color: #444;
+      background: var(--table-head-bg);
+      color: var(--muted-text);
       font-weight: 600;
       padding: 12px;
-      border-bottom: 1px solid #d0e8f8;
+      border-bottom: 1px solid var(--table-head-border);
       white-space: nowrap;
     }
-
     tbody td {
       padding: 12px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--row-border);
       color: var(--text-color);
-      white-space: nowrap; /* Prevents awkward mid-text line breaks on mobile */
+      white-space: nowrap;
     }
-
-    /* Exceptions allowing multi-line layout inside wide columns */
-    tbody td:last-child {
-      white-space: normal;
-      min-width: 180px;
-    }
-
+    tbody td:last-child { white-space: normal; min-width: 180px; }
     tbody tr:last-child td { border-bottom: none; }
-    tbody tr.row-current td { background: #f0faf4; }
-    tbody tr.row-prior   td { background: #fffbf0; }
-    tbody tr.row-future  td { background: #f0f5ff; }
-    tbody tr:hover td { background: #f7f9fc; }
-    tbody tr.row-current:hover td { background: #e6f7ee; }
+    tbody tr.row-current td { background: var(--row-current-bg); }
+    tbody tr.row-prior   td { background: var(--row-prior-bg); }
+    tbody tr.row-future  td { background: var(--row-future-bg); }
+    tbody tr:hover td { background: var(--hover-bg); }
+    tbody tr.row-current:hover td { background: var(--row-current-hover); }
+    tbody tr:focus { outline: 2px solid var(--primary-color); outline-offset: -2px; }
+    tbody tr:focus td { background: var(--table-head-bg); }
 
-    tbody tr:focus {
-      outline: 2px solid var(--primary-color);
-      outline-offset: -2px;
+    .reconcile-note {
+      font-size: 12px;
+      color: var(--subtle-text);
+      margin: 0 0 24px;
     }
-    tbody tr:focus td { background: #ddeeff; }
 
     .badge {
       display: inline-block;
@@ -320,14 +445,14 @@
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
-    .badge-current { background: #d4edda; color: #1a7a35; }
-    .badge-prior   { background: #fff3cd; color: #856404; }
-    .badge-future  { background: #cce5ff; color: #004085; }
+    .badge-current { background: var(--badge-current-bg); color: var(--badge-current-fg); }
+    .badge-prior   { background: var(--badge-prior-bg);   color: var(--badge-prior-fg); }
+    .badge-future  { background: var(--badge-future-bg);  color: var(--badge-future-fg); }
 
     .error-msg {
-      background: #fff5f5;
-      color: #c53030;
-      border: 1px solid #fca5a5;
+      background: var(--error-bg);
+      color: var(--error-fg);
+      border: 1px solid var(--error-border);
       border-radius: 8px;
       padding: 12px 16px;
       font-size: 14px;
@@ -351,13 +476,50 @@
     }
     .skip-link:focus { left: 16px; }
 
+    /* ---------- Toast ---------- */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #333;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 200;
+      max-width: 90vw;
+    }
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (prefers-color-scheme: dark) {
+      .toast { background: #e8e8e8; color: #1a1a1a; }
+    }
+
     @media (max-width: 480px) {
-      .btn-row {
-        grid-template-columns: 1fr;
-      }
-      .kbd-hint {
-        display: none; /* Hide non-actionable shortcuts on touch devices */
-      }
+      .btn-row { grid-template-columns: 1fr; }
+      .kbd-hint { display: none; }
+    }
+
+    /* ---------- Print ---------- */
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      .subtitle, .btn-row, .kbd-hint, .skip-link, .term-field,
+      .notice, .term-summary, footer, .toast, .preview,
+      .field-err, .btn-chip, .reconcile-note { display: none !important; }
+      .input-card { border: 1px solid #ccc; break-inside: avoid; }
+      .table-container { border: 1px solid #ccc; overflow: visible; break-inside: avoid; }
+      .metric-card { border: 1px solid #ccc; background: #fff; break-inside: avoid; }
+      table { font-size: 11px; }
+      thead th { background: #eee !important; color: #000 !important; }
+      tbody tr.row-current td { background: #f5f5f5 !important; }
+      tbody tr.row-prior   td { background: #fafafa !important; }
+      tbody tr.row-future  td { background: #f8f8f8 !important; }
     }
   </style>
 </head>
@@ -374,90 +536,173 @@
     <fieldset class="term-field">
       <legend>Subscription term</legend>
       <div class="term-options">
-        <label class="term-option">
-          <input type="radio" name="term" value="12" tabindex="1" checked>
-          <span>1 Year</span>
-        </label>
-        <label class="term-option">
-          <input type="radio" name="term" value="6" tabindex="2">
-          <span>6 Months</span>
-        </label>
-        <label class="term-option">
-          <input type="radio" name="term" value="manual" tabindex="3">
-          <span>Manual</span>
-        </label>
+        <label class="term-option"><input type="radio" name="term" value="12" checked><span>1 Year</span></label>
+        <label class="term-option"><input type="radio" name="term" value="6"><span>6 Months</span></label>
+        <label class="term-option"><input type="radio" name="term" value="3"><span>3 Months</span></label>
+        <label class="term-option"><input type="radio" name="term" value="manual"><span>Manual</span></label>
       </div>
+      <p class="term-summary" id="termSummary" aria-live="polite"></p>
     </fieldset>
 
     <div class="grid2">
       <div class="field">
         <label for="startDate">Start date</label>
-        <input type="date" id="startDate" tabindex="4" aria-label="Start date" aria-required="true" aria-describedby="hint-dates">
+        <div class="field-inline">
+          <input type="date" id="startDate" aria-required="true" aria-describedby="startErr">
+          <button type="button" class="btn-chip" id="btnToday" aria-label="Set start date to today">Today</button>
+        </div>
+        <span class="field-err" id="startErr" role="alert"></span>
       </div>
       <div class="field">
         <label for="endDate">End date</label>
-        <input type="date" id="endDate" tabindex="5" aria-label="End date" aria-required="true" aria-describedby="hint-dates">
+        <input type="date" id="endDate" aria-required="true" aria-describedby="endErr">
+        <span class="field-err" id="endErr" role="alert"></span>
       </div>
     </div>
 
-    <p id="hint-dates" style="font-size:12px;color:#999;margin:0 0 12px;">Pick a term and the end date fills in automatically &mdash; editing the end date switches the term to Manual. Use arrow keys to change date values once a date field is focused.</p>
+    <p style="font-size:12px;color:var(--subtle-text);margin:0 0 12px;">
+      Pick a term and the end date fills in automatically &mdash; editing the end date switches to Manual.
+      Month-end start dates (e.g. 31 Aug) clamp to the last valid day in the target month.
+    </p>
 
     <div class="field">
       <label for="totalAmount">Total amount (&#8377;)</label>
-      <input type="number" id="totalAmount" placeholder="e.g. 120000" min="0" tabindex="6" aria-label="Total amount in rupees" aria-required="true">
+      <input type="number" id="totalAmount" placeholder="e.g. 120000" min="0" inputmode="decimal"
+             aria-required="true" aria-describedby="amountErr preview">
+      <span class="field-err" id="amountErr" role="alert"></span>
+      <p class="preview" id="preview" aria-live="polite"></p>
     </div>
 
     <div class="btn-row" role="group" aria-label="Actions">
-      <button class="btn btn-primary" id="btnCalculate" onclick="calculateProrata()" tabindex="7" aria-label="Calculate prorated amount. Keyboard shortcut: Ctrl+Enter">
+      <button class="btn btn-primary" id="btnCalculate" type="button"
+              aria-label="Calculate prorated amount. Keyboard shortcut: Ctrl+Enter">
         &#9654; Calculate <span class="kbd-hint" aria-hidden="true">Ctrl+Enter</span>
       </button>
-      <button class="btn btn-download" id="btnDownload" onclick="downloadCSV()" tabindex="8" aria-label="Download results as CSV file">
+      <button class="btn btn-download" id="btnDownload" type="button" disabled
+              aria-label="Download results as CSV file">
         &#8595; Download CSV
       </button>
-      <button class="btn btn-danger" id="btnClear" onclick="clearAll()" tabindex="9" aria-label="Clear all inputs and results">
+      <button class="btn" id="btnCopy" type="button" disabled
+              aria-label="Copy CSV results to clipboard">
+        &#128203; Copy CSV
+      </button>
+      <button class="btn" id="btnPrint" type="button" disabled
+              aria-label="Print results">
+        &#128424; Print
+      </button>
+      <button class="btn btn-danger" id="btnClear" type="button"
+              aria-label="Clear all inputs and results">
         &#10005; Clear
       </button>
     </div>
   </div>
 
-  <div id="result" tabindex="-1" aria-live="polite" aria-label="Calculation results"></div>
+  <div id="result" tabindex="-1" role="region" aria-label="Calculation results"></div>
 </div>
 
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<footer style="text-align:center;padding:20px;color:var(--subtle-text);font-size:0.8rem;">
+  <p>&copy; 2026 HS. All rights reserved.</p>
+  <p>Version: <span id="app-version">2.0.0</span> &middot; <span id="selftest-status" aria-live="polite"></span></p>
+</footer>
+
 <script>
-  const FY_START_MONTH = 4;
-  let csvRows = [];
-  const NAV_IDS = ['startDate', 'endDate', 'totalAmount', 'btnCalculate', 'btnDownload', 'btnClear'];
+/* ============================================================================
+   Pro-Rata Calculator — 2.0.0
+   ----------------------------------------------------------------------------
+   Dependency audit
+   - No runtime JavaScript dependencies. No npm packages, no bundler.
+   - External resources: Google Fonts (CSS + WOFF2). No JS. No telemetry.
+     Review https://fonts.google.com periodically for any CDN advisories;
+     optionally self-host for air-gapped deployments.
+   - Content-Security-Policy restricts default-src to 'none' and explicitly
+     whitelists only the font origins and inline script/style required by this
+     single-file build. No network calls are made by application code.
 
-  /* ------------------------------------------------------------------
-     SUBSCRIPTION TERM ENGINE
-     1 Year  -> end date = start + 12 months - 1 day (inclusive term)
-     6 Months-> end date = start +  6 months - 1 day (inclusive term)
-     Manual  -> end date is whatever the user typed
-     Editing the end date always switches the term back to Manual so the
-     UI never claims a term the dates no longer follow.
-  ------------------------------------------------------------------- */
-  const MANUAL_MODE = 'manual';
-  let termMode = '12';           // '12' | '6' | 'manual'
-  let suppressEndSync = false;   // guards programmatic end-date writes
+   Security
+   - All dynamic HTML interpolations are either numeric or drawn from a fixed
+     allowlist of strings. No user-controlled text is ever written via
+     innerHTML. CSV cells pass through a formula-injection guard (OWASP).
+   - Inputs are parsed with a strict YYYY-MM-DD regex; invalid dates are
+     rejected before any arithmetic runs.
 
-  const startDateEl = document.getElementById('startDate');
-  const endDateEl   = document.getElementById('endDate');
+   Testing
+   - A pure-function self-test suite runs on load. Results appear in the
+     footer and in the console. window.__prorataSelfTests exposes the last run
+     for external CI harnesses (e.g. Playwright / Puppeteer).
+   ========================================================================= */
+(function () {
+  'use strict';
 
-  // Parse a YYYY-MM-DD input value in LOCAL time (avoids the UTC off-by-one).
+  /* ------------------------------------------------------------------ *
+   * Constants
+   * ------------------------------------------------------------------ */
+  const FY_START_MONTH   = 4;          // Indian financial year starts 1 April
+  const MS_PER_DAY       = 86_400_000;
+  const SAFE_GUARD_MAX   = 100;        // hard cap on FY iterations
+  const STORAGE_KEY      = 'prorata:v2';
+  const TERM_MANUAL      = 'manual';
+  const TERM_OPTIONS     = Object.freeze(['12', '6', '3', TERM_MANUAL]);
+  const MONTHS_SHORT     = Object.freeze([
+    'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
+  ]);
+  const NAV_IDS          = Object.freeze([
+    'startDate', 'endDate', 'totalAmount',
+    'btnCalculate', 'btnDownload', 'btnCopy', 'btnPrint', 'btnClear'
+  ]);
+  const RECONCILE_EPSILON = 0.005;     // paise tolerance for rounding drift
+
+  /* ------------------------------------------------------------------ *
+   * Pure utilities (no DOM access — unit testable)
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Parse a YYYY-MM-DD string as a local-midnight Date.
+   * Returns null on invalid or out-of-range input.
+   * @param {string} str
+   * @returns {Date|null}
+   */
   function parseISODate(str) {
-    const parts = String(str).split('-');
-    if (parts.length !== 3) return null;
-    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return isNaN(d.getTime()) ? null : d;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(str));
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const d = Number(m[3]);
+    const date = new Date(y, mo, d);
+    if (date.getFullYear() !== y || date.getMonth() !== mo || date.getDate() !== d) {
+      return null;
+    }
+    return date;
   }
 
+  /**
+   * Format a Date as YYYY-MM-DD in local time.
+   * @param {Date} d
+   * @returns {string}
+   */
   function toISODate(d) {
     return d.getFullYear() + '-' +
            String(d.getMonth() + 1).padStart(2, '0') + '-' +
            String(d.getDate()).padStart(2, '0');
   }
 
-  // Add months, clamping to the last valid day of the target month.
+  /**
+   * Human-readable date, e.g. "16 Oct 2026".
+   * @param {Date} d
+   * @returns {string}
+   */
+  function fmtDateLong(d) {
+    return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  /**
+   * Add a month offset, clamping to the last valid day of the target month.
+   * Reports whether clamping occurred so callers can adjust the term end.
+   * @param {Date} date
+   * @param {number} months
+   * @returns {{date: Date, clamped: boolean}}
+   */
   function addMonthsClamped(date, months) {
     const y = date.getFullYear();
     const m = date.getMonth() + months;
@@ -467,54 +712,458 @@
     return { date: new Date(y, m, day), clamped: day !== d };
   }
 
-  // Term end = day BEFORE the anniversary; if the anniversary had to be
-  // clamped (e.g. 31 Aug + 6 months -> 28/29 Feb) the term ends on that
-  // clamped day itself, which is the intuitive subscription end.
+  /**
+   * Compute the inclusive end date for a preset subscription term.
+   * End = day before the anniversary, unless the anniversary was clamped
+   * (in which case the clamped day itself is the intuitive term end).
+   * @param {Date} start
+   * @param {number} months
+   * @returns {Date}
+   */
   function termEndDate(start, months) {
-    const result = addMonthsClamped(start, months);
-    if (result.clamped) return result.date;
-    result.date.setDate(result.date.getDate() - 1);
-    return result.date;
+    const r = addMonthsClamped(start, months);
+    if (r.clamped) return r.date;
+    r.date.setDate(r.date.getDate() - 1);
+    return r.date;
   }
 
-  function syncEndDateFromTerm() {
-    if (termMode === MANUAL_MODE) return;
-    const start = parseISODate(startDateEl.value);
-    if (!start) return;
-    const end = termEndDate(start, Number(termMode));
-    suppressEndSync = true;
-    endDateEl.value = toISODate(end);
-    suppressEndSync = false;
+  /**
+   * Same as termEndDate but also reports whether the term end was clamped.
+   * @param {Date} start
+   * @param {number} months
+   * @returns {{end: Date, clamped: boolean}}
+   */
+  function termEndInfo(start, months) {
+    const r = addMonthsClamped(start, months);
+    if (r.clamped) return { end: r.date, clamped: true };
+    r.date.setDate(r.date.getDate() - 1);
+    return { end: r.date, clamped: false };
+  }
+
+  /**
+   * Inclusive day count between two local-midnight Dates.
+   * Uses UTC epoch of the date components so DST transitions cannot
+   * shift the count by 24-hour periods.
+   * @param {Date} a
+   * @param {Date} b
+   * @returns {number}
+   */
+  function inclusiveDays(a, b) {
+    const aUTC = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    const bUTC = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.round((bUTC - aUTC) / MS_PER_DAY) + 1;
+  }
+
+  /**
+   * FY label, e.g. "FY 2026-27".
+   * @param {number} yr
+   * @returns {string}
+   */
+  function fyLabel(yr) {
+    return 'FY ' + yr + '-' + String(yr + 1).slice(-2);
+  }
+
+  /**
+   * Determine the FY start year for a given date.
+   * @param {Date} date
+   * @returns {number}
+   */
+  function getFYStartYear(date) {
+    return (date.getMonth() + 1 >= FY_START_MONTH)
+      ? date.getFullYear()
+      : date.getFullYear() - 1;
+  }
+
+  /**
+   * Format a number as Indian Rupees with two decimals.
+   * @param {number} n
+   * @returns {string}
+   */
+  function fmtINR(n) {
+    return '\u20B9' + n.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  /**
+   * Escape a CSV cell per RFC 4180 and guard against spreadsheet formula
+   * injection (OWASP: cells starting with = + - @ tab or CR are prefixed
+   * with a single quote).
+   * @param {*} val
+   * @returns {string}
+   */
+  function escapeCsv(val) {
+    let s = String(val);
+    if (s && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  /**
+   * Adjust a series of {amt} rows so that the sum exactly matches `total`.
+   * Drift is applied to the largest row, keeping the per-day ratio as close
+   * as possible while guaranteeing displayed totals reconcile.
+   * @param {Array<{amt:number}>} rows
+   * @param {number} total
+   */
+  function reconcile(rows, total) {
+    if (!rows.length) return;
+    const sum = rows.reduce((acc, r) => acc + r.amt, 0);
+    const drift = total - sum;
+    if (Math.abs(drift) < RECONCILE_EPSILON) return;
+    let maxIdx = 0;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].amt > rows[maxIdx].amt) maxIdx = i;
+    }
+    rows[maxIdx].amt += drift;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Self-tests — run on load, log to console, expose for CI harnesses.
+   * ------------------------------------------------------------------ */
+  function runSelfTests() {
+    const failures = [];
+    let total = 0;
+
+    /** @param {*} actual @param {*} expected @param {string} label */
+    const eq = (actual, expected, label) => {
+      total++;
+      if (actual !== expected) {
+        failures.push(label + ': expected ' + expected + ', got ' + actual);
+      }
+    };
+    const ok = (cond, label) => { total++; if (!cond) failures.push(label); };
+
+    // parseISODate
+    eq(parseISODate('2024-13-01'), null, 'parse invalid month');
+    eq(parseISODate('2024-02-30'), null, 'parse invalid day');
+    eq(parseISODate(''), null, 'parse empty');
+    eq(parseISODate('not-a-date'), null, 'parse garbage');
+    const p = parseISODate('2026-10-16');
+    ok(p && p.getFullYear() === 2026 && p.getMonth() === 9 && p.getDate() === 16, 'parse valid');
+
+    // toISODate round-trip
+    eq(toISODate(new Date(2026, 9, 16)), '2026-10-16', 'toISODate');
+    eq(toISODate(new Date(2026, 0, 1)),  '2026-01-01', 'toISODate zero-pad');
+
+    // addMonthsClamped
+    const c1 = addMonthsClamped(new Date(2024, 0, 31), 1);
+    eq(c1.clamped, true, 'clamp leap');
+    eq(c1.date.getDate(), 29, 'clamp leap day');
+    const c2 = addMonthsClamped(new Date(2023, 0, 31), 1);
+    eq(c2.clamped, true, 'clamp non-leap');
+    eq(c2.date.getDate(), 28, 'clamp non-leap day');
+
+    // termEndDate
+    eq(toISODate(termEndDate(new Date(2026, 9, 16), 12)), '2027-10-15', '1yr end');
+    eq(toISODate(termEndDate(new Date(2024, 1, 29), 12)), '2025-02-28', '1yr leap end');
+    eq(toISODate(termEndDate(new Date(2026, 7, 31), 6)),  '2027-02-28', '6mo clamp end');
+    eq(toISODate(termEndDate(new Date(2026, 7, 15), 6)),  '2027-02-14', '6mo normal end');
+    eq(toISODate(termEndDate(new Date(2026, 9, 16), 3)),  '2027-01-15', '3mo end');
+
+    // inclusiveDays — timezone-safe
+    eq(inclusiveDays(new Date(2026, 9, 16), new Date(2027, 9, 15)), 365, '1yr days');
+    eq(inclusiveDays(new Date(2024, 1, 29), new Date(2025, 1, 28)), 366, 'leap yr days');
+    eq(inclusiveDays(new Date(2026, 9, 16), new Date(2026, 9, 16)), 1,   'same day');
+
+    // getFYStartYear / fyLabel
+    eq(getFYStartYear(new Date(2026, 3, 1)),  2026, 'FY start Apr 1');
+    eq(getFYStartYear(new Date(2026, 2, 31)), 2025, 'FY before Apr');
+    eq(fyLabel(2026), 'FY 2026-27', 'fyLabel');
+
+    // escapeCsv — formula injection + RFC 4180
+    eq(escapeCsv('=SUM(A1)'), "'=SUM(A1)", 'csv formula');
+    eq(escapeCsv('+123'),     "'+123",     'csv plus');
+    eq(escapeCsv('-123'),     "'-123",     'csv minus');
+    eq(escapeCsv('@cmd'),     "'@cmd",     'csv at');
+    eq(escapeCsv('hello'),    'hello',     'csv plain');
+    eq(escapeCsv('a,b'),      '"a,b"',     'csv comma');
+    eq(escapeCsv('a"b'),      '"a""b"',    'csv quote');
+
+    // reconcile
+    const rRows = [{ amt: 100 }, { amt: 200 }, { amt: 300 }];
+    reconcile(rRows, 601);
+    eq(rRows.reduce((a, r) => a + r.amt, 0), 601, 'reconcile sum');
+    eq(rRows[2].amt, 301, 'reconcile largest row');
+    const rFlat = [{ amt: 100 }, { amt: 200 }];
+    reconcile(rFlat, 300);
+    eq(rFlat[1].amt, 200, 'reconcile no drift');
+
+    // fmtINR (sanity)
+    ok(fmtINR(1000).startsWith('\u20B9'), 'fmtINR prefix');
+
+    return { total, failures };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * DOM references
+   * ------------------------------------------------------------------ */
+  const startDateEl   = document.getElementById('startDate');
+  const endDateEl     = document.getElementById('endDate');
+  const amountEl      = document.getElementById('totalAmount');
+  const termSummaryEl = document.getElementById('termSummary');
+  const previewEl     = document.getElementById('preview');
+  const startErrEl    = document.getElementById('startErr');
+  const endErrEl      = document.getElementById('endErr');
+  const amountErrEl   = document.getElementById('amountErr');
+  const resultDiv     = document.getElementById('result');
+  const btnCalculate  = document.getElementById('btnCalculate');
+  const btnDownload   = document.getElementById('btnDownload');
+  const btnCopy       = document.getElementById('btnCopy');
+  const btnPrint      = document.getElementById('btnPrint');
+  const btnClear      = document.getElementById('btnClear');
+  const btnToday      = document.getElementById('btnToday');
+  const toastEl       = document.getElementById('toast');
+
+  /* ------------------------------------------------------------------ *
+   * State
+   * ------------------------------------------------------------------ */
+  let termMode    = '12';      // '12' | '6' | '3' | 'manual'
+  let csvRows     = [];        // latest successful CSV payload
+  let suppressEnd = false;     // guards programmatic end-date writes
+  let toastTimer  = null;
+
+  /* ------------------------------------------------------------------ *
+   * Toast helper
+   * ------------------------------------------------------------------ */
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('visible'), 2200);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Term handling
+   * ------------------------------------------------------------------ */
+  function isTermValue(v) { return TERM_OPTIONS.indexOf(v) !== -1; }
+
+  function termLabel(mode) {
+    if (mode === '12') return '1 Year';
+    if (mode === '6')  return '6 Months';
+    if (mode === '3')  return '3 Months';
+    return 'Manual';
   }
 
   function setTermMode(mode) {
+    if (!isTermValue(mode)) return;
     termMode = mode;
     const radio = document.querySelector('input[name="term"][value="' + mode + '"]');
     if (radio && !radio.checked) radio.checked = true;
   }
 
-  // Start date drives the end date while a preset term is active.
-  startDateEl.addEventListener('change', syncEndDateFromTerm);
-  startDateEl.addEventListener('input', syncEndDateFromTerm);
-
-  // Any user edit of the end date drops the term back to Manual.
-  function handleEndDateEdited() {
-    if (suppressEndSync) return;
-    if (termMode === MANUAL_MODE) return;
-    setTermMode(MANUAL_MODE);
+  function syncEndDateFromTerm() {
+    if (termMode === TERM_MANUAL) return;
+    const start = parseISODate(startDateEl.value);
+    if (!start) return;
+    const end = termEndDate(start, Number(termMode));
+    suppressEnd = true;
+    endDateEl.value = toISODate(end);
+    suppressEnd = false;
   }
-  endDateEl.addEventListener('input', handleEndDateEdited);
-  endDateEl.addEventListener('change', handleEndDateEdited);
 
-  // Switching back to a preset term recalculates the end date.
+  function onEndDateEdited() {
+    if (suppressEnd) return;
+    if (termMode === TERM_MANUAL) return;
+    // Any user-driven change of the end date drops the preset.
+    setTermMode(TERM_MANUAL);
+  }
+
+  function updateTermSummary(start, end) {
+    if (termMode === TERM_MANUAL) {
+      if (start && end && end >= start) {
+        termSummaryEl.textContent =
+          'Manual \u2192 ' + inclusiveDays(start, end) + ' days (' +
+          fmtDateLong(start) + ' \u2013 ' + fmtDateLong(end) + ')';
+      } else {
+        termSummaryEl.textContent = 'Manual \u2192 enter any start and end date';
+      }
+      return;
+    }
+
+    const label = termLabel(termMode);
+    if (!start) {
+      termSummaryEl.textContent = label + ' \u2192 pick a start date to auto-fill the end';
+      return;
+    }
+
+    const info = termEndInfo(start, Number(termMode));
+    let msg = label + ' \u2192 ' + inclusiveDays(start, info.end) + ' days (' +
+              fmtDateLong(start) + ' \u2013 ' + fmtDateLong(info.end) + ')';
+    if (info.clamped) msg += ' \u00b7 month-end start clamped';
+    termSummaryEl.textContent = msg;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Validation + live feedback
+   * ------------------------------------------------------------------ */
+  function recomputeFeedback() {
+    const start  = parseISODate(startDateEl.value);
+    const end    = parseISODate(endDateEl.value);
+    const amount = parseFloat(amountEl.value);
+
+    const startBad = !!(startDateEl.value && !start);
+    startErrEl.textContent = startBad ? 'Invalid date.' : '';
+    if (startBad) startDateEl.setAttribute('aria-invalid', 'true');
+    else startDateEl.removeAttribute('aria-invalid');
+
+    const endBadFormat = !!(endDateEl.value && !end);
+    const endBadOrder  = !!(start && end && end < start);
+    if (endBadFormat)      endErrEl.textContent = 'Invalid date.';
+    else if (endBadOrder)  endErrEl.textContent = 'End date must be on or after start date.';
+    else                   endErrEl.textContent = '';
+    if (endBadFormat || endBadOrder) endDateEl.setAttribute('aria-invalid', 'true');
+    else endDateEl.removeAttribute('aria-invalid');
+
+    const amountBad = amountEl.value !== '' && (isNaN(amount) || amount < 0);
+    amountErrEl.textContent = amountBad ? 'Amount must be a non-negative number.' : '';
+    if (amountBad) amountEl.setAttribute('aria-invalid', 'true');
+    else amountEl.removeAttribute('aria-invalid');
+
+    updateTermSummary(start, end);
+
+    if (start && end && end >= start && !isNaN(amount) && amount >= 0) {
+      const days = inclusiveDays(start, end);
+      previewEl.textContent = days + ' days \u00b7 ' + fmtINR(amount / days) + ' per day';
+    } else {
+      previewEl.textContent = '';
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Persistence (localStorage) + URL sharing
+   * ------------------------------------------------------------------ */
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        term: termMode,
+        start: startDateEl.value,
+        end: endDateEl.value,
+        amount: amountEl.value
+      }));
+    } catch (_) { /* storage may be disabled or full — non-fatal */ }
+  }
+
+  function readStored() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+
+  function readURLParams() {
+    const p = new URLSearchParams(location.search);
+    const term = p.get('term');
+    const start = p.get('start');
+    const end = p.get('end');
+    const amount = p.get('amount');
+    if (!term && !start && !end && !amount) return null;
+    return { term, start, end, amount };
+  }
+
+  function writeURLParams() {
+    try {
+      const p = new URLSearchParams();
+      if (startDateEl.value) p.set('start', startDateEl.value);
+      if (endDateEl.value)   p.set('end', endDateEl.value);
+      if (amountEl.value)    p.set('amount', amountEl.value);
+      p.set('term', termMode);
+      history.replaceState(null, '', location.pathname + '?' + p.toString());
+    } catch (_) { /* history API may be unavailable in some contexts */ }
+  }
+
+  function hydrate() {
+    const fromURL = readURLParams();
+    const source = fromURL || readStored();
+    if (!source) return;
+
+    if (source.term && isTermValue(source.term)) setTermMode(source.term);
+
+    if (source.start && parseISODate(source.start)) {
+      startDateEl.value = source.start;
+    }
+
+    if (termMode === TERM_MANUAL) {
+      if (source.end && parseISODate(source.end)) endDateEl.value = source.end;
+    } else {
+      syncEndDateFromTerm();
+    }
+
+    if (source.amount !== undefined && source.amount !== null && source.amount !== '') {
+      const n = parseFloat(source.amount);
+      if (Number.isFinite(n) && n >= 0) amountEl.value = String(n);
+    }
+
+    recomputeFeedback();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Stale-result invalidation
+   * ------------------------------------------------------------------ */
+  function invalidateResults() {
+    if (csvRows.length) {
+      csvRows = [];
+      btnDownload.disabled = true;
+      btnCopy.disabled = true;
+      btnPrint.disabled = true;
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Input wiring
+   * ------------------------------------------------------------------ */
+  function onStartChange() {
+    syncEndDateFromTerm();
+    recomputeFeedback();
+    persist();
+    invalidateResults();
+  }
+
+  function onEndChange() {
+    onEndDateEdited();
+    recomputeFeedback();
+    persist();
+    invalidateResults();
+  }
+
+  function onAmountChange() {
+    recomputeFeedback();
+    persist();
+    invalidateResults();
+  }
+
+  startDateEl.addEventListener('change', onStartChange);
+  startDateEl.addEventListener('input', onStartChange);
+  endDateEl.addEventListener('change', onEndChange);
+  endDateEl.addEventListener('input', onEndChange);
+  amountEl.addEventListener('change', onAmountChange);
+  amountEl.addEventListener('input', onAmountChange);
+
   document.querySelectorAll('input[name="term"]').forEach(function (radio) {
     radio.addEventListener('change', function () {
       if (!this.checked) return;
       termMode = this.value;
-      if (termMode !== MANUAL_MODE) syncEndDateFromTerm();
+      if (termMode !== TERM_MANUAL) syncEndDateFromTerm();
+      recomputeFeedback();
+      persist();
+      invalidateResults();
     });
   });
 
+  btnToday.addEventListener('click', function () {
+    startDateEl.value = toISODate(new Date());
+    if (termMode !== TERM_MANUAL) syncEndDateFromTerm();
+    recomputeFeedback();
+    persist();
+    invalidateResults();
+  });
+
+  /* ------------------------------------------------------------------ *
+   * Keyboard helpers
+   * ------------------------------------------------------------------ */
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
@@ -527,35 +1176,35 @@
       if (e.key === 'Enter' && !e.ctrlKey) {
         e.preventDefault();
         const idx = NAV_IDS.indexOf(input.id);
-        const next = document.getElementById(NAV_IDS[idx + 1]);
+        const next = idx >= 0 ? document.getElementById(NAV_IDS[idx + 1]) : null;
         if (next) next.focus();
       }
     });
   });
 
-  document.getElementById('totalAmount').addEventListener('keydown', function (e) {
+  amountEl.addEventListener('keydown', function (e) {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       this.value = (parseFloat(this.value) || 0) + 1000;
+      this.dispatchEvent(new Event('input', { bubbles: true }));
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const v = (parseFloat(this.value) || 0) - 1000;
       this.value = v < 0 ? 0 : v;
+      this.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
 
   document.querySelectorAll('.btn').forEach(function (btn) {
     btn.addEventListener('keydown', function (e) {
       const btns = Array.from(document.querySelectorAll('.btn'));
-      const idx  = btns.indexOf(btn);
+      const idx = btns.indexOf(btn);
       if (e.key === 'ArrowRight' && idx < btns.length - 1) {
-        e.preventDefault();
-        btns[idx + 1].focus();
+        e.preventDefault(); btns[idx + 1].focus();
       }
       if (e.key === 'ArrowLeft' && idx > 0) {
-        e.preventDefault();
-        btns[idx - 1].focus();
+        e.preventDefault(); btns[idx - 1].focus();
       }
     });
   });
@@ -575,216 +1224,315 @@
     }
   });
 
-  function getFYStartYear(date) {
-    return (date.getMonth() + 1 >= FY_START_MONTH) ? date.getFullYear() : date.getFullYear() - 1;
+  /* ------------------------------------------------------------------ *
+   * Calculation
+   * ------------------------------------------------------------------ */
+  function buildMonthRows(startDate, endDate, oneDayAmt) {
+    const rows = [];
+    const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    while (cursor <= endDate) {
+      const mStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const mEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      const aStart = startDate > mStart ? startDate : mStart;
+      const aEnd = endDate < mEnd ? endDate : mEnd;
+      if (aStart <= aEnd) {
+        const days = inclusiveDays(aStart, aEnd);
+        rows.push({
+          mo: MONTHS_SHORT[cursor.getMonth()],
+          yr: cursor.getFullYear(),
+          days,
+          amt: days * oneDayAmt
+        });
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return rows;
   }
 
-  function fyLabel(yr) {
-    return 'FY ' + yr + '-' + (yr + 1).toString().slice(-2);
+  function buildFYRows(startDate, endDate, oneDayAmt, currentFYSY) {
+    const rows = [];
+    let fyCursor = getFYStartYear(startDate);
+    let hitGuard = true;
+
+    for (let i = 0; i < SAFE_GUARD_MAX; i++) {
+      const fyStart = new Date(fyCursor, FY_START_MONTH - 1, 1);
+      const fyEnd = new Date(fyCursor + 1, FY_START_MONTH - 2, 31);
+      const actStart = startDate > fyStart ? startDate : fyStart;
+      const actEnd = endDate < fyEnd ? endDate : fyEnd;
+
+      if (actStart <= actEnd) {
+        const days = inclusiveDays(actStart, actEnd);
+        const amt = days * oneDayAmt;
+        const type = fyCursor < currentFYSY ? 'prior'
+                   : fyCursor === currentFYSY ? 'current'
+                   : 'future';
+        rows.push({ yr: fyCursor, label: fyLabel(fyCursor), days, amt, type });
+      }
+      if (fyEnd >= endDate) { hitGuard = false; break; }
+      fyCursor++;
+    }
+    return { rows, hitGuard };
   }
 
-  function fmtINR(n) {
-    return '\u20B9' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function renderFYTable(fyRows) {
+    let html =
+      '<div class="section-title">\uD83D\uDCC6 Financial Year Breakdown</div>' +
+      '<div class="table-container">' +
+        '<table aria-label="Financial year breakdown">' +
+          '<thead><tr>' +
+            '<th scope="col">Financial Year</th>' +
+            '<th scope="col">Days</th>' +
+            '<th scope="col">Amount</th>' +
+            '<th scope="col">Accounting Treatment</th>' +
+          '</tr></thead><tbody>';
+
+    for (const row of fyRows) {
+      const cls = 'row-' + row.type;
+      const badge = '<span class="badge badge-' + row.type + '">' + row.type + '</span>';
+      const treatment =
+        row.type === 'prior'   ? fmtINR(row.amt) + ' (Prior Period Adjustment)' :
+        row.type === 'current' ? fmtINR(row.amt) + ' (Expense Header)' :
+                                 fmtINR(row.amt) + ' (Prepaid Adjustment)';
+      html +=
+        '<tr class="' + cls + '" tabindex="0" aria-label="' +
+          row.label + ', ' + row.days + ' days, ' + fmtINR(row.amt) + '">' +
+          '<td>' + row.label + badge + '</td>' +
+          '<td>' + row.days + '</td>' +
+          '<td>' + fmtINR(row.amt) + '</td>' +
+          '<td>' + treatment + '</td>' +
+        '</tr>';
+    }
+    return html + '</tbody></table></div>';
   }
 
-  function escapeCsv(val) {
-    const s = String(val);
-    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }
+  function renderMonthTable(monthRows) {
+    let html =
+      '<div class="section-title">\uD83D\uDCC5 Month-wise Breakdown</div>' +
+      '<div class="table-container">' +
+        '<table aria-label="Month-wise breakdown">' +
+          '<thead><tr>' +
+            '<th scope="col">Month</th>' +
+            '<th scope="col">Year</th>' +
+            '<th scope="col">Days</th>' +
+            '<th scope="col">Amount</th>' +
+          '</tr></thead><tbody>';
 
-  function clearAll() {
-    startDateEl.value = '';
-    endDateEl.value   = '';
-    document.getElementById('totalAmount').value = '';
-    document.getElementById('result').innerHTML  = '';
-    csvRows = [];
-    setTermMode('12');          // back to the default 1-year preset
-    startDateEl.focus();
+    for (const row of monthRows) {
+      html +=
+        '<tr tabindex="0" aria-label="' + row.mo + ' ' + row.yr + ', ' +
+          row.days + ' days, ' + fmtINR(row.amt) + '">' +
+          '<td>' + row.mo + '</td>' +
+          '<td>' + row.yr + '</td>' +
+          '<td>' + row.days + '</td>' +
+          '<td>' + fmtINR(row.amt) + '</td>' +
+        '</tr>';
+    }
+    return html + '</tbody></table></div>';
   }
 
   function calculateProrata() {
-    // Keep the end date consistent with the selected preset term.
-    if (termMode !== MANUAL_MODE) syncEndDateFromTerm();
+    // Keep the end date consistent with the active preset term.
+    if (termMode !== TERM_MANUAL) syncEndDateFromTerm();
 
-    const startInput  = document.getElementById('startDate').value;
-    const endInput    = document.getElementById('endDate').value;
-    const totalAmount = parseFloat(document.getElementById('totalAmount').value);
-    const resultDiv   = document.getElementById('result');
+    const startInput = startDateEl.value;
+    const endInput = endDateEl.value;
+    const totalAmount = parseFloat(amountEl.value);
+
     csvRows = [];
+    invalidateResults();
 
     if (!startInput || !endInput || isNaN(totalAmount) || totalAmount < 0) {
-      resultDiv.innerHTML = '<div class="error-msg" role="alert">&#9888; Please enter valid start/end dates and a non-negative total amount.</div>';
+      resultDiv.innerHTML =
+        '<div class="error-msg" role="alert">\u26A0 Please enter valid start/end dates and a non-negative total amount.</div>';
       resultDiv.focus();
       return;
     }
 
-    const startDate = new Date(startInput);
-    const endDate   = new Date(endInput);
-
+    const startDate = parseISODate(startInput);
+    const endDate = parseISODate(endInput);
+    if (!startDate || !endDate) {
+      resultDiv.innerHTML =
+        '<div class="error-msg" role="alert">\u26A0 Dates could not be parsed. Please re-enter.</div>';
+      resultDiv.focus();
+      return;
+    }
     if (endDate < startDate) {
-      resultDiv.innerHTML = '<div class="error-msg" role="alert">&#9888; End date must be after start date.</div>';
+      resultDiv.innerHTML =
+        '<div class="error-msg" role="alert">\u26A0 End date must be on or after start date.</div>';
       resultDiv.focus();
       return;
     }
 
-    const MS_PER_DAY  = 86400000;
-    const totalDays   = Math.floor((endDate - startDate) / MS_PER_DAY) + 1;
-    const oneDayAmt   = totalAmount / totalDays;
+    const totalDays = inclusiveDays(startDate, endDate);
+    const oneDayAmt = totalAmount / totalDays;
     const currentFYSY = getFYStartYear(new Date());
 
+    // FY rows
+    const fyResult = buildFYRows(startDate, endDate, oneDayAmt, currentFYSY);
+    if (fyResult.hitGuard) {
+      resultDiv.innerHTML =
+        '<div class="error-msg" role="alert">\u26A0 Date range exceeds the supported limit (' +
+        SAFE_GUARD_MAX + ' financial years). Please narrow the range.</div>';
+      resultDiv.focus();
+      return;
+    }
+    const fyRows = fyResult.rows;
+    reconcile(fyRows, totalAmount);
+
+    // Month rows
+    const monthRows = buildMonthRows(startDate, endDate, oneDayAmt);
+    reconcile(monthRows, totalAmount);
+
+    // Accounting split (uses reconciled amounts)
+    const priorTotal = fyRows.filter(r => r.type === 'prior').reduce((a, b) => a + b.amt, 0);
+    const expenseTotal = fyRows.filter(r => r.type === 'current').reduce((a, b) => a + b.amt, 0);
+    const prepaidTotal = fyRows.filter(r => r.type === 'future').reduce((a, b) => a + b.amt, 0);
+
+    /* All interpolations below are numbers or allowlisted strings
+       (row.label, row.type, MONTHS_SHORT). No user text reaches innerHTML. */
+    let output = '';
+
+    output +=
+      '<div class="metrics-grid" role="region" aria-label="Summary metrics">' +
+        '<div class="metric-card"><div class="lbl">Total days</div><div class="val">' + totalDays + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Total amount</div><div class="val">' + fmtINR(totalAmount) + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Per day</div><div class="val">' + fmtINR(oneDayAmt) + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Current FY</div><div class="val">' + fyLabel(currentFYSY) + '</div></div>' +
+      '</div>';
+
+    output +=
+      '<div class="metrics-grid" role="region" aria-label="Accounting summary">' +
+        '<div class="metric-card"><div class="lbl">Prior Period Adj.</div><div class="val">' + fmtINR(priorTotal) + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Expense Header</div><div class="val">' + fmtINR(expenseTotal) + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Prepaid Adj.</div><div class="val">' + fmtINR(prepaidTotal) + '</div></div>' +
+        '<div class="metric-card"><div class="lbl">Classification Total</div><div class="val">' + fmtINR(priorTotal + expenseTotal + prepaidTotal) + '</div></div>' +
+      '</div>';
+
+    output += renderFYTable(fyRows);
+    output += renderMonthTable(monthRows);
+    output += '<p class="reconcile-note">FY and month totals are reconciled to ' + fmtINR(totalAmount) + ' — any rounding remainder is applied to the largest row.</p>';
+
+    // CSV payload
     csvRows.push(['Summary', 'Value']);
     csvRows.push(['Total Duration (days)', totalDays]);
     csvRows.push(['Total Amount (INR)', totalAmount.toFixed(2)]);
     csvRows.push(['Per Day Amount (INR)', oneDayAmt.toFixed(2)]);
     csvRows.push([]);
-
-    let output = '';
-
-    output += `
-    <div class="metrics-grid" role="region" aria-label="Summary metrics">
-      <div class="metric-card"><div class="lbl">Total days</div><div class="val">${totalDays}</div></div>
-      <div class="metric-card"><div class="lbl">Total amount</div><div class="val">${fmtINR(totalAmount)}</div></div>
-      <div class="metric-card"><div class="lbl">Per day</div><div class="val">${fmtINR(oneDayAmt)}</div></div>
-      <div class="metric-card"><div class="lbl">Current FY</div><div class="val">${fyLabel(currentFYSY)}</div></div>
-    </div>`;
-
-    const fyRows  = [];
-    let fyCursor  = getFYStartYear(startDate);
-    let safeGuard = 0;
-
-    while (safeGuard++ < 100) {
-      const fyStart  = new Date(fyCursor + '-04-01');
-      const fyEnd    = new Date((fyCursor + 1) + '-03-31');
-      const actStart = startDate > fyStart ? startDate : fyStart;
-      const actEnd   = endDate   < fyEnd   ? endDate   : fyEnd;
-
-      if (actStart <= actEnd) {
-        const days = Math.floor((actEnd - actStart) / MS_PER_DAY) + 1;
-        const amt  = days * oneDayAmt;
-        const type = fyCursor < currentFYSY  ? 'prior' : fyCursor === currentFYSY ? 'current' : 'future';
-        fyRows.push({ yr: fyCursor, label: fyLabel(fyCursor), days, amt, type });
-      }
-      if (fyEnd >= endDate) break;
-      fyCursor++;
-    }
-
-    const priorTotal = fyRows.filter(r=>r.type==='prior').reduce((a,b)=>a+b.amt,0);
-    const expenseTotal = fyRows.filter(r=>r.type==='current').reduce((a,b)=>a+b.amt,0);
-    const prepaidTotal = fyRows.filter(r=>r.type==='future').reduce((a,b)=>a+b.amt,0);
-
-    output += `
-    <div class="metrics-grid" role="region" aria-label="Accounting summary">
-      <div class="metric-card"><div class="lbl">Prior Period Adj.</div><div class="val">${fmtINR(priorTotal)}</div></div>
-      <div class="metric-card"><div class="lbl">Expense Header</div><div class="val">${fmtINR(expenseTotal)}</div></div>
-      <div class="metric-card"><div class="lbl">Prepaid Adj.</div><div class="val">${fmtINR(prepaidTotal)}</div></div>
-      <div class="metric-card"><div class="lbl">Classification Total</div><div class="val">${fmtINR(priorTotal+expenseTotal+prepaidTotal)}</div></div>
-    </div>`;
-
-    output += `<div class="section-title">&#128198; Financial Year Breakdown</div>`;
-    output += `
-    <div class="table-container">
-      <table role="grid" aria-label="Financial year breakdown">
-        <thead>
-          <tr>
-            <th scope="col">Financial Year</th>
-            <th scope="col">Days</th>
-            <th scope="col">Amount</th>
-            <th scope="col">Accounting Treatment</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
     csvRows.push(['Financial Year', 'Days', 'Amount', 'Accounting Treatment']);
-
     for (const row of fyRows) {
-      const rowCls  = 'row-' + row.type;
-      const badge   = `<span class="badge badge-${row.type}">${row.type}</span>`;
-      const treatment = row.type === 'prior' ? `${fmtINR(row.amt)} (Prior Period Adjustment)` : row.type === 'current' ? `${fmtINR(row.amt)} (Expense Header)` : `${fmtINR(row.amt)} (Prepaid Adjustment)`;
-
-      output += `
-          <tr class="${rowCls}" tabindex="0" aria-label="${row.label}, ${row.days} days, ${fmtINR(row.amt)}">
-            <td>${row.label}${badge}</td>
-            <td>${row.days}</td>
-            <td>${fmtINR(row.amt)}</td>
-            <td>${treatment}</td>
-          </tr>`;
-
+      const treatment =
+        row.type === 'prior'   ? row.amt.toFixed(2) + ' (Prior Period Adjustment)' :
+        row.type === 'current' ? row.amt.toFixed(2) + ' (Expense Header)' :
+                                 row.amt.toFixed(2) + ' (Prepaid Adjustment)';
       csvRows.push([row.label, row.days, row.amt.toFixed(2), treatment]);
     }
-
-    output += `</tbody></table></div>`;
-
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let mCursor  = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-
-    output += `<div class="section-title">&#128197; Month-wise Breakdown</div>`;
-    output += `
-    <div class="table-container">
-      <table role="grid" aria-label="Month-wise breakdown">
-        <thead>
-          <tr>
-            <th scope="col">Month</th>
-            <th scope="col">Year</th>
-            <th scope="col">Days</th>
-            <th scope="col">Amount</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
     csvRows.push([]);
     csvRows.push(['Month', 'Year', 'Days', 'Amount']);
-
-    while (mCursor <= endDate) {
-      const mStart = new Date(mCursor.getFullYear(), mCursor.getMonth(), 1);
-      const mEnd   = new Date(mCursor.getFullYear(), mCursor.getMonth() + 1, 0);
-      const aStart = startDate > mStart ? startDate : mStart;
-      const aEnd   = endDate   < mEnd   ? endDate   : mEnd;
-
-      if (aStart <= aEnd) {
-        const days = Math.floor((aEnd - aStart) / MS_PER_DAY) + 1;
-        const amt  = days * oneDayAmt;
-        const mo   = MONTHS[mCursor.getMonth()];
-        const yr   = mCursor.getFullYear();
-
-        output += `
-          <tr tabindex="0" aria-label="${mo} ${yr}, ${days} days, ${fmtINR(amt)}">
-            <td>${mo}</td>
-            <td>${yr}</td>
-            <td>${days}</td>
-            <td>${fmtINR(amt)}</td>
-          </tr>`;
-
-        csvRows.push([mo, yr, days, amt.toFixed(2)]);
-      }
-      mCursor.setMonth(mCursor.getMonth() + 1);
+    for (const row of monthRows) {
+      csvRows.push([row.mo, row.yr, row.days, row.amt.toFixed(2)]);
     }
 
-    output += `</tbody></table></div>`;
     resultDiv.innerHTML = output;
     resultDiv.focus();
+
+    // Enable downloads and refresh the shareable URL.
+    btnDownload.disabled = false;
+    btnCopy.disabled = false;
+    btnPrint.disabled = false;
+    writeURLParams();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Export actions
+   * ------------------------------------------------------------------ */
+  function buildCSVString() {
+    return csvRows.map(r => r.map(escapeCsv).join(',')).join('\n');
   }
 
   function downloadCSV() {
-    if (csvRows.length === 0) {
-      alert('Please calculate first before downloading.');
-      return;
-    }
-    const content = csvRows.map(r => r.map(escapeCsv).join(',')).join('\n');
-    const blob    = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url     = URL.createObjectURL(blob);
-    const link    = document.createElement('a');
-    link.href     = url;
+    if (!csvRows.length) return;
+    const blob = new Blob([buildCSVString()], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
     link.download = 'prorata_breakdown.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
-</script>
 
-<footer style="text-align: center; padding: 20px; color: #666; font-size: 0.8rem;">
-    <p>&copy; 2026 HS. All rights reserved.</p>
-    <p>Version: <span id="app-version">1.5.0</span></p>
-</footer>
+  async function copyCSV() {
+    if (!csvRows.length) return;
+    const content = buildCSVString();
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(content);
+        showToast('CSV copied to clipboard');
+        return;
+      }
+      // Fallback for non-secure contexts (e.g. file:// in some browsers).
+      const ta = document.createElement('textarea');
+      ta.value = content;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('CSV copied to clipboard');
+    } catch (_) {
+      showToast('Copy failed — use Download CSV instead');
+    }
+  }
+
+  function printResults() {
+    if (!csvRows.length) return;
+    window.print();
+  }
+
+  function clearAll() {
+    startDateEl.value = '';
+    endDateEl.value = '';
+    amountEl.value = '';
+    resultDiv.innerHTML = '';
+    csvRows = [];
+    btnDownload.disabled = true;
+    btnCopy.disabled = true;
+    btnPrint.disabled = true;
+    setTermMode('12');
+    recomputeFeedback();
+    persist();
+    startDateEl.focus();
+  }
+
+  btnCalculate.addEventListener('click', calculateProrata);
+  btnDownload.addEventListener('click', downloadCSV);
+  btnCopy.addEventListener('click', copyCSV);
+  btnPrint.addEventListener('click', printResults);
+  btnClear.addEventListener('click', clearAll);
+
+  /* ------------------------------------------------------------------ *
+   * Boot
+   * ------------------------------------------------------------------ */
+  // 1) Run self-tests first so any logic regression is logged immediately.
+  const testResult = runSelfTests();
+  window.__prorataSelfTests = testResult;
+
+  const statusEl = document.getElementById('selftest-status');
+  if (testResult.failures.length) {
+    console.error('[prorata] self-tests FAILED', testResult.failures);
+    statusEl.textContent = '\u2717 self-tests: ' + testResult.failures.length + ' failed';
+    statusEl.style.color = 'var(--error-fg)';
+  } else {
+    console.info('[prorata] self-tests passed (' + testResult.total + ')');
+    statusEl.textContent = '\u2713 self-tests: ' + testResult.total + ' passed';
+  }
+
+  // 2) Restore prior state, then render the initial term summary.
+  hydrate();
+  recomputeFeedback();
+})();
+</script>
 </body>
 </html>
