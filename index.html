@@ -29,11 +29,32 @@
             flex-direction: column;
         }
 
+        /* ---------- Glassmorphic sticky header ---------- */
         header {
-            background-color: var(--bg-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 900;
+            background-color: rgba(30, 41, 59, 0.72);
             padding: 2rem 5%;
             border-bottom: 1px solid #334155;
             text-align: center;
+            backdrop-filter: blur(12px) saturate(140%);
+            -webkit-backdrop-filter: blur(12px) saturate(140%);
+            transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        header.is-scrolled {
+            background-color: rgba(15, 23, 42, 0.88);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        @supports not ((-webkit-backdrop-filter: blur(12px)) or (backdrop-filter: blur(12px))) {
+            header {
+                background-color: rgba(30, 41, 59, 0.97);
+            }
+            header.is-scrolled {
+                background-color: rgba(15, 23, 42, 0.97);
+            }
         }
 
         header h1 {
@@ -66,7 +87,10 @@
             gap: 1rem;
         }
 
+        /* ---------- Card ---------- */
         .card {
+            position: relative;
+            overflow: hidden;
             background-color: var(--bg-secondary);
             border: 1px solid #334155;
             border-radius: 10px;
@@ -74,31 +98,55 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
             text-decoration: none;
             color: inherit;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+            -webkit-tap-highlight-color: transparent;
+            /* Entrance animation: runs backwards during delay, then hands control back to base styles */
+            animation: cardIn 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+            animation-delay: calc(var(--i, 0) * 45ms);
         }
 
-        /* Stronger glow on hover / keyboard focus */
-        .card:hover,
-        .card:focus-visible {
-            transform: translateY(-3px);
-            border-color: var(--accent-color);
-            box-shadow: 0 14px 30px rgba(56, 189, 248, 0.3),
-                        0 0 18px rgba(56, 189, 248, 0.25);
+        /* Accent hairline that sweeps in from the left */
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(90deg, var(--accent-color), transparent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+            pointer-events: none;
         }
 
-        /* Even brighter glow on tap / click */
-        .card:active {
-            transform: translateY(-1px);
-            border-color: var(--accent-color);
-            box-shadow: 0 8px 22px rgba(56, 189, 248, 0.45),
-                        0 0 28px rgba(56, 189, 248, 0.4);
+        /* Cursor spotlight */
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(
+                220px circle at var(--mx, 50%) var(--my, 50%),
+                rgba(56, 189, 248, 0.14),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
+
+        .card > * {
+            position: relative;
+            z-index: 1;
         }
 
         .card-icon {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
+            transition: transform 0.2s ease;
         }
 
         .card-title {
@@ -126,11 +174,89 @@
             transition: background-color 0.2s, color 0.2s;
         }
 
-        .card:hover .card-btn,
-        .card:focus-visible .card-btn,
-        .card:active .card-btn {
+        .arrow {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        /* ---------- Hover-only effects (desktop / mouse) ---------- */
+        @media (hover: hover) and (pointer: fine) {
+            .card:hover {
+                transform: translateY(-3px);
+                border-color: var(--accent-color);
+                box-shadow: 0 14px 30px rgba(56, 189, 248, 0.3),
+                            0 0 18px rgba(56, 189, 248, 0.25);
+            }
+
+            .card:hover::before {
+                transform: scaleX(1);
+            }
+
+            .card:hover::after {
+                opacity: 1;
+            }
+
+            .card:hover .card-icon {
+                transform: translateY(-2px) scale(1.08);
+            }
+
+            .card:hover .arrow {
+                transform: translateX(3px);
+            }
+
+            .card:hover .card-btn {
+                background-color: var(--accent-color);
+                color: var(--bg-primary);
+            }
+        }
+
+        /* Keyboard focus mirrors hover for accessibility */
+        .card:focus-visible {
+            border-color: var(--accent-color);
+            box-shadow: 0 14px 30px rgba(56, 189, 248, 0.3),
+                        0 0 18px rgba(56, 189, 248, 0.25);
+            outline: none;
+        }
+
+        .card:focus-visible::before {
+            transform: scaleX(1);
+        }
+
+        .card:focus-visible .arrow {
+            transform: translateX(3px);
+        }
+
+        .card:focus-visible .card-btn {
             background-color: var(--accent-color);
             color: var(--bg-primary);
+        }
+
+        /* Tap / click feedback for touch users */
+        .card:active {
+            transform: scale(0.985);
+            border-color: var(--accent-color);
+            box-shadow: 0 8px 22px rgba(56, 189, 248, 0.45),
+                        0 0 28px rgba(56, 189, 248, 0.4);
+        }
+
+        /* ---------- Scroll reveal (JS adds .js-reveal to <html>) ---------- */
+        .js-reveal .card {
+            animation-play-state: paused;
+        }
+
+        .js-reveal .card.is-visible {
+            animation-play-state: running;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* --- Extra compact spacing on small phones --- */
@@ -147,6 +273,25 @@
             .card-desc {
                 font-size: 0.8rem;
                 margin-bottom: 0.75rem;
+            }
+
+            /* Compact sticky header so it doesn't eat the screen */
+            header {
+                padding: 1rem 5%;
+                backdrop-filter: blur(8px) saturate(140%);
+                -webkit-backdrop-filter: blur(8px) saturate(140%);
+            }
+
+            header h1 {
+                font-size: 1.6rem;
+            }
+
+            header p {
+                font-size: 0.9rem;
+            }
+
+            main {
+                padding: 2rem 5%;
             }
         }
 
@@ -186,37 +331,59 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
             transition: transform 0.2s ease, background-color 0.2s ease,
                         border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease;
-        }
-
-        /* Up button: hover glow + lift upward */
-        #scrollTopBtn:hover,
-        #scrollTopBtn:focus-visible {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-            color: var(--bg-primary);
-            transform: translateY(-3px);
-            box-shadow: 0 -12px 22px rgba(56, 189, 248, 0.4),
-                        0 4px 12px rgba(0, 0, 0, 0.35);
-        }
-
-        /* Down button: hover glow + press downward */
-        #scrollBottomBtn:hover,
-        #scrollBottomBtn:focus-visible {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-            color: var(--bg-primary);
-            transform: translateY(3px);
-            box-shadow: 0 12px 22px rgba(56, 189, 248, 0.4),
-                        0 4px 12px rgba(0, 0, 0, 0.35);
-        }
-
-        .scroll-btn:active {
-            transform: translateY(0);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .scroll-btn:focus-visible {
             outline: 2px solid var(--accent-color);
             outline-offset: 3px;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .scroll-btn--up:hover {
+                background-color: var(--accent-color);
+                border-color: var(--accent-color);
+                color: var(--bg-primary);
+                transform: translateY(-3px);
+                box-shadow: 0 -10px 22px rgba(56, 189, 248, 0.4),
+                            0 4px 12px rgba(0, 0, 0, 0.35);
+            }
+
+            .scroll-btn--down:hover {
+                background-color: var(--accent-color);
+                border-color: var(--accent-color);
+                color: var(--bg-primary);
+                transform: translateY(3px);
+                box-shadow: 0 10px 22px rgba(56, 189, 248, 0.4),
+                            0 4px 12px rgba(0, 0, 0, 0.35);
+            }
+        }
+
+        .scroll-btn:active {
+            transform: translateY(0) scale(0.96);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        .scroll-arrow {
+            display: inline-block;
+        }
+
+        .scroll-arrow--up {
+            animation: nudgeUp 1s ease 1.4s 2;
+        }
+
+        .scroll-arrow--down {
+            animation: nudgeDown 1s ease 1.4s 2;
+        }
+
+        @keyframes nudgeUp {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-3px); }
+        }
+
+        @keyframes nudgeDown {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(3px); }
         }
 
         /* Slightly smaller, thumb-friendly sizing on phones */
@@ -233,7 +400,25 @@
                 font-size: 0.95rem;
             }
         }
-        /* ------------------------------------------------------- */
+
+        /* ---------- Reduced motion: neutralise all motion ---------- */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-delay: 0ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+
+            .card {
+                animation: none !important;
+            }
+
+            .scroll-arrow--up,
+            .scroll-arrow--down {
+                animation: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -252,7 +437,7 @@
                     <h2 class="card-title">Prorata Calculator</h2>
                     <p class="card-desc">Calculate exact proportional breakdowns for duration-based service charges cleanly and instantly.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
             
             <a href="bill-calculator2/index.html" class="card">
@@ -261,7 +446,7 @@
                     <h2 class="card-title">Bill Calculator Summarizer2</h2>
                     <p class="card-desc">Compile totals for multiple bundled invoices automatically into structured vertical or horizontal summary tables.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="Dictionary/index.html" class="card">
@@ -270,7 +455,7 @@
                     <h2 class="card-title">Dictonary</h2>
                     <p class="card-desc">Extract and get meanings of the words directly from physical books, newspapers, or street signs etc.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
             
             <a href="bill-calculator/index.html" class="card">
@@ -279,7 +464,7 @@
                     <h2 class="card-title">Bill Calculator Summarizer</h2>
                     <p class="card-desc">Compile totals for multiple bundled invoices automatically into structured vertical or horizontal summary tables.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="Narration-Maker2/index.html" class="card">
@@ -288,7 +473,7 @@
                     <h2 class="card-title">Narration Maker2</h2>
                     <p class="card-desc">Quickly generate a cash payment narration with presets to reduce the tedious process to manually typing.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
             
             <a href="Narration-Maker/index.html" class="card">
@@ -297,7 +482,7 @@
                     <h2 class="card-title">Narration Maker</h2>
                     <p class="card-desc">Quickly combine lists into a single continuous sentence without exceeding Tally's character limit.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
             
             <a href="tds-calculator/index.html" class="card">
@@ -306,7 +491,7 @@
                     <h2 class="card-title">TDS Calculator</h2>
                     <p class="card-desc">Accurate Tax Deducted at Source computation logic aligned with target financial compliance thresholds.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="image-shrinker/index.html" class="card">
@@ -315,7 +500,7 @@
                     <h2 class="card-title">Image Compressor</h2>
                     <p class="card-desc">Shrink heavy audit photos, adjust text print contrast, and sharpen text edges dynamically for optimized local file storage.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
              <a href="image-shrinker2/index.html" class="card">
@@ -324,7 +509,7 @@
                     <h2 class="card-title">Image Compressor 2 with PDF Compiler </h2>
                     <p class="card-desc">Shrink heavy audit photos, adjust text print contrast, and sharpen text edges dynamically for optimized local file storage and compile them now in PDF.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="pdf-compiler/index.html" class="card">
@@ -333,7 +518,7 @@
                     <h2 class="card-title">PDF Comiler & Compressor</h2>
                     <p class="card-desc">Compile and compress heavy documents or image lists into structured, web-ready PDFs limited strictly to under 200kb.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="pdf-compiler2/index.html" class="card">
@@ -342,7 +527,7 @@
                     <h2 class="card-title">PDF Comiler & Compressor2</h2>
                     <p class="card-desc">Compile and compress heavy documents or image lists into structured, web-ready PDFs limited strictly to under 200kb.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
             
             <a href="party-list/index.html" class="card">
@@ -351,7 +536,7 @@
                     <h2 class="card-title">Party Bank List Generator</h2>
                     <p class="card-desc">Structure clean tables mapped directly to client bank accounts for error-free bulk money transfers.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="bill-splitter/index.html" class="card">
@@ -360,7 +545,7 @@
                     <h2 class="card-title">Bill Splitter</h2>
                     <p class="card-desc">Effortlessly divide shared corporate expense items, itemized taxes, and tips across multiple stakeholders or clients.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="XLCompare/index.html" class="card">
@@ -369,7 +554,7 @@
                     <h2 class="card-title">XLCompare</h2>
                     <p class="card-desc">XlCompare instantly matches two Excel files side by side, catching discrepancies and highlighting every single data mismatch in seconds.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="Web-IDE/index.html" class="card">
@@ -378,7 +563,7 @@
                     <h2 class="card-title">Web IDE</h2>
                     <p class="card-desc">Test your html projects here.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
              <a href="Cart-Calc/index.html" class="card">
@@ -387,7 +572,7 @@
                     <h2 class="card-title">Cart-Calc</h2>
                     <p class="card-desc">Instantly tallies the total cost of items with weight in a shopping cart without juggling their weight and price.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="Test/index.html" class="card">
@@ -396,7 +581,7 @@
                     <h2 class="card-title">Test</h2>
                     <p class="card-desc">Test apps here.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
             <a href="Image URLs to PDF/index.html" class="card">
@@ -405,7 +590,7 @@
                     <h2 class="card-title">Image URLs to PDF </h2>
                     <p class="card-desc">Test apps here.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
        <a href="Salesforce XML Metadata Cleaner/index.html" class="card">
                 <div>
@@ -413,7 +598,7 @@
                     <h2 class="card-title">Salesforce XML Metadata Cleaner </h2>
                     <p class="card-desc">Remove multiple Salesforce XML Metadata in one go.</p>
                 </div>
-                <div class="card-btn">Launch App →</div>
+                <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
         </div>
     </main>
@@ -424,29 +609,102 @@
 
     <!-- ---------- Grouped scroll navigation buttons ---------- -->
     <div class="scroll-nav">
-        <button type="button" class="scroll-btn" id="scrollTopBtn" aria-label="Scroll to top" title="Scroll to top">
-            <span aria-hidden="true">▲</span>
+        <button type="button" class="scroll-btn scroll-btn--up" id="scrollTopBtn" aria-label="Scroll to top" title="Scroll to top">
+            <span class="scroll-arrow scroll-arrow--up" aria-hidden="true">▲</span>
         </button>
-        <button type="button" class="scroll-btn" id="scrollBottomBtn" aria-label="Scroll to bottom" title="Scroll to bottom">
-            <span aria-hidden="true">▼</span>
+        <button type="button" class="scroll-btn scroll-btn--down" id="scrollBottomBtn" aria-label="Scroll to bottom" title="Scroll to bottom">
+            <span class="scroll-arrow scroll-arrow--down" aria-hidden="true">▼</span>
         </button>
     </div>
 
     <script>
-        document.getElementById('scrollTopBtn').addEventListener('click', function () {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
+        (function () {
+            'use strict';
 
-        document.getElementById('scrollBottomBtn').addEventListener('click', function () {
-            var doc = document.documentElement;
-            var fullHeight = Math.max(
-                document.body.scrollHeight,
-                doc.scrollHeight,
-                document.body.offsetHeight,
-                doc.offsetHeight
-            );
-            window.scrollTo({ top: fullHeight, behavior: 'smooth' });
-        });
+            var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var scrollBehavior = reduceMotion ? 'auto' : 'smooth';
+
+            /* ---------- Scroll buttons ---------- */
+            var topBtn = document.getElementById('scrollTopBtn');
+            var bottomBtn = document.getElementById('scrollBottomBtn');
+
+            topBtn.addEventListener('click', function () {
+                window.scrollTo({ top: 0, behavior: scrollBehavior });
+            });
+
+            bottomBtn.addEventListener('click', function () {
+                var doc = document.documentElement;
+                var fullHeight = Math.max(
+                    document.body.scrollHeight,
+                    doc.scrollHeight,
+                    document.body.offsetHeight,
+                    doc.offsetHeight
+                );
+                window.scrollTo({ top: fullHeight, behavior: scrollBehavior });
+            });
+
+            /* ---------- Sticky header scrolled state ---------- */
+            var header = document.querySelector('header');
+            var lastScrolled = false;
+
+            function onScroll() {
+                var y = window.scrollY || window.pageYOffset || 0;
+                var isScrolled = y > 8;
+                if (isScrolled !== lastScrolled) {
+                    header.classList.toggle('is-scrolled', isScrolled);
+                    lastScrolled = isScrolled;
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+
+            /* ---------- Card scroll reveal + stagger ---------- */
+            var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+
+            if (!reduceMotion && 'IntersectionObserver' in window) {
+                document.documentElement.classList.add('js-reveal');
+
+                cards.forEach(function (card, i) {
+                    card.style.setProperty('--i', Math.min(i % 6, 5));
+                });
+
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            io.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+
+                cards.forEach(function (card) { io.observe(card); });
+            }
+
+            /* ---------- Cursor spotlight (mouse only, rAF-throttled) ---------- */
+            var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+            if (!reduceMotion && finePointer) {
+                cards.forEach(function (card) {
+                    var pending = false;
+
+                    card.addEventListener('pointermove', function (e) {
+                        if (pending) return;
+                        pending = true;
+
+                        var rect = card.getBoundingClientRect();
+                        var x = e.clientX - rect.left;
+                        var y = e.clientY - rect.top;
+
+                        requestAnimationFrame(function () {
+                            card.style.setProperty('--mx', (x / rect.width * 100) + '%');
+                            card.style.setProperty('--my', (y / rect.height * 100) + '%');
+                            pending = false;
+                        });
+                    }, { passive: true });
+                });
+            }
+        })();
     </script>
 
 </body>
