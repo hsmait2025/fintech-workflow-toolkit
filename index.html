@@ -59,17 +59,18 @@
             width: 100%;
         }
 
+        /* --- Compact tile grid --- */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
         }
 
         .card {
             background-color: var(--bg-secondary);
             border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 2rem;
+            border-radius: 10px;
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -79,43 +80,61 @@
         }
 
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             border-color: var(--accent-color);
-            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.1);
+            box-shadow: 0 8px 16px rgba(56, 189, 248, 0.1);
         }
 
         .card-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
         }
 
         .card-title {
-            font-size: 1.4rem;
-            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+            line-height: 1.25;
+            margin-bottom: 0.4rem;
             color: var(--text-main);
         }
 
         .card-desc {
             color: var(--text-muted);
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 1.5rem;
+            font-size: 0.82rem;
+            line-height: 1.35;
+            margin-bottom: 0.9rem;
         }
 
         .card-btn {
             align-self: flex-start;
             background-color: rgba(56, 189, 248, 0.1);
             color: var(--accent-color);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            padding: 0.35rem 0.7rem;
+            border-radius: 5px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             transition: background-color 0.2s, color 0.2s;
         }
 
         .card:hover .card-btn {
             background-color: var(--accent-color);
             color: var(--bg-primary);
+        }
+
+        /* --- Extra compact spacing on small phones --- */
+        @media (max-width: 480px) {
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .card-desc {
+                font-size: 0.8rem;
+                margin-bottom: 0.75rem;
+            }
         }
 
         footer {
@@ -126,6 +145,54 @@
             border-top: 1px solid #334155;
             background-color: var(--bg-secondary);
         }
+
+        /* ---------- Scroll navigation buttons ---------- */
+        .scroll-btn {
+            position: fixed;
+            right: 1.5rem;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-secondary);
+            border: 1px solid #334155;
+            border-radius: 50%;
+            color: var(--accent-color);
+            font-size: 1rem;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+            transition: transform 0.2s ease, background-color 0.2s ease,
+                        border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+        }
+
+        .scroll-btn:hover {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: var(--bg-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.25);
+        }
+
+        .scroll-btn:active {
+            transform: translateY(0);
+        }
+
+        .scroll-btn:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 3px;
+        }
+
+        .scroll-btn--top {
+            top: 1.5rem;
+        }
+
+        .scroll-btn--bottom {
+            bottom: 1.5rem;
+        }
+        /* ------------------------------------------------------- */
     </style>
 </head>
 <body>
@@ -313,6 +380,31 @@
     <footer>
         <p>&copy; 2026 Built with AI Workflow Automation. Open Source FinTech Utilities Portfolio.</p>
     </footer>
+
+    <!-- ---------- Scroll navigation buttons ---------- -->
+    <button type="button" class="scroll-btn scroll-btn--top" id="scrollTopBtn" aria-label="Scroll to top" title="Scroll to top">
+        <span aria-hidden="true">▲</span>
+    </button>
+    <button type="button" class="scroll-btn scroll-btn--bottom" id="scrollBottomBtn" aria-label="Scroll to bottom" title="Scroll to bottom">
+        <span aria-hidden="true">▼</span>
+    </button>
+
+    <script>
+        document.getElementById('scrollTopBtn').addEventListener('click', function () {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        document.getElementById('scrollBottomBtn').addEventListener('click', function () {
+            var doc = document.documentElement;
+            var fullHeight = Math.max(
+                document.body.scrollHeight,
+                doc.scrollHeight,
+                document.body.offsetHeight,
+                doc.offsetHeight
+            );
+            window.scrollTo({ top: fullHeight, behavior: 'smooth' });
+        });
+    </script>
 
 </body>
 </html>
