@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesforce XML Metadata Cleaner & Diff Viewer</title>
+    <style>
+        :root {
+            /* Theme CSS Variables: Dark Default */
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-green-hover: #2ea043;
+            --del-bg: rgba(248, 81, 73, 0.15);
+            --del-text: #ff7b72;
+            --del-line-num: rgba(248, 81, 73, 0.3);
+            --add-bg: rgba(46, 160, 67, 0.15);
+            --add-text: #7ee787;
+            --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+            --gutter-bg: rgba(110, 118, 129, 0.05);
+            --toast-bg: #1f6feb;
+            --toast-text: #ffffff;
+        }
+
+        [data-theme="light"] {
+            /* Theme CSS Variables: Light Mode */
+            --bg-color: #f6f8fa;
+            --panel-bg: #ffffff;
+            --border-color: #d0d7de;
+            --text-color: #1f2328;
+            --text-muted: #656d76;
+            --accent-blue: #0969da;
+            --accent-green: #1f883d;
+            --accent-green-hover: #1a7f37;
+            --del-bg: #ffebe9;
+            --del-text: #cf222e;
+            --del-line-num: #ffd8d5;
+            --add-bg: #dafbe1;
+            --add-text: #1a7f37;
+            --gutter-bg: #f6f8fa;
+            --toast-bg: #0969da;
+            --toast-text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            gap: 15px;
+            transition: background-color 0.2s, color 0.2s;
+            position: relative;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background-color: var(--accent-blue);
+            color: #ffffff;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Controls Section */
+        .controls {
+            display: flex;
+            gap: 12px;
+            background: var(--panel-bg);
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        input[type="text"] {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            width: 100%;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-blue);
+        }
+
+        button {
+            background-color: var(--accent-green);
+            color: #ffffff;
+            border: 1px solid rgba(240,246,252,0.1);
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s ease;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: var(--accent-green-hover);
+        }
+
+        button.secondary {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        button.secondary:hover {
+            border-color: var(--text-muted);
+        }
+
+        button.danger {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        button.danger:hover {
+            color: var(--del-text);
+            border-color: var(--del-text);
+        }
+
+        /* Main Workspace Grid */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel-header {
+            background: rgba(110, 118, 129, 0.1);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Editor Wrapper with Synchronized Line Numbers */
+        .editor-container {
+            display: flex;
+            flex: 1;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background: var(--panel-bg);
+        }
+
+        .line-numbers {
+            width: 45px;
+            background: var(--gutter-bg);
+            border-right: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            line-height: 1.5;
+            padding: 12px 0;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .line-numbers div {
+            padding-right: 8px;
+        }
+
+        textarea {
+            flex: 1;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            padding: 12px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* Diff Panel Relative Layout for Minimap integration */
+        .diff-panel-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* GitHub-style Diff Viewer */
+        .diff-container {
+            overflow: auto;
+            flex: 1;
+            height: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            line-height: 1.5;
+            white-space: pre;
+        }
+
+        .diff-line {
+            display: flex;
+            width: 100%;
+        }
+
+        .diff-line-num {
+            width: 45px;
+            padding-right: 10px;
+            text-align: right;
+            color: var(--text-muted);
+            user-select: none;
+            opacity: 0.6;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .diff-line-content {
+            padding-left: 8px;
+            flex: 1;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .diff-normal {
+            color: var(--text-color);
+        }
+
+        /* VS Code Style Diff Minimap */
+        .minimap {
+            width: 16px;
+            background: rgba(110, 118, 129, 0.08);
+            border-left: 1px solid var(--border-color);
+            position: relative;
+            height: 100%;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .minimap-marker {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            height: 3px;
+            border-radius: 1px;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .minimap-marker:hover {
+            transform: scaleX(1.3);
+        }
+
+        /* Validation Status Bar */
+        .validation-banner {
+            display: none;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            font-family: var(--font-mono);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .validation-banner.success {
+            background-color: var(--add-bg);
+            color: var(--add-text);
+            border-color: rgba(46, 160, 67, 0.3);
+        }
+        .validation-banner.error {
+            background-color: var(--del-bg);
+            color: var(--del-text);
+            border-color: rgba(248, 81, 73, 0.3);
+        }
+
+        /* Bifurcated Removal Breakdown Bar */
+        .metrics-bar {
+            display: none;
+            padding: 8px 12px;
+            background: rgba(110, 118, 129, 0.05);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .metrics-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .metric-chip {
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+
+        /* In-App Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background-color: var(--toast-bg);
+            color: var(--toast-text);
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Salesforce XML Metadata Cleaner <span class="badge">Metadata API</span></h1>
+        <div class="header-actions">
+            <button class="secondary" onclick="toggleTheme()" id="themeBtn">☀️ Light Mode</button>
+            <button class="secondary" onclick="validateXml()">✓ Validate XML</button>
+            <button class="danger" onclick="resetAll()">Clear / Reset</button>
+            <button class="secondary" onclick="copyResult()">Copy Clean XML</button>
+            <button onclick="downloadXml()">Download XML</button>
+        </div>
+    </header>
+
+    <div class="controls">
+        <div class="input-group">
+            <label for="targetWord">Target Components (Comma-separated):</label>
+            <input type="text" id="targetWord" placeholder="e.g. Account, Contact, Project__c, AnnualRevenue">
+        </div>
+        <button onclick="processXml()">Analyze & Strip Components</button>
+    </div>
+
+    <div class="workspace">
+        <div class="panel">
+            <div class="panel-header">
+                <span>Source XML Input</span>
+                <span id="sourceStats" style="color: var(--text-muted);">0 lines</span>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="lineGutter"><div>1</div></div>
+                <textarea id="xmlInput" placeholder="Paste your Salesforce Profile/PermissionSet XML here..." spellcheck="false" oninput="handleInput()" onscroll="syncScroll()"></textarea>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span>GitHub Preview (Diff View)</span>
+                <span id="diffStats" style="color: var(--text-muted);">0 deletions</span>
+            </div>
+            <div id="validationBanner" class="validation-banner"></div>
+            <div id="metricsBar" class="metrics-bar"></div>
+            
+            <div class="diff-panel-wrapper">
+                <div id="diffViewer" class="diff-container">
+                    <div style="padding: 12px; color: var(--text-muted);">Paste XML and run analysis to preview modifications...</div>
+                </div>
+                <div id="minimap" class="minimap" title="Code Minimap Highlights"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Action completed successfully</div>
+
+    <script>
+        let cleanedXmlOutput = "";
+        let toastTimeout = null;
+
+        // Distinct Component Color Palette Engine
+        const palette = [
+            { name: 'rose', bg: 'rgba(248, 81, 73, 0.18)', text: '#ff7b72', border: '#f85149', chipBg: 'rgba(248, 81, 73, 0.25)' },
+            { name: 'amber', bg: 'rgba(210, 153, 34, 0.18)', text: '#e3b341', border: '#d29922', chipBg: 'rgba(210, 153, 34, 0.25)' },
+            { name: 'purple', bg: 'rgba(163, 113, 247, 0.18)', text: '#d2a8ff', border: '#a371f7', chipBg: 'rgba(163, 113, 247, 0.25)' },
+            { name: 'cyan', bg: 'rgba(56, 139, 253, 0.18)', text: '#58a6ff', border: '#388bfd', chipBg: 'rgba(56, 139, 253, 0.25)' },
+            { name: 'emerald', bg: 'rgba(46, 160, 67, 0.18)', text: '#7ee787', border: '#2ea043', chipBg: 'rgba(46, 160, 67, 0.25)' },
+            { name: 'pink', bg: 'rgba(219, 97, 162, 0.18)', text: '#f470b7', border: '#db61a2', chipBg: 'rgba(219, 97, 162, 0.25)' },
+            { name: 'orange', bg: 'rgba(219, 109, 40, 0.18)', text: '#f0883e', border: '#db6d28', chipBg: 'rgba(219, 109, 40, 0.25)' }
+        ];
+
+        // Display In-App Non-Blocking Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Synchronize Gutter Scroll with Textarea Scroll
+        function syncScroll() {
+            const textarea = document.getElementById('xmlInput');
+            const gutter = document.getElementById('lineGutter');
+            gutter.scrollTop = textarea.scrollTop;
+        }
+
+        // Update Line Numbers & Line Counter
+        function handleInput() {
+            const textarea = document.getElementById('xmlInput');
+            const gutter = document.getElementById('lineGutter');
+            const lines = textarea.value.split('\n');
+            const lineCount = lines.length;
+
+            let numbersHtml = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numbersHtml += `<div>${i}</div>`;
+            }
+            gutter.innerHTML = numbersHtml;
+
+            document.getElementById('sourceStats').textContent = `${textarea.value ? lineCount : 0} lines`;
+            syncScroll();
+        }
+
+        // Theme Switcher (Dark / Light)
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('themeBtn').textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+
+        // XML Structural Validation Engine
+        function validateXml() {
+            const banner = document.getElementById('validationBanner');
+            const xmlToValidate = cleanedXmlOutput || document.getElementById('xmlInput').value;
+
+            if (!xmlToValidate.trim()) {
+                showToast("⚠️ Paste or process XML first to validate.");
+                return;
+            }
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlToValidate, "text/xml");
+            const parserError = xmlDoc.getElementsByTagName("parsererror");
+
+            banner.style.display = "block";
+
+            if (parserError.length > 0) {
+                const errorMsg = parserError[0].textContent.split('\n')[0] || "Syntax error in XML.";
+                banner.className = "validation-banner error";
+                banner.textContent = `❌ Invalid XML: ${errorMsg}`;
+                showToast("❌ XML Validation Failed!");
+            } else {
+                const docType = cleanedXmlOutput ? "Cleaned XML" : "Source XML";
+                banner.className = "validation-banner success";
+                banner.textContent = `✓ ${docType} is syntactically valid and well-formed!`;
+                showToast("✓ XML is valid!");
+            }
+        }
+
+        // Reset App State
+        function resetAll() {
+            document.getElementById('xmlInput').value = '';
+            document.getElementById('targetWord').value = '';
+            document.getElementById('diffViewer').innerHTML = '<div style="padding: 12px; color: var(--text-muted);">Paste XML and run analysis to preview modifications...</div>';
+            document.getElementById('minimap').innerHTML = '';
+            document.getElementById('sourceStats').textContent = '0 lines';
+            document.getElementById('diffStats').textContent = '0 deletions';
+            document.getElementById('diffStats').style.color = 'var(--text-muted)';
+            
+            const banner = document.getElementById('validationBanner');
+            banner.style.display = "none";
+            banner.textContent = "";
+
+            const metricsBar = document.getElementById('metricsBar');
+            metricsBar.style.display = "none";
+            metricsBar.innerHTML = "";
+
+            cleanedXmlOutput = "";
+            handleInput();
+            showToast("Application reset.");
+        }
+
+        function processXml() {
+            const rawXml = document.getElementById('xmlInput').value;
+            const targetWordInput = document.getElementById('targetWord').value.trim();
+            const banner = document.getElementById('validationBanner');
+            const metricsBar = document.getElementById('metricsBar');
+            
+            banner.style.display = "none";
+            metricsBar.style.display = "none";
+            metricsBar.innerHTML = "";
+
+            if (!rawXml) {
+                showToast("⚠️ Please paste source XML code first.");
+                return;
+            }
+
+            if (!targetWordInput) {
+                showToast("⚠️ Please specify target word(s) to remove.");
+                return;
+            }
+
+            // Parse comma-separated target keywords into array
+            const targetWords = targetWordInput
+                .split(',')
+                .map(w => w.trim())
+                .filter(w => w.length > 0);
+
+            if (targetWords.length === 0) {
+                showToast("⚠️ Please specify valid target component words.");
+                return;
+            }
+
+            // Map each component to its unique palette color scheme
+            const componentColors = {};
+            targetWords.forEach((word, index) => {
+                componentColors[word.toLowerCase()] = {
+                    word: word,
+                    style: palette[index % palette.length]
+                };
+            });
+
+            // 1. Parse XML String into DOM Document
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(rawXml, "text/xml");
+
+            // Check for XML parsing errors
+            const parserError = xmlDoc.getElementsByTagName("parsererror");
+            if (parserError.length > 0) {
+                banner.style.display = "block";
+                banner.className = "validation-banner error";
+                banner.textContent = "❌ Cannot process: Invalid XML syntax in source.";
+                showToast("❌ Syntax error in input XML.");
+                return;
+            }
+
+            // 2. Define standard Salesforce Metadata blocks to evaluate
+            const metadataBlocks = [
+                'fieldPermissions',
+                'objectPermissions',
+                'tabVisibilities',
+                'layoutAssignments',
+                'recordTypeVisibilities',
+                'pageAccesses',
+                'classAccesses',
+                'userPermissions',
+                'applicationVisibilities'
+            ];
+
+            // Metrics tracker for per-component removal count
+            const metrics = {};
+            targetWords.forEach(word => metrics[word] = 0);
+            let totalRemovalCount = 0;
+
+            // 3. Traversal and Multi-Tag Node Removal
+            metadataBlocks.forEach(tagName => {
+                const elements = Array.from(xmlDoc.getElementsByTagName(tagName));
+                elements.forEach(el => {
+                    const content = (el.textContent || "").toLowerCase();
+                    
+                    // Check against all target words
+                    for (const word of targetWords) {
+                        if (content.includes(word.toLowerCase())) {
+                            metrics[word]++;
+                            totalRemovalCount++;
+                            el.parentNode.removeChild(el);
+                            break; // Stop evaluating other keywords for this node once removed
+                        }
+                    }
+                });
+            });
+
+            // 4. Render Per-Component Bifurcated Metrics Bar with Custom Palette Colors
+            if (totalRemovalCount > 0) {
+                metricsBar.style.display = "flex";
+                let metricsHtml = '<span class="metrics-title">Breakdown:</span>';
+                
+                Object.keys(metrics).forEach(word => {
+                    if (metrics[word] > 0) {
+                        const colorObj = componentColors[word.toLowerCase()].style;
+                        metricsHtml += `<span class="metric-chip" style="background: ${colorObj.chipBg}; color: ${colorObj.text}; border: 1px solid ${colorObj.border};">
+                            <strong>${escapeHtml(word)}:</strong> ${metrics[word]} blocks
+                        </span>`;
+                    }
+                });
+                metricsBar.innerHTML = metricsHtml;
+            }
+
+            // 5. Serialize back to formatted XML String
+            const serializer = new XMLSerializer();
+            cleanedXmlOutput = formatXml(serializer.serializeToString(xmlDoc));
+
+            // 6. Render GitHub Style Preview Diff with Multi-color & Minimap
+            renderDiff(rawXml, cleanedXmlOutput, componentColors);
+            
+            const diffStats = document.getElementById('diffStats');
+            diffStats.textContent = `${totalRemovalCount} block(s) removed`;
+            diffStats.style.color = totalRemovalCount > 0 ? 'var(--del-text)' : 'var(--text-muted)';
+
+            showToast(`Done: ${totalRemovalCount} block(s) stripped across ${targetWords.length} targets.`);
+        }
+
+        // Standard XML Formatter Function for clean indentation
+        function formatXml(xml) {
+            let formatted = '';
+            let reg = /(>)(<)(\/*)/g;
+            xml = xml.replace(reg, '$1\r\n$2$3');
+            let pad = 0;
+            xml.split('\r\n').forEach((line) => {
+                let indent = 0;
+                if (line.match(/.+<\/\w[^>]*>$/)) {
+                    indent = 0;
+                } else if (line.match(/^<\/\w/)) {
+                    if (pad !== 0) pad -= 1;
+                } else if (line.match(/^<\w[^>]*[^\/]>.*$/)) {
+                    indent = 1;
+                } else {
+                    indent = 0;
+                }
+
+                let padding = '';
+                for (let i = 0; i < pad; i++) {
+                    padding += '    ';
+                }
+
+                formatted += padding + line + '\r\n';
+                pad += indent;
+            });
+            return formatted.trim();
+        }
+
+        // GitHub-Style Diff Line Renderer with Minimap and Multi-Color Engine
+        function renderDiff(original, modified, componentColors) {
+            const origLines = original.split('\n');
+            const modLines = modified.split('\n');
+            const diffViewer = document.getElementById('diffViewer');
+            const minimap = document.getElementById('minimap');
+            
+            diffViewer.innerHTML = '';
+            minimap.innerHTML = '';
+
+            let lineNum = 1;
+            const modSet = new Set(modLines.map(l => l.trim()));
+            const totalLines = origLines.length;
+
+            origLines.forEach((origLine, idx) => {
+                const trimmedOrig = origLine.trim();
+                const lineNode = document.createElement('div');
+                lineNode.className = 'diff-line';
+                lineNode.id = `diff-line-${idx + 1}`;
+
+                if (trimmedOrig !== "" && !modSet.has(trimmedOrig)) {
+                    // Detect which specific component keyword triggered this deletion
+                    let matchedColor = null;
+                    if (componentColors) {
+                        for (const key in componentColors) {
+                            if (origLine.toLowerCase().includes(key)) {
+                                matchedColor = componentColors[key].style;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Fallback to default red if no explicit term matched
+                    const bgStyle = matchedColor ? matchedColor.bg : 'var(--del-bg)';
+                    const textStyle = matchedColor ? matchedColor.text : 'var(--del-text)';
+                    const borderStyle = matchedColor ? matchedColor.border : 'var(--del-text)';
+
+                    lineNode.style.backgroundColor = bgStyle;
+                    lineNode.style.color = textStyle;
+
+                    lineNode.innerHTML = `<div class="diff-line-num" style="color:${textStyle}; border-right-color:${borderStyle};">-</div><div class="diff-line-content">${escapeHtml(origLine)}</div>`;
+
+                    // Render VS Code Minimap Highlight Marker
+                    const topPercent = ((idx) / totalLines) * 100;
+                    const marker = document.createElement('div');
+                    marker.className = 'minimap-marker';
+                    marker.style.top = `${topPercent}%`;
+                    marker.style.backgroundColor = borderStyle;
+                    marker.title = `Jump to line ${idx + 1}`;
+                    marker.onclick = () => {
+                        lineNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    };
+                    minimap.appendChild(marker);
+
+                } else {
+                    // Line preserved
+                    lineNode.classList.add('diff-normal');
+                    lineNode.innerHTML = `<div class="diff-line-num">${lineNum++}</div><div class="diff-line-content">${escapeHtml(origLine)}</div>`;
+                }
+                diffViewer.appendChild(lineNode);
+            });
+        }
+
+        function escapeHtml(string) {
+            return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function copyResult() {
+            if (!cleanedXmlOutput) {
+                showToast("⚠️ Run the analysis first to generate clean XML.");
+                return;
+            }
+            navigator.clipboard.writeText(cleanedXmlOutput);
+            showToast("📋 Cleaned XML copied to clipboard!");
+        }
+
+        function downloadXml() {
+            if (!cleanedXmlOutput) {
+                showToast("⚠️ No processed XML to download.");
+                return;
+            }
+            const blob = new Blob([cleanedXmlOutput], { type: 'text/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Admin.profile-meta.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("💾 XML file downloaded!");
+        }
+    </script>
+</body>
+</html>
