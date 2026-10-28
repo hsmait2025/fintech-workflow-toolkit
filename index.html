@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Fast, offline-friendly fintech utilities: prorata calculator, TDS, bill summarizers, PDF compression, Excel diffing, and more.">
+    <meta name="theme-color" content="#0f172a">
+    <meta property="og:title" content="FinTech Workflow Toolkit">
+    <meta property="og:description" content="Rapid automation tools for financial and accounting professionals.">
+    <meta property="og:type" content="website">
     <title>FinTech Workflow Toolkit</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f172a'/%3E%3Ctext x='50' y='73' font-size='62' font-weight='700' text-anchor='middle' fill='%2338bdf8' font-family='system-ui,sans-serif'%3EF%3C/text%3E%3C/svg%3E">
+
+    <!-- Add reveal class before first paint to prevent a flash of unstyled entrance -->
+    <script>document.documentElement.classList.add('js-reveal');</script>
+
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -11,7 +21,6 @@
             --accent-color: #38bdf8;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --card-hover: #2563eb;
         }
 
         * {
@@ -21,12 +30,41 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        html {
+            scrollbar-color: #334155 #0f172a;
+            scrollbar-gutter: stable;
+        }
+
+        ::selection {
+            background: rgba(56, 189, 248, 0.3);
+            color: var(--text-main);
+        }
+
         body {
             background-color: var(--bg-primary);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        /* ---------- Skip link (keyboard users) ---------- */
+        .skip-link {
+            position: absolute;
+            top: -100px;
+            left: 1rem;
+            z-index: 2000;
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: top 0.2s ease;
+        }
+
+        .skip-link:focus {
+            top: 1rem;
         }
 
         /* ---------- Glassmorphic sticky header ---------- */
@@ -74,6 +112,10 @@
             width: 100%;
         }
 
+        main:focus {
+            outline: none;
+        }
+
         /* --- Compact tile grid --- */
         .grid {
             display: grid;
@@ -96,6 +138,7 @@
             color: inherit;
             transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
             animation: cardIn 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
             animation-delay: calc(var(--i, 0) * 45ms);
         }
@@ -173,7 +216,6 @@
         }
 
         /* ---------- Shared "active glow" state ---------- */
-        /* Applies to keyboard focus on all devices, and .is-glowing on any tap/click. */
         .card:focus-visible,
         .card.is-glowing {
             transform: translateY(-3px);
@@ -234,13 +276,13 @@
 
         /* ---------- Instant press feedback (all devices) ---------- */
         .card:active {
-            transform: scale(0.98);
+            transform: translateY(-3px) scale(0.98);
             border-color: var(--accent-color);
             box-shadow: 0 6px 18px rgba(56, 189, 248, 0.5),
                         0 0 26px rgba(56, 189, 248, 0.45);
         }
 
-        /* ---------- Scroll reveal (JS adds .js-reveal to <html>) ---------- */
+        /* ---------- Scroll reveal (js-reveal class added in <head>) ---------- */
         .js-reveal .card { animation-play-state: paused; }
         .js-reveal .card.is-visible { animation-play-state: running; }
 
@@ -284,6 +326,11 @@
             background-color: var(--bg-secondary);
         }
 
+        /* Clear floating buttons on narrow screens */
+        @media (max-width: 768px) {
+            footer { padding-bottom: 9rem; }
+        }
+
         /* ---------- Grouped scroll navigation buttons ---------- */
         .scroll-nav {
             position: fixed;
@@ -312,6 +359,7 @@
             transition: transform 0.2s ease, background-color 0.2s ease,
                         border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .scroll-btn:focus-visible {
@@ -361,9 +409,17 @@
             }
         }
 
-        .scroll-btn:active {
-            transform: translateY(0) scale(0.96);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        /* Direction-aware press feedback */
+        .scroll-btn--up:active {
+            transform: translateY(-1px) scale(0.96);
+            box-shadow: 0 -4px 12px rgba(56, 189, 248, 0.4),
+                        0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        .scroll-btn--down:active {
+            transform: translateY(1px) scale(0.96);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4),
+                        0 4px 12px rgba(0, 0, 0, 0.35);
         }
 
         .scroll-arrow { display: inline-block; }
@@ -409,17 +465,19 @@
 </head>
 <body>
 
+    <a href="#main-content" class="skip-link">Skip to tools</a>
+
     <header>
         <h1>FinTech <span>Workflow Toolkit</span></h1>
         <p>Rapid, high-utility automation tools designed for financial and accounting professionals.</p>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
         <div class="grid">
             
             <a href="prorata-calculator/index.html" class="card">
                 <div>
-                    <div class="card-icon">📊</div>
+                    <div class="card-icon" aria-hidden="true">📊</div>
                     <h2 class="card-title">Prorata Calculator</h2>
                     <p class="card-desc">Calculate exact proportional breakdowns for duration-based service charges cleanly and instantly.</p>
                 </div>
@@ -428,7 +486,7 @@
             
             <a href="bill-calculator2/index.html" class="card">
                 <div>
-                    <div class="card-icon">🧾</div>
+                    <div class="card-icon" aria-hidden="true">🧾</div>
                     <h2 class="card-title">Bill Calculator Summarizer2</h2>
                     <p class="card-desc">Compile totals for multiple bundled invoices automatically into structured vertical or horizontal summary tables.</p>
                 </div>
@@ -437,8 +495,8 @@
 
             <a href="Dictionary/index.html" class="card">
                 <div>
-                    <div class="card-icon">📚</div>
-                    <h2 class="card-title">Dictonary</h2>
+                    <div class="card-icon" aria-hidden="true">📚</div>
+                    <h2 class="card-title">Dictionary</h2>
                     <p class="card-desc">Extract and get meanings of the words directly from physical books, newspapers, or street signs etc.</p>
                 </div>
                 <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
@@ -446,7 +504,7 @@
             
             <a href="bill-calculator/index.html" class="card">
                 <div>
-                    <div class="card-icon">🧾</div>
+                    <div class="card-icon" aria-hidden="true">🧾</div>
                     <h2 class="card-title">Bill Calculator Summarizer</h2>
                     <p class="card-desc">Compile totals for multiple bundled invoices automatically into structured vertical or horizontal summary tables.</p>
                 </div>
@@ -455,7 +513,7 @@
 
             <a href="Narration-Maker2/index.html" class="card">
                 <div>
-                    <div class="card-icon">📝</div>
+                    <div class="card-icon" aria-hidden="true">📝</div>
                     <h2 class="card-title">Narration Maker2</h2>
                     <p class="card-desc">Quickly generate a cash payment narration with presets to reduce the tedious process to manually typing.</p>
                 </div>
@@ -464,7 +522,7 @@
             
             <a href="Narration-Maker/index.html" class="card">
                 <div>
-                    <div class="card-icon">📝</div>
+                    <div class="card-icon" aria-hidden="true">📝</div>
                     <h2 class="card-title">Narration Maker</h2>
                     <p class="card-desc">Quickly combine lists into a single continuous sentence without exceeding Tally's character limit.</p>
                 </div>
@@ -473,7 +531,7 @@
             
             <a href="tds-calculator/index.html" class="card">
                 <div>
-                    <div class="card-icon">🏛️</div>
+                    <div class="card-icon" aria-hidden="true">🏛️</div>
                     <h2 class="card-title">TDS Calculator</h2>
                     <p class="card-desc">Accurate Tax Deducted at Source computation logic aligned with target financial compliance thresholds.</p>
                 </div>
@@ -482,7 +540,7 @@
 
             <a href="image-shrinker/index.html" class="card">
                 <div>
-                    <div class="card-icon">🖼️</div>
+                    <div class="card-icon" aria-hidden="true">🖼️</div>
                     <h2 class="card-title">Image Compressor</h2>
                     <p class="card-desc">Shrink heavy audit photos, adjust text print contrast, and sharpen text edges dynamically for optimized local file storage.</p>
                 </div>
@@ -491,7 +549,7 @@
 
              <a href="image-shrinker2/index.html" class="card">
                 <div>
-                    <div class="card-icon">🖼️</div>
+                    <div class="card-icon" aria-hidden="true">🖼️</div>
                     <h2 class="card-title">Image Compressor 2 with PDF Compiler </h2>
                     <p class="card-desc">Shrink heavy audit photos, adjust text print contrast, and sharpen text edges dynamically for optimized local file storage and compile them now in PDF.</p>
                 </div>
@@ -500,8 +558,8 @@
 
             <a href="pdf-compiler/index.html" class="card">
                 <div>
-                    <div class="card-icon">🗜️</div>
-                    <h2 class="card-title">PDF Comiler & Compressor</h2>
+                    <div class="card-icon" aria-hidden="true">🗜️</div>
+                    <h2 class="card-title">PDF Compiler &amp; Compressor</h2>
                     <p class="card-desc">Compile and compress heavy documents or image lists into structured, web-ready PDFs limited strictly to under 200kb.</p>
                 </div>
                 <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
@@ -509,8 +567,8 @@
 
             <a href="pdf-compiler2/index.html" class="card">
                 <div>
-                    <div class="card-icon">🗜️</div>
-                    <h2 class="card-title">PDF Comiler & Compressor2</h2>
+                    <div class="card-icon" aria-hidden="true">🗜️</div>
+                    <h2 class="card-title">PDF Compiler &amp; Compressor2</h2>
                     <p class="card-desc">Compile and compress heavy documents or image lists into structured, web-ready PDFs limited strictly to under 200kb.</p>
                 </div>
                 <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
@@ -518,7 +576,7 @@
             
             <a href="party-list/index.html" class="card">
                 <div>
-                    <div class="card-icon">💳</div>
+                    <div class="card-icon" aria-hidden="true">💳</div>
                     <h2 class="card-title">Party Bank List Generator</h2>
                     <p class="card-desc">Structure clean tables mapped directly to client bank accounts for error-free bulk money transfers.</p>
                 </div>
@@ -527,7 +585,7 @@
 
             <a href="bill-splitter/index.html" class="card">
                 <div>
-                    <div class="card-icon">✂️</div>
+                    <div class="card-icon" aria-hidden="true">✂️</div>
                     <h2 class="card-title">Bill Splitter</h2>
                     <p class="card-desc">Effortlessly divide shared corporate expense items, itemized taxes, and tips across multiple stakeholders or clients.</p>
                 </div>
@@ -536,7 +594,7 @@
 
             <a href="XLCompare/index.html" class="card">
                 <div>
-                    <div class="card-icon">❎</div>
+                    <div class="card-icon" aria-hidden="true">❎</div>
                     <h2 class="card-title">XLCompare</h2>
                     <p class="card-desc">XlCompare instantly matches two Excel files side by side, catching discrepancies and highlighting every single data mismatch in seconds.</p>
                 </div>
@@ -545,7 +603,7 @@
 
             <a href="Web-IDE/index.html" class="card">
                 <div>
-                    <div class="card-icon">🛡️</div>
+                    <div class="card-icon" aria-hidden="true">🛡️</div>
                     <h2 class="card-title">Web IDE</h2>
                     <p class="card-desc">Test your html projects here.</p>
                 </div>
@@ -554,7 +612,7 @@
 
              <a href="Cart-Calc/index.html" class="card">
                 <div>
-                    <div class="card-icon">🛒</div>
+                    <div class="card-icon" aria-hidden="true">🛒</div>
                     <h2 class="card-title">Cart-Calc</h2>
                     <p class="card-desc">Instantly tallies the total cost of items with weight in a shopping cart without juggling their weight and price.</p>
                 </div>
@@ -563,24 +621,24 @@
 
             <a href="Test/index.html" class="card">
                 <div>
-                    <div class="card-icon">🧪</div>
+                    <div class="card-icon" aria-hidden="true">🧪</div>
                     <h2 class="card-title">Test</h2>
                     <p class="card-desc">Test apps here.</p>
                 </div>
                 <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
 
-            <a href="Image URLs to PDF/index.html" class="card">
+            <a href="Image%20URLs%20to%20PDF/index.html" class="card">
                 <div>
-                    <div class="card-icon">🖼️→📑</div>
+                    <div class="card-icon" aria-hidden="true">🖼️→📑</div>
                     <h2 class="card-title">Image URLs to PDF </h2>
                     <p class="card-desc">Test apps here.</p>
                 </div>
                 <div class="card-btn">Launch App <span class="arrow" aria-hidden="true">→</span></div>
             </a>
-       <a href="Salesforce XML Metadata Cleaner/index.html" class="card">
+       <a href="Salesforce%20XML%20Metadata%20Cleaner/index.html" class="card">
                 <div>
-                    <div class="card-icon">🏷️</div>
+                    <div class="card-icon" aria-hidden="true">🏷️</div>
                     <h2 class="card-title">Salesforce XML Metadata Cleaner </h2>
                     <p class="card-desc">Remove multiple Salesforce XML Metadata in one go.</p>
                 </div>
@@ -607,8 +665,21 @@
         (function () {
             'use strict';
 
+            /* ---------- Failsafe: never leave cards hidden if IO fails ---------- */
+            setTimeout(function () {
+                if (!document.querySelector('.card.is-visible')) {
+                    document.documentElement.classList.remove('js-reveal');
+                }
+            }, 2000);
+
             var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var supportsIO = 'IntersectionObserver' in window;
             var scrollBehavior = reduceMotion ? 'auto' : 'smooth';
+
+            /* If reduced motion or no IO, drop the reveal class so cards render normally */
+            if (reduceMotion || !supportsIO) {
+                document.documentElement.classList.remove('js-reveal');
+            }
 
             /* ---------- Scroll buttons ---------- */
             var topBtn = document.getElementById('scrollTopBtn');
@@ -645,22 +716,17 @@
             window.addEventListener('scroll', onScroll, { passive: true });
             onScroll();
 
-            /* ---------- Card scroll reveal + stagger ---------- */
+            /* ---------- Card scroll reveal + batch-relative stagger ---------- */
             var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
 
-            if (!reduceMotion && 'IntersectionObserver' in window) {
-                document.documentElement.classList.add('js-reveal');
-
-                cards.forEach(function (card, i) {
-                    card.style.setProperty('--i', Math.min(i % 6, 5));
-                });
-
+            if (!reduceMotion && supportsIO) {
                 var io = new IntersectionObserver(function (entries) {
+                    var batchIndex = 0;
                     entries.forEach(function (entry) {
-                        if (entry.isIntersecting) {
-                            entry.target.classList.add('is-visible');
-                            io.unobserve(entry.target);
-                        }
+                        if (!entry.isIntersecting) return;
+                        entry.target.style.setProperty('--i', Math.min(batchIndex++, 6));
+                        entry.target.classList.add('is-visible');
+                        io.unobserve(entry.target);
                     });
                 }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
 
@@ -668,8 +734,6 @@
             }
 
             /* ---------- Tap / click pulse: applies .is-glowing for ~380ms ---------- */
-            /* Works on ALL devices. On touch this is the ONLY glow source.        */
-            /* On desktop it briefly extends the native :hover glow after a click. */
             var glowTimers = new WeakMap();
 
             function pulseGlow(el) {
@@ -681,7 +745,6 @@
                 }, 380));
             }
 
-            /* Delegate on .grid so 20 cards = 1 listener instead of 20 */
             var grid = document.querySelector('.grid');
             if (grid) {
                 grid.addEventListener('pointerdown', function (e) {
@@ -690,7 +753,6 @@
                 }, { passive: true });
             }
 
-            /* Also pulse the scroll buttons on tap */
             [topBtn, bottomBtn].forEach(function (btn) {
                 btn.addEventListener('pointerdown', function () {
                     pulseGlow(btn);
@@ -702,15 +764,12 @@
 
             if (!reduceMotion && finePointer && grid) {
                 var pending = false;
-                var lastCard = null;
 
                 grid.addEventListener('pointermove', function (e) {
                     var card = e.target.closest('.card');
                     if (!card || pending) return;
 
-                    lastCard = card;
                     pending = true;
-
                     var rect = card.getBoundingClientRect();
                     var x = e.clientX - rect.left;
                     var y = e.clientY - rect.top;
