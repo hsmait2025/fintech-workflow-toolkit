@@ -15,7 +15,11 @@
     --water-hi-rgb: 224 242 254;
   }
 
-  html, body { height: 100%; margin: 0; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+  }
 
   body {
     display: grid;
@@ -441,55 +445,109 @@
 
   /* ─────────────────────────  FULL-SCREEN PHONES  ───────────────────────── */
 
-  /* Below tablet width the glass card becomes a full-bleed native-style
-     screen: it hugs all four edges (respecting the notch / gesture areas)
-     and the orb grows into the extra room. */
+  /* Portrait phones: the card becomes a locked, full-viewport app shell.
+     `position: fixed` on the body means the page can never scroll or
+     rubber-band, so the URL bar never collapses and no scrollbar can
+     ever appear while the orb is animating. */
 
   @media (max-width: 540px) {
+    html, body { overflow: hidden; }
+
     body {
+      position: fixed;
+      inset: 0;
       padding: 0;
-      place-items: stretch;
+      display: block;
     }
 
     .app {
-      display: grid;
-      grid-template-rows: auto auto 1fr auto auto;
-      justify-items: center;
-      align-content: stretch;
-
+      position: absolute;
+      inset: 0;
       width: 100%;
-      height: 100vh;   /* fallback */
-      height: 100dvh;  /* follows the mobile browser chrome */
+      height: 100%;
       max-width: none;
+
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+      justify-items: center;
+      align-items: center;
+
+      gap: clamp(10px, 2.2vh, 18px);
+      padding:
+        calc(env(safe-area-inset-top, 0px) + clamp(14px, 2.4vh, 22px))
+        clamp(18px, 5vw, 28px)
+        calc(env(safe-area-inset-bottom, 0px) + clamp(14px, 2.4vh, 22px));
 
       border-radius: 0;
       border: none;
       box-shadow: none;
-      /* nothing to blur against a plain gradient backdrop */
+      overflow: hidden;          /* hard clip — nothing can spill out */
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-
-      gap: clamp(12px, 2.2vh, 20px);
-      padding:
-        calc(env(safe-area-inset-top, 0px) + clamp(20px, 4vh, 34px))
-        clamp(20px, 5vw, 30px)
-        calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 4vh, 34px));
     }
 
+    /* size the orb to whichever dimension is tighter, so it always fits */
     .stage {
-      align-self: center;
-      width: min(92vw, 58vh, 400px);
+      width: min(88vw, 46vh, 340px);   /* fallback */
+      width: min(88vw, 46svh, 340px);  /* small viewport — never clipped */
     }
+
+    /* cheaper glass: flat tints instead of live backdrop blur */
+    .patterns, .rounds, .btn {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .patterns { background: rgba(255, 255, 255, 0.66); }
+    .rounds   { background: rgba(255, 255, 255, 0.74); }
+    .btn {
+      background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.96),
+        rgba(255, 255, 255, 0.82));
+    }
+    .btn.running {
+      background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.86),
+        rgba(255, 255, 255, 0.66));
+    }
+
+    /* drop the two filters that re-render every animation frame */
+    .halo { filter: none; }
+    .ring-progress { filter: none; }
   }
 
-  /* short landscape screens (phones turned sideways) */
-  @media (max-width: 1000px) and (max-height: 500px) {
-    .app {
-      gap: 10px;
-      padding-top: 14px;
-      padding-bottom: 14px;
+  /* Landscape phones: keep the card, but compact it so it always fits. */
+  @media (max-height: 520px) and (orientation: landscape) {
+    html, body { overflow: hidden; }
+
+    body {
+      position: fixed;
+      inset: 0;
+      padding: 0;
     }
-    .stage { width: min(56vh, 260px); }
+
+    .app {
+      gap: 8px;
+      padding: 12px 16px;
+    }
+
+    .eyebrow { display: none; }
+
+    .stage { width: min(38vmin, 220px); }
+
+    .app, .patterns, .rounds, .btn {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .patterns { background: rgba(255, 255, 255, 0.66); }
+    .rounds   { background: rgba(255, 255, 255, 0.74); }
+    .btn {
+      background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.96),
+        rgba(255, 255, 255, 0.82));
+    }
+
+    .halo { filter: none; }
+    .ring-progress { filter: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -666,12 +724,17 @@
   function paint(lv, col) {
     level = lv;
 
+    /* water surface height — 104 units of travel, slight overshoot at full */
     const y = (1 - lv) * 104 - 4;
     waterGroup.setAttribute('transform', `translate(0 ${y.toFixed(2)})`);
 
-    const r = Math.round(col[0]);
-    const g = Math.round(col[1]);
-    const b = Math.round(col[2]);
+    /* Quantise the tint to 3-unit steps. The eye can't see the difference,
+       but it means the CSS custom properties (which drive the orb shadow,
+       ring stroke, halo and wave fills) are only invalidated ~3× less
+       often — the single biggest win for smoothness on mobile GPUs. */
+    const r = Math.round(col[0] / 3) * 3;
+    const g = Math.round(col[1] / 3) * 3;
+    const b = Math.round(col[2] / 3) * 3;
 
     if (r !== lastRGB[0] || g !== lastRGB[1] || b !== lastRGB[2]) {
       lastRGB = [r, g, b];
@@ -685,8 +748,11 @@
       );
     }
 
+    /* ring mirrors the fill level */
     ringEl.style.strokeDashoffset = String(RING_C * (1 - lv));
 
+    /* halo breathes with the water — transform/opacity only, so this
+       stays on the compositor */
     halo.style.transform = `scale(${0.88 + 0.30 * lv})`;
     halo.style.opacity   = String(0.22 + 0.50 * lv);
   }
@@ -762,7 +828,9 @@
         break;
     }
 
-    const k = 1 - Math.exp(-dt / 1800);
+    /* colour crossfade — shortened from 1.8 s to 1.2 s so the tint tracks
+       the water level closely and the fill reads as responsive */
+    const k = 1 - Math.exp(-dt / 1200);
     color = mix(color, targetColor, k);
 
     paint(targetLevel, color);
