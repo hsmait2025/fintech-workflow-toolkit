@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e3eef6">
+<title>Breathe · 4·7·8</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --ink: #12202c;
+    --muted: rgba(18, 32, 44, 0.42);
+    --water-rgb: 125 211 252;
+    --water-hi-rgb: 224 242 254;
+  }
+
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    background:
+      radial-gradient(90% 60% at 50% -12%,
+        rgba(255, 255, 255, 0.95) 0%, transparent 55%),
+      radial-gradient(45% 45% at 18% 20%,
+        rgba(125, 211, 252, 0.30), transparent 70%),
+      radial-gradient(42% 42% at 82% 74%,
+        rgba(196, 181, 253, 0.24), transparent 70%),
+      radial-gradient(40% 40% at 55% 96%,
+        rgba(134, 239, 172, 0.20), transparent 70%),
+      #e3eef6;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ─────────────────────────  GLASS CARD  ───────────────────────── */
+
+  .app {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(16px, 3vh, 24px);
+    width: min(92vw, 404px);
+    padding: clamp(24px, 4.8vmin, 34px) clamp(20px, 5vmin, 30px)
+             clamp(22px, 4.2vmin, 30px);
+    border-radius: clamp(34px, 8vmin, 46px);
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.80) 0%,
+      rgba(255, 255, 255, 0.55) 48%,
+      rgba(255, 255, 255, 0.70) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.40),
+      0 30px 70px -20px rgba(40, 80, 120, 0.22),
+      0 2px 8px rgba(40, 80, 120, 0.06);
+    backdrop-filter: blur(40px) saturate(170%);
+    -webkit-backdrop-filter: blur(40px) saturate(170%);
+  }
+
+  .app::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 55% at 18% 0%,
+      rgba(255, 255, 255, 0.55), transparent 55%);
+  }
+
+  .app > * { position: relative; z-index: 1; }
+
+  /* ─────────────────────────  HEADER  ───────────────────────── */
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .eyebrow {
+    margin: 0;
+    padding-left: 0.44em;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.44em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .title {
+    margin: 0;
+    font-size: clamp(18px, 4.4vmin, 22px);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* ─────────────────────────  STAGE  ───────────────────────── */
+
+  .stage {
+    position: relative;
+    width: min(70vmin, 300px);
+    aspect-ratio: 1 / 1;
+  }
+
+  .ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform: rotate(-90deg);
+  }
+  .ring circle { fill: none; }
+
+  .ring-track {
+    stroke: rgba(18, 32, 44, 0.09);
+    stroke-width: 1.5;
+  }
+
+  .ring-progress {
+    stroke: rgb(var(--water-rgb));
+    stroke-width: 2;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgb(var(--water-rgb) / 0.55));
+  }
+
+  /* ─────────────────────────  ORB  ───────────────────────── */
+
+  .orb-wrap {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 78%;
+    height: 78%;
+  }
+
+  .halo {
+    position: absolute;
+    inset: -30%;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgb(var(--water-rgb) / 0.34) 0%,
+      rgb(var(--water-rgb) / 0.10) 45%,
+      transparent 70%);
+    filter: blur(22px);
+    opacity: 0.30;
+    transform: scale(0.9);
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
+
+  body:not(.is-running) .halo {
+    animation: haloIdle 7s ease-in-out infinite;
+  }
+
+  @keyframes haloIdle {
+    0%, 100% { transform: scale(0.92); opacity: 0.22; }
+    50%      { transform: scale(1.06); opacity: 0.42; }
+  }
+
+  .orb {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(120, 160, 200, 0.35);
+    box-shadow:
+      inset 0 0 55px rgb(var(--water-rgb) / 0.16),
+      inset 0 1px 1px rgba(255, 255, 255, 0.85),
+      0 0 60px rgb(var(--water-rgb) / 0.14);
+  }
+
+  .liquid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #waterGroup { will-change: transform; }
+
+  .wave-body { fill: rgb(var(--water-rgb)); }
+
+  .wave-hi {
+    fill: rgb(var(--water-hi-rgb));
+    opacity: 0.62;
+  }
+
+  /* glass specular overlay */
+  .glass {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 31% 23%,
+        rgba(255, 255, 255, 0.62) 0%,
+        rgba(255, 255, 255, 0.16) 20%,
+        transparent 44%),
+      radial-gradient(circle at 62% 88%,
+        rgba(255, 255, 255, 0.18),
+        transparent 50%);
+    box-shadow: inset 0 -14px 34px rgba(30, 60, 90, 0.10);
+  }
+
+  /* ─────────────────────────  READOUT  ───────────────────────── */
+
+  .readout {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+
+  /* soft white backing so the dark text stays legible over any water colour */
+  .readout::before {
+    content: "";
+    position: absolute;
+    width: 66%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.30) 55%,
+      rgba(255, 255, 255, 0.00) 78%);
+    filter: blur(10px);
+    pointer-events: none;
+  }
+
+  .readout-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    text-align: center;
+  }
+
+  /* font colour stays constant — always the same dark ink */
+  .phase {
+    font-size: clamp(20px, 4.8vmin, 27px);
+    font-weight: 300;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    text-shadow: 0 1px 10px rgba(255, 255, 255, 0.55);
+  }
+
+  .count {
+    min-height: 1.1em;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    font-variant-numeric: tabular-nums;
+    color: rgba(18, 32, 44, 0.55);
+    text-shadow: 0 1px 8px rgba(255, 255, 255, 0.55);
+  }
+
+  /* ─────────────────────────  ROUND COUNTER  ───────────────────────── */
+
+  .rounds {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 16px 8px 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 2px 8px rgba(40, 80, 120, 0.06);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .rounds-num {
+    display: inline-block;
+    min-width: 1.1em;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--water-rgb));
+  }
+
+  /* ─────────────────────────  BUTTON  ───────────────────────── */
+
+  .btn {
+    appearance: none;
+    touch-action: manipulation;
+    min-width: 184px;
+    padding: 15px 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(255, 255, 255, 0.66));
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 8px 22px rgba(40, 80, 120, 0.14);
+    transition: transform 0.18s ease, background 0.35s ease,
+                border-color 0.5s ease, box-shadow 0.5s ease;
+  }
+
+  .btn:hover {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 1),
+      rgba(255, 255, 255, 0.78));
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .btn:focus-visible {
+    outline: 2px solid rgb(var(--water-rgb));
+    outline-offset: 4px;
+  }
+
+  .btn.running {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.78),
+      rgba(255, 255, 255, 0.50));
+    border-color: rgb(var(--water-rgb) / 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 0 32px rgb(var(--water-rgb) / 0.28),
+      0 8px 22px rgba(40, 80, 120, 0.14);
+  }
+
+  /* ─────────────────────────  ANIMATION  ───────────────────────── */
+
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .pop { animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .halo { animation: none !important; }
+    .pop  { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<main class="app" id="app">
+  <header class="brand">
+    <p class="eyebrow">4 · 7 · 8</p>
+    <h1 class="title">Relaxing Breath</h1>
+  </header>
+
+  <section class="stage">
+    <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+      <circle class="ring-track" cx="150" cy="150" r="140"/>
+      <circle class="ring-progress" id="ringProgress" cx="150" cy="150" r="140"/>
+    </svg>
+
+    <div class="orb-wrap" id="orbWrap">
+      <div class="halo"></div>
+
+      <div class="orb">
+        <svg class="liquid" viewBox="0 0 100 100" aria-hidden="true">
+          <g id="waterGroup">
+            <!-- primary water body with wavy surface -->
+            <g>
+              <animateTransform attributeName="transform" type="translate"
+                from="0 0" to="-50 0" dur="9s" repeatCount="indefinite"/>
+              <path class="wave-body" d="M-100,0
+                C-87.5,-3.5 -62.5,3.5 -50,0
+                C-37.5,-3.5 -12.5,3.5 0,0
+                C12.5,-3.5 37.5,3.5 50,0
+                C62.5,-3.5 87.5,3.5 100,0
+                C112.5,-3.5 137.5,3.5 150,0
+                C162.5,-3.5 187.5,3.5 200,0
+                L200,150 L-100,150 Z"/>
+            </g>
+
+            <!-- lighter surface highlight band -->
+            <g>
+              <animateTransform attributeName="transform" type="translate"
+                from="0 0" to="50 0" dur="13s" repeatCount="indefinite"/>
+              <path class="wave-hi" d="M-75,0
+                C-62.5,-2.4 -37.5,2.4 -25,0
+                C-12.5,-2.4 12.5,2.4 25,0
+                C37.5,-2.4 62.5,2.4 75,0
+                C87.5,-2.4 112.5,2.4 125,0
+                C137.5,-2.4 162.5,2.4 175,0
+                C187.5,-2.4 212.5,2.4 225,0
+                L225,7 L-75,7 Z"/>
+            </g>
+          </g>
+        </svg>
+
+        <div class="glass"></div>
+      </div>
+
+      <div class="readout">
+        <div class="readout-inner" id="readoutInner">
+          <div class="phase" id="phase">Ready</div>
+          <div class="count" id="count"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rounds">
+    <span>Round</span>
+    <span class="rounds-num" id="roundNum">1</span>
+  </div>
+
+  <button class="btn" id="toggle" type="button">Start</button>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ── Configuration ───────────────────────────────────────────── */
+
+  const PHASES = [
+    { key: 'inhale', label: 'Inhale', dur: 4000 },
+    { key: 'hold',   label: 'Hold',   dur: 7000 },
+    { key: 'exhale', label: 'Exhale', dur: 8000 },
+    { key: 'rest',   label: 'Rest',   dur: 4000 }   // 4-second rest each round
+  ];
+
+  const CYCLE = PHASES.reduce((sum, p) => sum + p.dur, 0); // 23 000 ms
+
+  /* Colour palette (RGB arrays) — kept light enough for dark ink text */
+  const BLUE_START  = [125, 211, 252]; // airy light blue
+  const BLUE_END    = [ 56, 189, 248]; // deeper cyan-blue
+  const GREEN_DARK  = [ 34, 197,  94]; // vivid green (still reads with black text)
+  const GREEN_LIGHT = [134, 239, 172]; // fresh light green
+  const GREEN_PALE  = [167, 243, 208]; // pale mint
+
+  /* ── DOM ─────────────────────────────────────────────────────── */
+
+  const orbWrap      = document.getElementById('orbWrap');
+  const halo         = document.querySelector('.halo');
+  const waterGroup   = document.getElementById('waterGroup');
+  const ringEl       = document.getElementById('ringProgress');
+  const phaseEl      = document.getElementById('phase');
+  const countEl      = document.getElementById('count');
+  const roundNumEl   = document.getElementById('roundNum');
+  const btn          = document.getElementById('toggle');
+
+  const root = document.documentElement;
+
+  /* ── Ring geometry ───────────────────────────────────────────── */
+
+  const RING_C = 2 * Math.PI * 140;
+  ringEl.style.strokeDasharray  = String(RING_C);
+  ringEl.style.strokeDashoffset = String(RING_C);
+
+  /* ── State ───────────────────────────────────────────────────── */
+
+  let running         = false;
+  let rafId           = 0;
+  let startTime       = 0;
+  let lastTime        = 0;
+  let currentRound    = -1;
+  let currentPhaseIdx = -1;
+
+  let level   = 0;
+  let color   = BLUE_START.slice();
+  let lastRGB = [-1, -1, -1];
+
+  /* ── Maths helpers ───────────────────────────────────────────── */
+
+  const easeInOutSine = t => 0.5 - 0.5 * Math.cos(Math.PI * t);
+
+  const mix = (a, b, t) => [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+    a[2] + (b[2] - a[2]) * t
+  ];
+
+  /* ── Painting ────────────────────────────────────────────────── */
+
+  function paint(lv, col) {
+    level = lv;
+
+    /* water surface height — 104 units of travel, slight overshoot at full */
+    const y = (1 - lv) * 104 - 4;
+    waterGroup.setAttribute('transform', `translate(0 ${y.toFixed(2)})`);
+
+    /* colour — repaint only when the rounded value changes */
+    const r = Math.round(col[0]);
+    const g = Math.round(col[1]);
+    const b = Math.round(col[2]);
+
+    if (r !== lastRGB[0] || g !== lastRGB[1] || b !== lastRGB[2]) {
+      lastRGB = [r, g, b];
+
+      const hi = mix([r, g, b], [255, 255, 255], 0.55);
+
+      root.style.setProperty('--water-rgb', `${r} ${g} ${b}`);
+      root.style.setProperty(
+        '--water-hi-rgb',
+        `${Math.round(hi[0])} ${Math.round(hi[1])} ${Math.round(hi[2])}`
+      );
+    }
+
+    /* ring mirrors the fill level */
+    ringEl.style.strokeDashoffset = String(RING_C * (1 - lv));
+
+    /* halo breathes with the water */
+    halo.style.transform = `scale(${0.88 + 0.30 * lv})`;
+    halo.style.opacity   = String(0.22 + 0.50 * lv);
+  }
+
+  /* ── Text helpers ────────────────────────────────────────────── */
+
+  function pop(el) {
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  }
+
+  function setPhase(label) {
+    if (phaseEl.textContent === label) return;
+    phaseEl.textContent = label;
+    pop(phaseEl);
+  }
+
+  function setRound(n) {
+    const text = String(n);
+    if (roundNumEl.textContent === text) return;
+    roundNumEl.textContent = text;
+    pop(roundNumEl);
+  }
+
+  /* ── Main loop ───────────────────────────────────────────────── */
+
+  function frame(now) {
+    if (!running) return;
+
+    const dt = Math.min(now - lastTime, 64);
+    lastTime = now;
+
+    const elapsed  = now - startTime;
+    const within   = elapsed % CYCLE;
+    const roundIdx = Math.floor(elapsed / CYCLE);
+
+    /* infinite round counter */
+    if (roundIdx !== currentRound) {
+      currentRound = roundIdx;
+      setRound(roundIdx + 1);
+    }
+
+    /* locate phase */
+    let acc = 0;
+    let idx = 0;
+    for (let i = 0; i < PHASES.length; i++) {
+      if (within < acc + PHASES[i].dur) { idx = i; break; }
+      acc += PHASES[i].dur;
+    }
+
+    const phase = PHASES[idx];
+    const p     = Math.min(Math.max((within - acc) / phase.dur, 0), 1);
+    const eased = easeInOutSine(p);
+
+    /* target level + target colour per phase */
+    let targetLevel;
+    let targetColor;
+
+    if (idx === 0) {                          // INHALE — fill with clean air
+      targetLevel = eased;
+      targetColor = mix(BLUE_START, BLUE_END, p);
+    } else if (idx === 1) {                   // HOLD — green deep → light
+      targetLevel = 1;
+      targetColor = mix(GREEN_DARK, GREEN_LIGHT, p);
+    } else if (idx === 2) {                   // EXHALE — drain away
+      targetLevel = 1 - eased;
+      targetColor = mix(GREEN_LIGHT, GREEN_PALE, p);
+    } else {                                  // REST — settle back to calm blue
+      targetLevel = 0;
+      targetColor = mix(GREEN_PALE, BLUE_START, p);
+    }
+
+    /* smooth colour crossfade — long time constant for a watercolour blend */
+    const k = 1 - Math.exp(-dt / 1800);
+    color = mix(color, targetColor, k);
+
+    paint(targetLevel, color);
+
+    /* readout */
+    if (idx !== currentPhaseIdx) {
+      currentPhaseIdx = idx;
+      setPhase(phase.label);
+    }
+
+    const remaining = Math.max(
+      1,
+      Math.ceil((phase.dur - (within - acc)) / 1000)
+    );
+    const countText = String(remaining);
+    if (countEl.textContent !== countText) countEl.textContent = countText;
+
+    rafId = requestAnimationFrame(frame);
+  }
+
+  /* ── Settle back to rest ─────────────────────────────────────── */
+
+  function settle() {
+    const fromLevel = level;
+    const fromColor = color.slice();
+    const t0        = performance.now();
+    const DUR       = 900;
+
+    function step(now) {
+      const t = Math.min((now - t0) / DUR, 1);
+      const e = 1 - Math.pow(1 - t, 3);
+
+      paint(fromLevel * (1 - e), mix(fromColor, BLUE_START, e));
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        color = BLUE_START.slice();
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  /* ── Controls ────────────────────────────────────────────────── */
+
+  function start() {
+    running         = true;
+    currentRound    = -1;
+    currentPhaseIdx = -1;
+    startTime       = performance.now();
+    lastTime        = startTime;
+
+    document.body.classList.add('is-running');
+    btn.classList.add('running');
+    btn.textContent = 'Stop';
+
+    setRound(1);
+
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    rafId = 0;
+
+    document.body.classList.remove('is-running');
+    btn.classList.remove('running');
+    btn.textContent = 'Start';
+
+    currentPhaseIdx = -1;
+    currentRound    = -1;
+
+    phaseEl.textContent = 'Ready';
+    phaseEl.classList.remove('pop');
+    countEl.textContent = '';
+    setRound(1);
+
+    settle();
+  }
+
+  function toggle() {
+    if (running) stop();
+    else start();
+  }
+
+  btn.addEventListener('click', toggle);
+
+  /* spacebar shortcut (skips when the button itself is focused) */
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target !== btn) {
+      e.preventDefault();
+      toggle();
+    }
+  });
+
+  /* pause when the tab / app goes to the background */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && running) stop();
+  });
+
+  /* ── Boot ────────────────────────────────────────────────────── */
+
+  paint(0, BLUE_START);
+})();
+</script>
+</body>
+</html>
