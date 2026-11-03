@@ -439,6 +439,59 @@
 
   .pop { animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
 
+  /* ─────────────────────────  FULL-SCREEN PHONES  ───────────────────────── */
+
+  /* Below tablet width the glass card becomes a full-bleed native-style
+     screen: it hugs all four edges (respecting the notch / gesture areas)
+     and the orb grows into the extra room. */
+
+  @media (max-width: 540px) {
+    body {
+      padding: 0;
+      place-items: stretch;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto auto;
+      justify-items: center;
+      align-content: stretch;
+
+      width: 100%;
+      height: 100vh;   /* fallback */
+      height: 100dvh;  /* follows the mobile browser chrome */
+      max-width: none;
+
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      /* nothing to blur against a plain gradient backdrop */
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+
+      gap: clamp(12px, 2.2vh, 20px);
+      padding:
+        calc(env(safe-area-inset-top, 0px) + clamp(20px, 4vh, 34px))
+        clamp(20px, 5vw, 30px)
+        calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 4vh, 34px));
+    }
+
+    .stage {
+      align-self: center;
+      width: min(92vw, 58vh, 400px);
+    }
+  }
+
+  /* short landscape screens (phones turned sideways) */
+  @media (max-width: 1000px) and (max-height: 500px) {
+    .app {
+      gap: 10px;
+      padding-top: 14px;
+      padding-bottom: 14px;
+    }
+    .stage { width: min(56vh, 260px); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .halo { animation: none !important; }
     .pop  { animation: none; }
@@ -527,9 +580,6 @@
 
   /* ── Patterns ────────────────────────────────────────────────── */
 
-  /* `kind` drives the animation, so a pattern may have any number of
-     phases (with or without a hold) as long as the kinds are sane. */
-
   const PATTERNS = [
     {
       id: 'relax',
@@ -556,15 +606,14 @@
   ];
 
   /* Colour palette (RGB arrays) — kept light enough for dark ink text */
-  const BLUE_START  = [125, 211, 252]; // airy light blue
-  const BLUE_END    = [ 56, 189, 248]; // deeper cyan-blue
-  const GREEN_DARK  = [ 34, 197,  94]; // vivid green (still reads with black text)
-  const GREEN_LIGHT = [134, 239, 172]; // fresh light green
-  const GREEN_PALE  = [167, 243, 208]; // pale mint
+  const BLUE_START  = [125, 211, 252];
+  const BLUE_END    = [ 56, 189, 248];
+  const GREEN_DARK  = [ 34, 197,  94];
+  const GREEN_LIGHT = [134, 239, 172];
+  const GREEN_PALE  = [167, 243, 208];
 
   /* ── DOM ─────────────────────────────────────────────────────── */
 
-  const orbWrap      = document.getElementById('orbWrap');
   const halo         = document.querySelector('.halo');
   const waterGroup   = document.getElementById('waterGroup');
   const ringEl       = document.getElementById('ringProgress');
@@ -617,11 +666,9 @@
   function paint(lv, col) {
     level = lv;
 
-    /* water surface height — 104 units of travel, slight overshoot at full */
     const y = (1 - lv) * 104 - 4;
     waterGroup.setAttribute('transform', `translate(0 ${y.toFixed(2)})`);
 
-    /* colour — repaint only when the rounded value changes */
     const r = Math.round(col[0]);
     const g = Math.round(col[1]);
     const b = Math.round(col[2]);
@@ -638,10 +685,8 @@
       );
     }
 
-    /* ring mirrors the fill level */
     ringEl.style.strokeDashoffset = String(RING_C * (1 - lv));
 
-    /* halo breathes with the water */
     halo.style.transform = `scale(${0.88 + 0.30 * lv})`;
     halo.style.opacity   = String(0.22 + 0.50 * lv);
   }
@@ -679,13 +724,11 @@
     const within   = elapsed % cycle;
     const roundIdx = Math.floor(elapsed / cycle);
 
-    /* infinite round counter */
     if (roundIdx !== currentRound) {
       currentRound = roundIdx;
       setRound(roundIdx + 1);
     }
 
-    /* locate phase */
     let acc = 0;
     let idx = 0;
     for (let i = 0; i < phases.length; i++) {
@@ -697,36 +740,33 @@
     const p     = Math.min(Math.max((within - acc) / phase.dur, 0), 1);
     const eased = easeInOutSine(p);
 
-    /* target level + target colour per phase kind */
     let targetLevel;
     let targetColor;
 
     switch (phase.kind) {
-      case 'inhale':                          // fill with clean air
+      case 'inhale':
         targetLevel = eased;
         targetColor = mix(BLUE_START, BLUE_END, p);
         break;
-      case 'hold':                            // green deep → light
+      case 'hold':
         targetLevel = 1;
         targetColor = mix(GREEN_DARK, GREEN_LIGHT, p);
         break;
-      case 'exhale':                          // drain away
+      case 'exhale':
         targetLevel = 1 - eased;
         targetColor = mix(GREEN_LIGHT, GREEN_PALE, p);
         break;
-      default:                                // rest — settle back to calm blue
+      default:
         targetLevel = 0;
         targetColor = mix(GREEN_PALE, BLUE_START, p);
         break;
     }
 
-    /* smooth colour crossfade — long time constant for a watercolour blend */
     const k = 1 - Math.exp(-dt / 1800);
     color = mix(color, targetColor, k);
 
     paint(targetLevel, color);
 
-    /* readout */
     if (idx !== currentPhaseIdx) {
       currentPhaseIdx = idx;
       setPhase(phase.label);
@@ -831,7 +871,6 @@
 
     document.title = `Breathe · ${pattern.eyebrow.replace(/\s/g, '')}`;
 
-    /* restart cleanly on the new rhythm if a session is in flight */
     if (running) start();
   }
 
@@ -839,7 +878,6 @@
     b.addEventListener('click', () => selectPattern(i));
   });
 
-  /* arrow-key navigation inside the segmented control */
   patternsEl.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
@@ -853,7 +891,6 @@
 
   btn.addEventListener('click', toggle);
 
-  /* spacebar shortcut (skips when any button has focus) */
   window.addEventListener('keydown', (e) => {
     const onButton = e.target.closest && e.target.closest('button');
     if (e.code === 'Space' && !onButton) {
@@ -862,7 +899,6 @@
     }
   });
 
-  /* pause when the tab / app goes to the background */
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && running) stop();
   });
