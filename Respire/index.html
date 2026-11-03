@@ -51,7 +51,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: clamp(16px, 3vh, 24px);
+    gap: clamp(14px, 2.6vh, 22px);
     width: min(92vw, 404px);
     padding: clamp(24px, 4.8vmin, 34px) clamp(20px, 5vmin, 30px)
              clamp(22px, 4.2vmin, 30px);
@@ -110,6 +110,75 @@
     font-weight: 300;
     letter-spacing: -0.01em;
     color: var(--ink);
+  }
+
+  /* ─────────────────────────  PATTERN SWITCH  ───────────────────────── */
+
+  .patterns {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    width: 100%;
+    max-width: 236px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.90);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.90),
+      0 2px 8px rgba(40, 80, 120, 0.06);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /* sliding glass thumb */
+  .patterns::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc((100% - 12px) / 2);
+    height: calc(100% - 8px);
+    border-radius: 999px;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(255, 255, 255, 0.76));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 1px 4px rgba(40, 80, 120, 0.12);
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+
+  .patterns[data-active="1"]::before {
+    transform: translateX(calc(100% + 4px));
+  }
+
+  .pattern {
+    position: relative;
+    z-index: 1;
+    appearance: none;
+    border: 0;
+    padding: 8px 6px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: color 0.3s ease;
+  }
+
+  .pattern[aria-pressed="true"] { color: var(--ink); }
+
+  .pattern:focus-visible {
+    outline: 2px solid rgb(var(--water-rgb));
+    outline-offset: 2px;
   }
 
   /* ─────────────────────────  STAGE  ───────────────────────── */
@@ -373,6 +442,7 @@
   @media (prefers-reduced-motion: reduce) {
     .halo { animation: none !important; }
     .pop  { animation: none; }
+    .patterns::before { transition: none; }
   }
 </style>
 </head>
@@ -380,9 +450,14 @@
 
 <main class="app" id="app">
   <header class="brand">
-    <p class="eyebrow">4 · 7 · 8</p>
-    <h1 class="title">Relaxing Breath</h1>
+    <p class="eyebrow" id="eyebrow">4 · 7 · 8</p>
+    <h1 class="title" id="title">Relaxing Breath</h1>
   </header>
+
+  <div class="patterns" id="patterns" data-active="0" role="group" aria-label="Breathing pattern">
+    <button class="pattern" type="button" data-pattern="relax" aria-pressed="true">Relax</button>
+    <button class="pattern" type="button" data-pattern="balanced" aria-pressed="false">Balanced</button>
+  </div>
 
   <section class="stage">
     <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
@@ -450,16 +525,35 @@
 (() => {
   'use strict';
 
-  /* ── Configuration ───────────────────────────────────────────── */
+  /* ── Patterns ────────────────────────────────────────────────── */
 
-  const PHASES = [
-    { key: 'inhale', label: 'Inhale', dur: 4000 },
-    { key: 'hold',   label: 'Hold',   dur: 7000 },
-    { key: 'exhale', label: 'Exhale', dur: 8000 },
-    { key: 'rest',   label: 'Rest',   dur: 4000 }   // 4-second rest each round
+  /* `kind` drives the animation, so a pattern may have any number of
+     phases (with or without a hold) as long as the kinds are sane. */
+
+  const PATTERNS = [
+    {
+      id: 'relax',
+      eyebrow: '4 · 7 · 8',
+      title: 'Relaxing Breath',
+      phases: [
+        { kind: 'inhale', label: 'Inhale', dur: 4000 },
+        { kind: 'hold',   label: 'Hold',   dur: 7000 },
+        { kind: 'exhale', label: 'Exhale', dur: 8000 },
+        { kind: 'rest',   label: 'Rest',   dur: 4000 }
+      ]
+    },
+    {
+      id: 'balanced',
+      eyebrow: '4 · 1 · 5 · 1',
+      title: 'Balanced Breath',
+      phases: [
+        { kind: 'inhale', label: 'Inhale', dur: 4000 },
+        { kind: 'hold',   label: 'Hold',   dur: 1000 },
+        { kind: 'exhale', label: 'Exhale', dur: 5000 },
+        { kind: 'rest',   label: 'Rest',   dur: 1000 }
+      ]
+    }
   ];
-
-  const CYCLE = PHASES.reduce((sum, p) => sum + p.dur, 0); // 23 000 ms
 
   /* Colour palette (RGB arrays) — kept light enough for dark ink text */
   const BLUE_START  = [125, 211, 252]; // airy light blue
@@ -478,6 +572,10 @@
   const countEl      = document.getElementById('count');
   const roundNumEl   = document.getElementById('roundNum');
   const btn          = document.getElementById('toggle');
+  const eyebrowEl    = document.getElementById('eyebrow');
+  const titleEl      = document.getElementById('title');
+  const patternsEl   = document.getElementById('patterns');
+  const patternBtns  = Array.from(patternsEl.querySelectorAll('.pattern'));
 
   const root = document.documentElement;
 
@@ -488,6 +586,10 @@
   ringEl.style.strokeDashoffset = String(RING_C);
 
   /* ── State ───────────────────────────────────────────────────── */
+
+  let activeIdx       = 0;
+  let phases          = PATTERNS[0].phases;
+  let cycle           = phases.reduce((sum, p) => sum + p.dur, 0);
 
   let running         = false;
   let rafId           = 0;
@@ -574,8 +676,8 @@
     lastTime = now;
 
     const elapsed  = now - startTime;
-    const within   = elapsed % CYCLE;
-    const roundIdx = Math.floor(elapsed / CYCLE);
+    const within   = elapsed % cycle;
+    const roundIdx = Math.floor(elapsed / cycle);
 
     /* infinite round counter */
     if (roundIdx !== currentRound) {
@@ -586,31 +688,36 @@
     /* locate phase */
     let acc = 0;
     let idx = 0;
-    for (let i = 0; i < PHASES.length; i++) {
-      if (within < acc + PHASES[i].dur) { idx = i; break; }
-      acc += PHASES[i].dur;
+    for (let i = 0; i < phases.length; i++) {
+      if (within < acc + phases[i].dur) { idx = i; break; }
+      acc += phases[i].dur;
     }
 
-    const phase = PHASES[idx];
+    const phase = phases[idx];
     const p     = Math.min(Math.max((within - acc) / phase.dur, 0), 1);
     const eased = easeInOutSine(p);
 
-    /* target level + target colour per phase */
+    /* target level + target colour per phase kind */
     let targetLevel;
     let targetColor;
 
-    if (idx === 0) {                          // INHALE — fill with clean air
-      targetLevel = eased;
-      targetColor = mix(BLUE_START, BLUE_END, p);
-    } else if (idx === 1) {                   // HOLD — green deep → light
-      targetLevel = 1;
-      targetColor = mix(GREEN_DARK, GREEN_LIGHT, p);
-    } else if (idx === 2) {                   // EXHALE — drain away
-      targetLevel = 1 - eased;
-      targetColor = mix(GREEN_LIGHT, GREEN_PALE, p);
-    } else {                                  // REST — settle back to calm blue
-      targetLevel = 0;
-      targetColor = mix(GREEN_PALE, BLUE_START, p);
+    switch (phase.kind) {
+      case 'inhale':                          // fill with clean air
+        targetLevel = eased;
+        targetColor = mix(BLUE_START, BLUE_END, p);
+        break;
+      case 'hold':                            // green deep → light
+        targetLevel = 1;
+        targetColor = mix(GREEN_DARK, GREEN_LIGHT, p);
+        break;
+      case 'exhale':                          // drain away
+        targetLevel = 1 - eased;
+        targetColor = mix(GREEN_LIGHT, GREEN_PALE, p);
+        break;
+      default:                                // rest — settle back to calm blue
+        targetLevel = 0;
+        targetColor = mix(GREEN_PALE, BLUE_START, p);
+        break;
     }
 
     /* smooth colour crossfade — long time constant for a watercolour blend */
@@ -703,11 +810,53 @@
     else start();
   }
 
+  /* ── Pattern switching ───────────────────────────────────────── */
+
+  function selectPattern(index) {
+    if (index === activeIdx) return;
+
+    activeIdx = index;
+    const pattern = PATTERNS[index];
+    phases = pattern.phases;
+    cycle  = phases.reduce((sum, p) => sum + p.dur, 0);
+
+    eyebrowEl.textContent = pattern.eyebrow;
+    titleEl.textContent   = pattern.title;
+    pop(titleEl);
+
+    patternsEl.dataset.active = String(index);
+    patternBtns.forEach((b, i) =>
+      b.setAttribute('aria-pressed', String(i === index))
+    );
+
+    document.title = `Breathe · ${pattern.eyebrow.replace(/\s/g, '')}`;
+
+    /* restart cleanly on the new rhythm if a session is in flight */
+    if (running) start();
+  }
+
+  patternBtns.forEach((b, i) => {
+    b.addEventListener('click', () => selectPattern(i));
+  });
+
+  /* arrow-key navigation inside the segmented control */
+  patternsEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const dir  = e.key === 'ArrowRight' ? 1 : -1;
+    const next = (activeIdx + dir + PATTERNS.length) % PATTERNS.length;
+    selectPattern(next);
+    patternBtns[next].focus();
+  });
+
+  /* ── Wiring ──────────────────────────────────────────────────── */
+
   btn.addEventListener('click', toggle);
 
-  /* spacebar shortcut (skips when the button itself is focused) */
+  /* spacebar shortcut (skips when any button has focus) */
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && e.target !== btn) {
+    const onButton = e.target.closest && e.target.closest('button');
+    if (e.code === 'Space' && !onButton) {
       e.preventDefault();
       toggle();
     }
