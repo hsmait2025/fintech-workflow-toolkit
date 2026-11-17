@@ -125,11 +125,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   padding: 2px 14px 18px;
   flex: 0 0 auto;
 }
-.traffic span {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  display: block;
-}
+.traffic span { width: 12px; height: 12px; border-radius: 50%; display: block; }
 .traffic .red    { background: #ff5f57; }
 .traffic .yellow { background: #febc2e; }
 .traffic .green  { background: #28c840; }
@@ -152,6 +148,7 @@ button, .folder, .note-row, .tb, .icon-btn {
 .folder-list { list-style: none; }
 
 .folder {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -201,10 +198,8 @@ button, .folder, .note-row, .tb, .icon-btn {
   padding: 0;
 }
 
-/* Trash folder styling */
 .folder-trash {
   margin-top: 12px;
-  position: relative;
 }
 .folder-trash::before {
   content: "";
@@ -215,16 +210,60 @@ button, .folder, .note-row, .tb, .icon-btn {
   height: 1px;
   background: var(--separator);
 }
-.folder-trash.active .folder-name { font-weight: 500; }
+
+/* --- Selectable folders --- */
+.folder.selectable {
+  padding-left: 38px;
+}
+.folder.selectable:hover { background: var(--hover); }
+.folder.selected {
+  background: var(--selection);
+}
+.folder.selected:hover { background: var(--selection); }
+
+.sel-circle {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--check-border);
+  background: var(--bg-list);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.sel-circle svg {
+  width: 11px;
+  height: 11px;
+  color: var(--accent-text);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.folder.selected .sel-circle,
+.note-row.selected .sel-circle {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.folder.selected .sel-circle svg,
+.note-row.selected .sel-circle svg {
+  opacity: 1;
+}
 
 .sidebar-footer {
   flex: 0 0 auto;
   padding: 6px 12px 2px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
 }
+.sidebar-footer .theme-btn { margin-left: auto; }
 
 .new-folder {
   display: flex;
@@ -240,6 +279,7 @@ button, .folder, .note-row, .tb, .icon-btn {
 }
 .new-folder:hover { background: var(--hover); color: var(--text-primary); }
 .new-folder svg { opacity: 0.8; }
+.new-folder:disabled { opacity: 0.4; pointer-events: none; }
 
 .theme-btn {
   width: 26px; height: 26px;
@@ -251,6 +291,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   align-items: center;
   justify-content: center;
   cursor: default;
+  flex: 0 0 auto;
 }
 .theme-btn:hover { background: var(--hover); color: var(--text-primary); }
 
@@ -310,7 +351,6 @@ button, .folder, .note-row, .tb, .icon-btn {
   -webkit-user-select: none;
 }
 
-/* Mobile-only folder name + back button */
 .list-folder-name {
   display: none;
   flex: 1 1 auto;
@@ -380,6 +420,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   font-size: 13px;
   font-weight: 500;
   cursor: default;
+  white-space: nowrap;
 }
 .text-btn:hover { background: var(--hover); color: var(--text-primary); }
 .text-btn:active { background: var(--active); }
@@ -394,16 +435,25 @@ button, .folder, .note-row, .tb, .icon-btn {
 }
 
 .note-row {
+  position: relative;
   padding: 8px 14px 9px;
   border-bottom: 1px solid var(--separator-soft);
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
-  position: relative;
 }
 .note-row:hover { background: var(--hover); }
 .note-row.active { background: var(--selection); }
 .note-row.active:hover { background: var(--selection); }
+
+/* --- Selectable notes --- */
+.note-row.selectable {
+  padding-left: 42px;
+}
+.note-row.selected {
+  background: var(--selection);
+}
+.note-row.selected:hover { background: var(--selection); }
 
 .row-title {
   font-size: 13px;
@@ -496,6 +546,11 @@ button, .folder, .note-row, .tb, .icon-btn {
 .tb:active { background: var(--active); }
 .tb.active { background: var(--active); color: var(--text-primary); }
 
+body.selecting .tb {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
 .tb-sep {
   width: 1px;
   height: 15px;
@@ -510,7 +565,7 @@ button, .folder, .note-row, .tb, .icon-btn {
 .ico-s { text-decoration: line-through; font-weight: 600; }
 .ico-aa { font-weight: 600; font-size: 12.5px; letter-spacing: -0.03em; }
 
-/* ---------- Trash banner ---------- */
+/* Trash banner */
 .trash-banner {
   flex: 0 0 auto;
   display: flex;
@@ -525,10 +580,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   user-select: none;
   -webkit-user-select: none;
 }
-.trash-banner .trash-actions {
-  display: flex;
-  gap: 6px;
-}
+.trash-banner .trash-actions { display: flex; gap: 6px; }
 .trash-banner button {
   padding: 5px 11px;
   border-radius: 6px;
@@ -541,13 +593,9 @@ button, .folder, .note-row, .tb, .icon-btn {
   white-space: nowrap;
 }
 .trash-banner button:hover { background: var(--hover); }
-.trash-banner button.danger {
-  color: var(--danger);
-}
+.trash-banner button.danger { color: var(--danger); }
 .trash-banner button.danger:hover {
-  background: var(--danger);
-  color: #fff;
-  border-color: var(--danger);
+  background: var(--danger); color: #fff; border-color: var(--danger);
 }
 
 .editor-scroll {
@@ -617,7 +665,6 @@ button, .folder, .note-row, .tb, .icon-btn {
 .note-body li { margin: 1px 0; }
 .note-body b, .note-body strong { font-weight: 700; }
 
-/* ---------- Checklist (block level, direct-child styling) ---------- */
 .note-body .check {
   display: flex;
   align-items: flex-start;
@@ -641,7 +688,6 @@ button, .folder, .note-row, .tb, .icon-btn {
   min-width: 0;
   outline: none;
 }
-
 .note-body .check.checked > .box {
   background: var(--accent);
   border-color: var(--accent);
@@ -662,7 +708,6 @@ button, .folder, .note-row, .tb, .icon-btn {
   text-decoration: line-through;
 }
 
-/* Empty state */
 .editor-empty {
   min-height: 100%;
   display: flex;
@@ -679,7 +724,69 @@ button, .folder, .note-row, .tb, .icon-btn {
 .editor-empty .sub { font-size: 12px; opacity: 0.8; }
 
 /* ============================================================
-   MOBILE-ONLY ELEMENTS (hidden by default)
+   SELECTION BAR
+   ============================================================ */
+.selection-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--bg-list);
+  border-top: 1px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 400;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.selection-bar[hidden] { display: none; }
+
+.selection-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sel-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--separator);
+  background: var(--bg-editor);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: default;
+  white-space: nowrap;
+}
+.sel-btn:hover { background: var(--hover); }
+.sel-btn:active { background: var(--active); }
+.sel-btn.danger { color: var(--danger); }
+.sel-btn.danger:hover {
+  background: var(--danger); color: #fff; border-color: var(--danger);
+}
+.sel-btn[disabled] { opacity: 0.35; pointer-events: none; }
+
+/* Padding so content isn't hidden under the bar */
+body.selecting .note-list { padding-bottom: 100px; }
+body.selecting .editor-scroll { padding-bottom: 60px; }
+body.selecting .sidebar-section { padding-bottom: 80px; }
+
+/* ============================================================
+   MOBILE-ONLY (hidden by default)
    ============================================================ */
 .mobile-only { display: none !important; }
 
@@ -701,7 +808,6 @@ button, .folder, .note-row, .tb, .icon-btn {
   .mobile-only { display: flex !important; }
   .traffic { display: none; }
 
-  /* --- Sidebar becomes a full-screen "Folders" view --- */
   .sidebar {
     position: fixed;
     inset: 0;
@@ -722,19 +828,16 @@ button, .folder, .note-row, .tb, .icon-btn {
     padding: 8px 20px 12px;
   }
 
-  /* --- Panes take full width --- */
   .list-pane {
     flex: 1 1 100%;
     width: 100%;
     border-right: none;
   }
-
   .editor-pane {
     flex: 1 1 100%;
     width: 100%;
   }
 
-  /* --- Three-state view switching --- */
   .window[data-mobile-view="folders"] .sidebar    { display: flex; }
   .window[data-mobile-view="folders"] .list-pane  { display: none; }
   .window[data-mobile-view="folders"] .editor-pane{ display: none; }
@@ -747,38 +850,31 @@ button, .folder, .note-row, .tb, .icon-btn {
   .window[data-mobile-view="editor"]  .list-pane  { display: none; }
   .window[data-mobile-view="editor"]  .editor-pane{ display: flex; }
 
-  /* --- Larger touch targets in folder list --- */
   .folder {
     padding: 9px 10px 9px 12px;
     font-size: 15px;
     min-height: 40px;
   }
+  .folder.selectable { padding-left: 42px; }
   .folder-input { font-size: 16px; }
   .folder-badge { font-size: 13px; }
   .new-folder { font-size: 13px; padding: 8px 10px; }
   .theme-btn { width: 34px; height: 34px; }
 
-  /* --- List header: back + folder name + new note/empty, then search --- */
   .list-header {
     flex-wrap: wrap;
     gap: 8px;
     padding: 10px 12px 8px;
     padding-top: calc(10px + env(safe-area-inset-top));
   }
-
-  .list-header .search-wrap {
-    order: 10;
-    flex: 1 1 100%;
-  }
+  .list-header .search-wrap { order: 10; flex: 1 1 100%; }
 
   #menuBtn {
     order: 1;
-    width: 36px;
-    height: 36px;
+    width: 36px; height: 36px;
     color: var(--text-primary);
     margin-left: -4px;
   }
-
   .list-folder-name {
     display: block;
     order: 2;
@@ -792,38 +888,32 @@ button, .folder, .note-row, .tb, .icon-btn {
     align-self: center;
     letter-spacing: -0.02em;
   }
+  #selectNotesBtn { order: 3; height: 36px; font-size: 14px; padding: 0 10px; }
+  #newNoteBtn { order: 4; width: 36px; height: 36px; }
+  #emptyTrashBtn { order: 5; height: 36px; padding: 0 12px; font-size: 14px; }
 
-  #newNoteBtn,
-  #emptyTrashBtn {
-    order: 3;
-    height: 36px;
-  }
-  #newNoteBtn { width: 36px; }
-  #emptyTrashBtn { padding: 0 14px; font-size: 14px; }
-
-  .search {
-    font-size: 16px;
-    height: 36px;
-    padding-left: 30px;
-  }
+  .search { font-size: 16px; height: 36px; padding-left: 30px; }
   .search-icon { left: 10px; }
 
-  /* --- Note list rows --- */
   .note-row {
     padding: 12px 16px;
     min-height: 62px;
   }
+  .note-row.selectable { padding-left: 48px; }
+  .note-row .sel-circle { left: 16px; width: 22px; height: 22px; }
+  .note-row .sel-circle svg { width: 13px; height: 13px; }
+  .folder .sel-circle { left: 14px; width: 20px; height: 20px; }
+  .folder .sel-circle svg { width: 12px; height: 12px; }
+
   .row-title { font-size: 15px; }
   .row-meta { font-size: 13px; }
 
-  /* --- Editor toolbar --- */
   .toolbar {
     height: calc(46px + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) 6px 0;
     justify-content: flex-start;
     gap: 4px;
   }
-
   .toolbar-content {
     flex: 1 1 auto;
     min-width: 0;
@@ -837,76 +927,51 @@ button, .folder, .note-row, .tb, .icon-btn {
 
   .tb { width: 38px; height: 34px; }
   .tb-sep { margin: 0 3px; }
+  #backBtn { width: 42px; height: 36px; margin-right: 2px; color: var(--text-primary); }
 
-  #backBtn {
-    width: 42px;
-    height: 36px;
-    margin-right: 2px;
-    color: var(--text-primary);
-  }
-
-  /* --- Trash banner on mobile --- */
   .trash-banner {
     flex-wrap: wrap;
     padding: 10px 14px;
     font-size: 13px;
     gap: 8px;
   }
-  .trash-banner .trash-actions {
-    width: 100%;
-    gap: 8px;
-  }
-  .trash-banner button {
-    flex: 1 1 auto;
-    padding: 9px 12px;
-    font-size: 14px;
-  }
+  .trash-banner .trash-actions { width: 100%; gap: 8px; }
+  .trash-banner button { flex: 1 1 auto; padding: 9px 12px; font-size: 14px; }
 
-  /* --- Editor content --- */
   .editor-wrap {
     padding: 4px 18px calc(200px + env(safe-area-inset-bottom));
   }
-  .note-title {
-    font-size: 22px;
-    padding: 10px 0 4px;
-  }
-  .note-date {
-    font-size: 12px;
-    margin-bottom: 14px;
-  }
-  .note-body {
-    font-size: 16px;
-    line-height: 1.6;
-    min-height: 200px;
-  }
+  .note-title { font-size: 22px; padding: 10px 0 4px; }
+  .note-date { font-size: 12px; margin-bottom: 14px; }
+  .note-body { font-size: 16px; line-height: 1.6; min-height: 200px; }
 
-  .note-body .check {
-    gap: 10px;
-    margin: 3px 0;
-  }
+  .note-body .check { gap: 10px; margin: 3px 0; }
   .note-body .check > .box {
-    width: 20px;
-    height: 20px;
-    margin-top: 3px;
-    border-radius: 5px;
+    width: 20px; height: 20px; margin-top: 3px; border-radius: 5px;
   }
   .note-body .check.checked > .box::after {
-    left: 6px;
-    top: 2px;
-    width: 5px;
-    height: 10px;
-    border-width: 0 2px 2px 0;
+    left: 6px; top: 2px; width: 5px; height: 10px; border-width: 0 2px 2px 0;
   }
 
-  /* --- Context menus --- */
-  .ctx-menu {
-    min-width: 180px;
-    padding: 6px;
+  .ctx-menu { min-width: 180px; padding: 6px; }
+  .ctx-item { padding: 10px 14px; font-size: 15px; }
+
+  /* Selection bar on mobile */
+  .selection-bar {
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 8px;
+    flex-wrap: wrap;
   }
-  .ctx-item {
-    padding: 10px 14px;
-    font-size: 15px;
-  }
+  .selection-count { font-size: 14px; }
+  .selection-actions { gap: 6px; }
+  .sel-btn { padding: 8px 12px; font-size: 13px; }
+
+  body.selecting .note-list { padding-bottom: 120px; }
+  body.selecting .editor-scroll { padding-bottom: 80px; }
+  body.selecting .sidebar-section { padding-bottom: 100px; }
 }
 </style>
 </head>
@@ -934,6 +999,7 @@ button, .folder, .note-row, .tb, .icon-btn {
         </svg>
         New Folder
       </button>
+      <button class="new-folder" id="selectFoldersBtn" title="Select Folders">Select</button>
       <button class="theme-btn" id="themeBtn" title="Toggle Appearance">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
              stroke-width="1.35">
@@ -964,6 +1030,7 @@ button, .folder, .note-row, .tb, .icon-btn {
         </span>
         <input class="search" id="searchInput" type="text" placeholder="Search" spellcheck="false" autocomplete="off">
       </div>
+      <button class="text-btn" id="selectNotesBtn" title="Select Notes">Select</button>
       <button class="icon-btn" id="newNoteBtn" title="New Note (⌘N)">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
              stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -1078,6 +1145,18 @@ button, .folder, .note-row, .tb, .icon-btn {
   </main>
 </div>
 
+<!-- ==================== SELECTION BAR ==================== -->
+<div class="selection-bar" id="selectionBar" hidden>
+  <span class="selection-count" id="selectionCount">0 selected</span>
+  <div class="selection-actions">
+    <button class="sel-btn" id="selSelectAllBtn">Select All</button>
+    <button class="sel-btn" id="selRestoreBtn" style="display:none">Restore</button>
+    <button class="sel-btn" id="selMoveBtn" style="display:none">Move</button>
+    <button class="sel-btn danger" id="selDeleteBtn" style="display:none">Delete</button>
+    <button class="sel-btn" id="selDoneBtn">Done</button>
+  </div>
+</div>
+
 <!-- ==================== FOLDER CONTEXT MENU ==================== -->
 <div class="ctx-menu" id="ctxMenu" hidden>
   <button class="ctx-item" data-action="rename">Rename Folder</button>
@@ -1095,6 +1174,9 @@ button, .folder, .note-row, .tb, .icon-btn {
   <button class="ctx-item ctx-danger" data-action="delete">Move to Trash</button>
 </div>
 
+<!-- ==================== MOVE-TO-FOLDER MENU ==================== -->
+<div class="ctx-menu" id="moveMenu" hidden></div>
+
 <script>
 /* ============================================================================
    Apple Notes — Application Logic
@@ -1103,7 +1185,7 @@ button, .folder, .note-row, .tb, .icon-btn {
 const STORAGE_KEY = 'apple-notes-clone-v1';
 const MOBILE_BREAKPOINT = 768;
 const TRASH_ID = '__trash__';
-const TRASH_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+const TRASH_TTL = 30 * 24 * 60 * 60 * 1000;
 
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -1146,9 +1228,19 @@ const PIN_SVG = `
   <path d="M8 9.5v4.9"/>
 </svg>`;
 
+const CHECK_SVG = `
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"
+     stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 8.5 6.5 12 13 4.5"/>
+</svg>`;
+
 /* ---------------------------------------------------------------- STATE --- */
 let state = null;
 let saveTimer = null;
+
+/* Selection state (not persisted) */
+let selectionMode = null; // 'notes' | 'folders' | null
+const selectedIds = new Set();
 
 function defaultState() {
   return {
@@ -1169,7 +1261,6 @@ function load() {
     if (!parsed || !Array.isArray(parsed.folders) || !Array.isArray(parsed.notes))
       return defaultState();
     const s = Object.assign(defaultState(), parsed);
-    /* Migrate notes created by earlier versions: add `deletedAt`. */
     s.notes.forEach((n) => {
       if (n.deletedAt === undefined) n.deletedAt = null;
     });
@@ -1194,9 +1285,7 @@ const activeNote = () =>
   state.notes.find((n) => n.id === state.activeNoteId) || null;
 
 const isTrashView = () => state.activeFolder === TRASH_ID;
-
 const trashedNotes = () => state.notes.filter((n) => n.deletedAt != null);
-
 const trashCount = () => trashedNotes().length;
 
 function snippet(note) {
@@ -1208,20 +1297,15 @@ function snippet(note) {
 function formatListDate(ts) {
   const d = new Date(ts);
   const now = new Date();
-
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+  const sameDay = d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   if (sameDay)
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   const yest = new Date(now);
   yest.setDate(now.getDate() - 1);
-  const isYesterday =
-    d.getFullYear() === yest.getFullYear() &&
-    d.getMonth() === yest.getMonth() &&
-    d.getDate() === yest.getDate();
+  const isYesterday = d.getFullYear() === yest.getFullYear() &&
+    d.getMonth() === yest.getMonth() && d.getDate() === yest.getDate();
   if (isYesterday) return 'Yesterday';
 
   const m = d.getMonth() + 1;
@@ -1232,9 +1316,7 @@ function formatListDate(ts) {
 
 function formatFullDate(ts) {
   const d = new Date(ts);
-  const date = d.toLocaleDateString('en-US', {
-    month: 'long', day: 'numeric', year: 'numeric'
-  });
+  const date = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${date} at ${time}`;
 }
@@ -1249,10 +1331,7 @@ function setMobileView(view) {
 function syncListFolderName() {
   const nameEl = $('#listFolderName');
   if (!nameEl) return;
-  if (isTrashView()) {
-    nameEl.textContent = 'Trash';
-    return;
-  }
+  if (isTrashView()) { nameEl.textContent = 'Trash'; return; }
   const folder = state.folders.find((f) => f.id === state.activeFolder);
   if (folder) nameEl.textContent = folder.name;
 }
@@ -1261,17 +1340,12 @@ function syncListFolderName() {
 function attachLongPress(el, callback, ms = 500) {
   let timer = null;
   let startX = 0, startY = 0;
-
-  const clear = () => {
-    if (timer) { clearTimeout(timer); timer = null; }
-  };
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
   el.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
     if (e.pointerType === 'pen' && e.button !== 0) return;
-
-    startX = e.clientX;
-    startY = e.clientY;
+    startX = e.clientX; startY = e.clientY;
     clear();
     timer = setTimeout(() => {
       timer = null;
@@ -1282,9 +1356,7 @@ function attachLongPress(el, callback, ms = 500) {
 
   el.addEventListener('pointermove', (e) => {
     if (!timer) return;
-    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
-      clear();
-    }
+    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) clear();
   }, { passive: true });
 
   el.addEventListener('pointerup', clear, { passive: true });
@@ -1292,11 +1364,50 @@ function attachLongPress(el, callback, ms = 500) {
   el.addEventListener('pointerleave', clear, { passive: true });
 }
 
-/* ------------------------------------------------------------ RENDERING --- */
+/* ============================================================
+   SELECTION MODE
+   ============================================================ */
+function enterSelectionMode(mode) {
+  if (mode === 'folders' && state.folders.length <= 1) return;
+  selectionMode = mode;
+  selectedIds.clear();
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+function exitSelectionMode() {
+  selectionMode = null;
+  selectedIds.clear();
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+function toggleSelection(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  renderFolders();
+  renderList();
+}
+
+function selectAllItems() {
+  if (selectionMode === 'notes') {
+    visibleNotes().forEach((n) => selectedIds.add(n.id));
+  } else if (selectionMode === 'folders') {
+    state.folders.forEach((f) => selectedIds.add(f.id));
+  }
+  renderFolders();
+  renderList();
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
 function visibleNotes() {
   const q = state.query.trim().toLowerCase();
-
   let notes;
+
   if (isTrashView()) {
     notes = state.notes.filter((n) => n.deletedAt != null);
     notes.sort((a, b) => b.deletedAt - a.deletedAt);
@@ -1328,15 +1439,63 @@ function ensureActiveNoteValid() {
 function renderHeaderActions() {
   const newBtn = $('#newNoteBtn');
   const emptyBtn = $('#emptyTrashBtn');
+  const selectBtn = $('#selectNotesBtn');
 
-  if (isTrashView()) {
+  if (selectionMode === 'notes') {
     newBtn.style.display = 'none';
-    const count = trashCount();
-    emptyBtn.style.display = count > 0 ? 'flex' : 'none';
-    emptyBtn.textContent = count > 0 ? `Empty (${count})` : 'Empty';
-  } else {
-    newBtn.style.display = 'flex';
     emptyBtn.style.display = 'none';
+    selectBtn.textContent = 'Done';
+  } else {
+    selectBtn.textContent = 'Select';
+    if (isTrashView()) {
+      newBtn.style.display = 'none';
+      const count = trashCount();
+      emptyBtn.style.display = count > 0 ? 'flex' : 'none';
+      emptyBtn.textContent = count > 0 ? `Empty (${count})` : 'Empty';
+    } else {
+      newBtn.style.display = 'flex';
+      emptyBtn.style.display = 'none';
+    }
+  }
+}
+
+function renderSelectionBar() {
+  const bar = $('#selectionBar');
+  if (!selectionMode) {
+    bar.hidden = true;
+    document.body.classList.remove('selecting');
+    return;
+  }
+  bar.hidden = false;
+  document.body.classList.add('selecting');
+
+  const count = selectedIds.size;
+  $('#selectionCount').textContent = `${count} selected`;
+
+  const restoreBtn = $('#selRestoreBtn');
+  const moveBtn    = $('#selMoveBtn');
+  const deleteBtn  = $('#selDeleteBtn');
+  const selectAllBtn = $('#selSelectAllBtn');
+
+  // "Select All" hides when everything selectable is already selected
+  let totalSelectable;
+  if (selectionMode === 'notes') totalSelectable = visibleNotes().length;
+  else totalSelectable = state.folders.length;
+
+  const allSelected = totalSelectable > 0 && count >= totalSelectable;
+  selectAllBtn.style.display = allSelected ? 'none' : '';
+
+  if (selectionMode === 'notes') {
+    const isTrash = isTrashView();
+    restoreBtn.style.display = (isTrash && count > 0) ? '' : 'none';
+    moveBtn.style.display    = (!isTrash && count > 0) ? '' : 'none';
+    deleteBtn.style.display  = count > 0 ? '' : 'none';
+    deleteBtn.textContent = isTrash ? 'Delete Permanently' : 'Delete';
+  } else {
+    restoreBtn.style.display = 'none';
+    moveBtn.style.display = 'none';
+    deleteBtn.style.display = count > 0 ? '' : 'none';
+    deleteBtn.textContent = 'Delete Folders';
   }
 }
 
@@ -1344,55 +1503,96 @@ function renderFolders() {
   const list = $('#folderList');
   list.innerHTML = '';
 
+  const isSelectingFolders = selectionMode === 'folders';
+
   state.folders.forEach((f) => {
     const li = document.createElement('li');
-    li.className = 'folder' + (f.id === state.activeFolder ? ' active' : '');
+    li.className = 'folder';
+    if (isSelectingFolders) {
+      li.classList.add('selectable');
+      if (selectedIds.has(f.id)) li.classList.add('selected');
+    } else if (f.id === state.activeFolder) {
+      li.classList.add('active');
+    }
     li.dataset.folder = f.id;
-    li.innerHTML =
-      `<span class="folder-icon">${FOLDER_SVG}</span>` +
-      `<span class="folder-name">${escapeHtml(f.name)}</span>`;
 
-    li.addEventListener('click', () => selectFolder(f.id));
+    let html = '';
+    if (isSelectingFolders) html += `<span class="sel-circle">${CHECK_SVG}</span>`;
+    html += `<span class="folder-icon">${FOLDER_SVG}</span>`;
+    html += `<span class="folder-name">${escapeHtml(f.name)}</span>`;
+    li.innerHTML = html;
 
-    li.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      openFolderMenu(e.clientX, e.clientY, f.id);
+    li.addEventListener('click', (e) => {
+      if (isSelectingFolders) {
+        toggleSelection(f.id);
+      } else if (e.metaKey || e.ctrlKey) {
+        selectionMode = 'folders';
+        selectedIds.clear();
+        selectedIds.add(f.id);
+        renderFolders();
+        renderList();
+        renderEditor();
+      } else {
+        selectFolder(f.id);
+      }
     });
 
-    li.addEventListener('dblclick', () => {
-      if (!isMobile()) startRenameFolder(f.id);
-    });
-
-    attachLongPress(li, (x, y) => openFolderMenu(x, y, f.id));
+    if (!isSelectingFolders) {
+      li.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openFolderMenu(e.clientX, e.clientY, f.id);
+      });
+      li.addEventListener('dblclick', () => {
+        if (!isMobile()) startRenameFolder(f.id);
+      });
+      attachLongPress(li, (x, y) => openFolderMenu(x, y, f.id));
+    }
 
     list.appendChild(li);
   });
 
-  /* Trash entry */
+  /* Trash entry — never selectable */
   const count = trashCount();
   const trashLi = document.createElement('li');
   trashLi.className = 'folder folder-trash' +
-    (state.activeFolder === TRASH_ID ? ' active' : '');
+    (state.activeFolder === TRASH_ID && !isSelectingFolders ? ' active' : '');
   trashLi.innerHTML =
     `<span class="folder-icon">${TRASH_SVG}</span>` +
     `<span class="folder-name">Trash</span>` +
     (count > 0 ? `<span class="folder-badge">${count}</span>` : '');
 
-  trashLi.addEventListener('click', () => selectFolder(TRASH_ID));
-
-  trashLi.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    if (count > 0) openTrashMenu(e.clientX, e.clientY);
+  trashLi.addEventListener('click', () => {
+    if (isSelectingFolders) return;
+    selectFolder(TRASH_ID);
   });
 
-  attachLongPress(trashLi, (x, y) => {
-    if (trashCount() > 0) openTrashMenu(x, y);
-  });
+  if (!isSelectingFolders) {
+    trashLi.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (count > 0) openTrashMenu(e.clientX, e.clientY);
+    });
+    attachLongPress(trashLi, (x, y) => {
+      if (trashCount() > 0) openTrashMenu(x, y);
+    });
+  }
 
   list.appendChild(trashLi);
 
+  /* Select button state */
+  const selectFoldersBtn = $('#selectFoldersBtn');
+  if (selectFoldersBtn) {
+    if (selectionMode === 'folders') {
+      selectFoldersBtn.textContent = 'Done';
+      selectFoldersBtn.disabled = false;
+    } else {
+      selectFoldersBtn.textContent = 'Select';
+      selectFoldersBtn.disabled = state.folders.length <= 1;
+    }
+  }
+
   syncListFolderName();
   renderHeaderActions();
+  renderSelectionBar();
 }
 
 function renderList() {
@@ -1413,18 +1613,29 @@ function renderList() {
       empty.textContent = state.query.trim() ? 'No Results' : 'No Notes';
     }
     listEl.appendChild(empty);
+    renderSelectionBar();
     return;
   }
 
+  const isSelectingNotes = selectionMode === 'notes';
+
   notes.forEach((note) => {
     const li = document.createElement('li');
-    li.className = 'note-row' + (note.id === state.activeNoteId ? ' active' : '');
+    li.className = 'note-row';
+    if (isSelectingNotes) {
+      li.classList.add('selectable');
+      if (selectedIds.has(note.id)) li.classList.add('selected');
+    } else if (note.id === state.activeNoteId) {
+      li.classList.add('active');
+    }
     li.dataset.id = note.id;
 
     const isTrashed = note.deletedAt != null;
     const dateTs = isTrashed ? note.deletedAt : note.edited;
 
-    li.innerHTML =
+    let html = '';
+    if (isSelectingNotes) html += `<span class="sel-circle">${CHECK_SVG}</span>`;
+    html +=
       `<div class="row-title">` +
         (!isTrashed && note.pinned ? `<span class="row-pin">${PIN_SVG}</span>` : '') +
         `<span class="row-title-text">${escapeHtml(note.title || 'New Note')}</span>` +
@@ -1433,19 +1644,36 @@ function renderList() {
         `<span class="row-date">${formatListDate(dateTs)}</span>` +
         `<span class="row-snippet">${escapeHtml(snippet(note))}</span>` +
       `</div>`;
+    li.innerHTML = html;
 
-    li.addEventListener('click', () => selectNote(note.id));
-
-    li.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      if (!isMobile()) selectNote(note.id);
-      openNoteMenu(e.clientX, e.clientY, note.id);
+    li.addEventListener('click', (e) => {
+      if (isSelectingNotes) {
+        toggleSelection(note.id);
+      } else if (e.metaKey || e.ctrlKey) {
+        selectionMode = 'notes';
+        selectedIds.clear();
+        selectedIds.add(note.id);
+        renderFolders();
+        renderList();
+        renderEditor();
+      } else {
+        selectNote(note.id);
+      }
     });
 
-    attachLongPress(li, (x, y) => openNoteMenu(x, y, note.id));
+    if (!isSelectingNotes) {
+      li.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!isMobile()) selectNote(note.id);
+        openNoteMenu(e.clientX, e.clientY, note.id);
+      });
+      attachLongPress(li, (x, y) => openNoteMenu(x, y, note.id));
+    }
 
     listEl.appendChild(li);
   });
+
+  renderSelectionBar();
 }
 
 function renderEditor() {
@@ -1466,24 +1694,25 @@ function renderEditor() {
   }
 
   const isTrashed = note.deletedAt != null;
+  const inSelection = selectionMode !== null;
+  const readOnly = isTrashed || inSelection;
 
   $('#toolbar').style.visibility = 'visible';
   emptyEl.style.display = 'none';
   wrapEl.style.display = 'block';
 
   banner.style.display = isTrashed ? 'flex' : 'none';
-  toolbarContent.style.display = isTrashed ? 'none' : 'flex';
+  toolbarContent.style.display = (isTrashed || inSelection) ? 'none' : 'flex';
 
   titleEl.value = note.title;
-  titleEl.readOnly = isTrashed;
-  bodyEl.contentEditable = isTrashed ? 'false' : 'true';
+  titleEl.readOnly = readOnly;
+  bodyEl.contentEditable = readOnly ? 'false' : 'true';
 
   $('#noteDate').textContent = isTrashed
     ? `Deleted ${formatFullDate(note.deletedAt)}`
     : formatFullDate(note.edited);
 
   if (bodyEl.innerHTML !== note.body) bodyEl.innerHTML = note.body;
-
   if (!isTrashed) normalizeChecks(bodyEl);
 
   const pinBtn = $('#pinBtn');
@@ -1517,32 +1746,29 @@ function updateActiveRow(note) {
   }
 }
 
-/* ------------------------------------------------------------- ACTIONS --- */
+/* ============================================================
+   ACTIONS
+   ============================================================ */
 function selectFolder(folderId) {
   state.activeFolder = folderId;
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
   renderEditor();
-
   if (isMobile()) setMobileView('list');
 }
 
 function selectNote(noteId) {
   state.activeNoteId = noteId;
-
   const note = activeNote();
   if (note && note.deletedAt == null && note.folder !== state.activeFolder) {
     state.activeFolder = note.folder;
     renderFolders();
   }
-
   save(true);
   renderList();
   renderEditor();
-
   if (isMobile()) setMobileView('editor');
 }
 
@@ -1568,7 +1794,6 @@ function createNote() {
   save(true);
   renderList();
   renderEditor();
-
   if (isMobile()) setMobileView('editor');
 
   requestAnimationFrame(() => {
@@ -1582,7 +1807,6 @@ function deleteNote(id = state.activeNoteId) {
   if (!note) return;
 
   if (note.deletedAt != null) {
-    /* Already in trash → permanent delete */
     if (!confirm('Permanently delete this note? This cannot be undone.')) return;
     deleteNotePermanently(id);
   } else {
@@ -1598,7 +1822,6 @@ function moveToTrash(id) {
   note.pinned = false;
 
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
@@ -1611,13 +1834,11 @@ function restoreNote(id) {
 
   note.deletedAt = null;
   note.edited = Date.now();
-
   if (!state.folders.some((f) => f.id === note.folder)) {
     note.folder = state.folders[0].id;
   }
 
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
@@ -1627,10 +1848,8 @@ function restoreNote(id) {
 function deleteNotePermanently(id) {
   const idx = state.notes.findIndex((n) => n.id === id);
   if (idx === -1) return;
-
   state.notes.splice(idx, 1);
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
@@ -1640,13 +1859,11 @@ function deleteNotePermanently(id) {
 function emptyTrash() {
   const count = trashCount();
   if (count === 0) return;
-
   if (!confirm(`Permanently delete ${count} note${count === 1 ? '' : 's'}? This cannot be undone.`))
     return;
 
   state.notes = state.notes.filter((n) => n.deletedAt == null);
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
@@ -1656,20 +1873,187 @@ function emptyTrash() {
 function togglePin(id = state.activeNoteId) {
   const note = state.notes.find((n) => n.id === id);
   if (!note || note.deletedAt != null) return;
-
   note.pinned = !note.pinned;
   save(true);
   renderList();
   renderEditor();
 }
 
-/* --------------------------------------------------- FOLDER MANAGEMENT --- */
+/* ============================================================
+   BULK ACTIONS
+   ============================================================ */
+function bulkDeleteNotes() {
+  if (selectedIds.size === 0) return;
+  const ids = Array.from(selectedIds);
+
+  if (isTrashView()) {
+    if (!confirm(`Permanently delete ${ids.length} note${ids.length === 1 ? '' : 's'}? This cannot be undone.`))
+      return;
+    state.notes = state.notes.filter((n) => !ids.includes(n.id));
+  } else {
+    const now = Date.now();
+    ids.forEach((id) => {
+      const note = state.notes.find((n) => n.id === id);
+      if (note && note.deletedAt == null) {
+        note.deletedAt = now;
+        note.pinned = false;
+      }
+    });
+  }
+
+  selectedIds.clear();
+  ensureActiveNoteValid();
+  save(true);
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+function bulkRestoreNotes() {
+  if (selectedIds.size === 0) return;
+  const ids = Array.from(selectedIds);
+  const fallback = state.folders[0].id;
+
+  ids.forEach((id) => {
+    const note = state.notes.find((n) => n.id === id);
+    if (note && note.deletedAt != null) {
+      note.deletedAt = null;
+      note.edited = Date.now();
+      if (!state.folders.some((f) => f.id === note.folder)) {
+        note.folder = fallback;
+      }
+    }
+  });
+
+  selectedIds.clear();
+  ensureActiveNoteValid();
+  save(true);
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+function bulkMoveNotes(targetFolderId) {
+  if (selectedIds.size === 0) return;
+  const ids = Array.from(selectedIds);
+
+  ids.forEach((id) => {
+    const note = state.notes.find((n) => n.id === id);
+    if (note && note.deletedAt == null && note.folder !== targetFolderId) {
+      note.folder = targetFolderId;
+      note.edited = Date.now();
+    }
+  });
+
+  selectedIds.clear();
+  ensureActiveNoteValid();
+  save(true);
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+function bulkDeleteFolders() {
+  if (selectedIds.size === 0) return;
+  const ids = Array.from(selectedIds).filter((id) =>
+    state.folders.some((f) => f.id === id)
+  );
+
+  if (ids.length === 0) return;
+
+  if (ids.length >= state.folders.length) {
+    alert('You cannot delete all folders. At least one folder must remain.');
+    return;
+  }
+
+  const totalNotes = ids.reduce(
+    (sum, id) => sum + state.notes.filter((n) => n.folder === id && n.deletedAt == null).length,
+    0
+  );
+
+  const msg = `Delete ${ids.length} folder${ids.length === 1 ? '' : 's'}` +
+    (totalNotes > 0 ? ` and move ${totalNotes} note${totalNotes === 1 ? '' : 's'} to Trash?` : '?');
+
+  if (!confirm(msg)) return;
+
+  const now = Date.now();
+  state.notes.forEach((n) => {
+    if (ids.includes(n.folder) && n.deletedAt == null) {
+      n.deletedAt = now;
+      n.pinned = false;
+    }
+  });
+
+  state.folders = state.folders.filter((f) => !ids.includes(f.id));
+
+  if (ids.includes(state.activeFolder)) {
+    state.activeFolder = state.folders[0].id;
+  }
+
+  selectedIds.clear();
+  ensureActiveNoteValid();
+  save(true);
+  renderFolders();
+  renderList();
+  renderEditor();
+}
+
+/* ============================================================
+   MOVE-TO-FOLDER MENU
+   ============================================================ */
+const moveMenu = $('#moveMenu');
+
+function openMoveMenu(anchorEl) {
+  const noteIds = Array.from(selectedIds).filter((id) => {
+    const n = state.notes.find((x) => x.id === id);
+    return n && n.deletedAt == null;
+  });
+  if (noteIds.length === 0) return;
+
+  moveMenu.innerHTML = '';
+
+  const currentFolders = new Set(noteIds.map((id) => state.notes.find((n) => n.id === id).folder));
+  const singleFolderId = currentFolders.size === 1 ? Array.from(currentFolders)[0] : null;
+
+  state.folders.forEach((f) => {
+    const btn = document.createElement('button');
+    btn.className = 'ctx-item';
+    btn.textContent = f.name;
+    if (f.id === singleFolderId) {
+      btn.disabled = true;
+      btn.title = 'Notes are already in this folder';
+    }
+    btn.addEventListener('click', () => {
+      hideMoveMenu();
+      bulkMoveNotes(f.id);
+    });
+    moveMenu.appendChild(btn);
+  });
+
+  moveMenu.hidden = false;
+  moveMenu.style.left = '0px';
+  moveMenu.style.top = '0px';
+
+  const rect = moveMenu.getBoundingClientRect();
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const px = Math.max(6, Math.min(anchorRect.left, window.innerWidth - rect.width - 8));
+  const py = Math.max(6, anchorRect.top - rect.height - 8);
+  moveMenu.style.left = px + 'px';
+  moveMenu.style.top = py + 'px';
+}
+
+function hideMoveMenu() {
+  moveMenu.hidden = true;
+}
+
+/* ============================================================
+   CONTEXT MENUS
+   ============================================================ */
 const ctxMenu = $('#ctxMenu');
 let ctxFolderId = null;
 
 function openFolderMenu(x, y, folderId) {
-  hideNoteMenu();
-  hideTrashMenu();
+  hideNoteMenu(); hideTrashMenu(); hideMoveMenu();
   ctxFolderId = folderId;
 
   const delBtn = ctxMenu.querySelector('[data-action="delete"]');
@@ -1679,10 +2063,7 @@ function openFolderMenu(x, y, folderId) {
   showMenuAt(ctxMenu, x, y);
 }
 
-function hideCtxMenu() {
-  ctxMenu.hidden = true;
-  ctxFolderId = null;
-}
+function hideCtxMenu() { ctxMenu.hidden = true; ctxFolderId = null; }
 
 ctxMenu.addEventListener('click', (e) => {
   const btn = e.target.closest('.ctx-item');
@@ -1695,18 +2076,13 @@ ctxMenu.addEventListener('click', (e) => {
   if (action === 'delete') deleteFolder(id);
 });
 
-/* ----------------------------------------------------- TRASH CONTEXT MENU -- */
 const trashCtxMenu = $('#trashCtxMenu');
 
 function openTrashMenu(x, y) {
-  hideCtxMenu();
-  hideNoteMenu();
+  hideCtxMenu(); hideNoteMenu(); hideMoveMenu();
   showMenuAt(trashCtxMenu, x, y);
 }
-
-function hideTrashMenu() {
-  trashCtxMenu.hidden = true;
-}
+function hideTrashMenu() { trashCtxMenu.hidden = true; }
 
 trashCtxMenu.addEventListener('click', (e) => {
   const btn = e.target.closest('.ctx-item');
@@ -1715,13 +2091,11 @@ trashCtxMenu.addEventListener('click', (e) => {
   if (btn.dataset.action === 'empty') emptyTrash();
 });
 
-/* ----------------------------------------------------- NOTE CONTEXT MENU -- */
 const noteCtxMenu = $('#noteCtxMenu');
 let noteCtxId = null;
 
 function openNoteMenu(x, y, noteId) {
-  hideCtxMenu();
-  hideTrashMenu();
+  hideCtxMenu(); hideTrashMenu(); hideMoveMenu();
   const note = state.notes.find((n) => n.id === noteId);
   if (!note) return;
 
@@ -1738,10 +2112,7 @@ function openNoteMenu(x, y, noteId) {
   showMenuAt(noteCtxMenu, x, y);
 }
 
-function hideNoteMenu() {
-  noteCtxMenu.hidden = true;
-  noteCtxId = null;
-}
+function hideNoteMenu() { noteCtxMenu.hidden = true; noteCtxId = null; }
 
 noteCtxMenu.addEventListener('click', (e) => {
   const btn = e.target.closest('.ctx-item');
@@ -1754,12 +2125,10 @@ noteCtxMenu.addEventListener('click', (e) => {
   if (action === 'delete') deleteNote(id);
 });
 
-/* --- Menu positioning helper --- */
 function showMenuAt(menu, x, y) {
   menu.hidden = false;
   menu.style.left = '0px';
   menu.style.top = '0px';
-
   const rect = menu.getBoundingClientRect();
   const px = Math.max(6, Math.min(x, window.innerWidth  - rect.width  - 8));
   const py = Math.max(6, Math.min(y, window.innerHeight - rect.height - 8));
@@ -1772,16 +2141,21 @@ document.addEventListener('pointerdown', (e) => {
   if (!ctxMenu.hidden && !ctxMenu.contains(e.target)) hideCtxMenu();
   if (!trashCtxMenu.hidden && !trashCtxMenu.contains(e.target)) hideTrashMenu();
   if (!noteCtxMenu.hidden && !noteCtxMenu.contains(e.target)) hideNoteMenu();
+  if (!moveMenu.hidden && !moveMenu.contains(e.target)) hideMoveMenu();
 }, true);
 
-const closeAllMenus = () => { hideCtxMenu(); hideTrashMenu(); hideNoteMenu(); };
+const closeAllMenus = () => {
+  hideCtxMenu(); hideTrashMenu(); hideNoteMenu(); hideMoveMenu();
+};
 
 window.addEventListener('resize', closeAllMenus);
 window.addEventListener('blur', closeAllMenus);
 $('#editorScroll').addEventListener('scroll', closeAllMenus, { passive: true });
 $('#noteList').addEventListener('scroll', closeAllMenus, { passive: true });
 
-/* --------------------------------------------------- FOLDER RENAME/DELETE -- */
+/* ============================================================
+   FOLDER RENAME / DELETE
+   ============================================================ */
 function startRenameFolder(id) {
   const li = $(`.folder[data-folder="${id}"]`);
   if (!li) return;
@@ -1802,7 +2176,6 @@ function startRenameFolder(id) {
   const commit = (apply) => {
     if (done) return;
     done = true;
-
     if (apply) {
       const name = input.value.trim();
       if (name) {
@@ -1821,37 +2194,48 @@ function startRenameFolder(id) {
   input.addEventListener('blur', () => commit(true));
 }
 
+/**
+ * Deleting a folder now moves all of its active notes to Trash
+ * (instead of silently relocating them to another folder).
+ */
 function deleteFolder(id) {
   if (state.folders.length <= 1) return;
-
   const idx = state.folders.findIndex((f) => f.id === id);
   if (idx === -1) return;
 
+  const folder = state.folders[idx];
+  const notesInFolder = state.notes.filter((n) => n.folder === id && n.deletedAt == null);
+
+  if (notesInFolder.length > 0) {
+    const msg = `Delete "${folder.name}"? ${notesInFolder.length} note${notesInFolder.length === 1 ? '' : 's'} will be moved to Trash.`;
+    if (!confirm(msg)) return;
+  }
+
   state.folders.splice(idx, 1);
 
-  const fallback = state.folders[0].id;
-
-  /* Move active notes from the removed folder into the fallback folder.
-     Trashed notes keep their original folder reference — on restore we'll
-     route them to the fallback anyway. */
+  const now = Date.now();
   state.notes.forEach((n) => {
-    if (n.folder === id && n.deletedAt == null) n.folder = fallback;
+    if (n.folder === id && n.deletedAt == null) {
+      n.deletedAt = now;
+      n.pinned = false;
+    }
   });
 
-  if (state.activeFolder === id) state.activeFolder = fallback;
+  if (state.activeFolder === id) state.activeFolder = state.folders[0].id;
 
   ensureActiveNoteValid();
-
   save(true);
   renderFolders();
   renderList();
   renderEditor();
 }
 
-/* ------------------------------------------------------- EDITOR SYNCING --- */
+/* ============================================================
+   EDITOR SYNCING
+   ============================================================ */
 function syncBody() {
   const note = activeNote();
-  if (!note || note.deletedAt != null) return;
+  if (!note || note.deletedAt != null || selectionMode !== null) return;
 
   const bodyEl = $('#noteBody');
   note.body = bodyEl.innerHTML;
@@ -1864,7 +2248,7 @@ function syncBody() {
 
 function syncTitle() {
   const note = activeNote();
-  if (!note || note.deletedAt != null) return;
+  if (!note || note.deletedAt != null || selectionMode !== null) return;
 
   note.title = $('#noteTitle').value;
   note.edited = Date.now();
@@ -1873,19 +2257,18 @@ function syncTitle() {
   updateActiveRow(note);
 }
 
-/* --------------------------------------------------------- CHECKLISTS ---- */
+/* ============================================================
+   CHECKLISTS
+   ============================================================ */
 function createCheckEl() {
   const div = document.createElement('div');
   div.className = 'check';
-
   const box = document.createElement('span');
   box.className = 'box';
   box.setAttribute('contenteditable', 'false');
-
   const txt = document.createElement('span');
   txt.className = 'txt';
   txt.appendChild(document.createElement('br'));
-
   div.appendChild(box);
   div.appendChild(txt);
   return div;
@@ -1894,7 +2277,6 @@ function createCheckEl() {
 function getCheckTxt(checkEl) {
   return checkEl.querySelector(':scope > .txt') || checkEl.querySelector('.txt') || checkEl;
 }
-
 function getCheckBox(checkEl) {
   return checkEl.querySelector(':scope > .box') || checkEl.querySelector('.box');
 }
@@ -1938,7 +2320,6 @@ function getCaretCheckInfo() {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return null;
   const range = sel.getRangeAt(0);
-
   let node = range.startContainer;
   if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
   if (!node || !node.closest) return null;
@@ -1950,7 +2331,6 @@ function getCaretCheckInfo() {
   const box = getCheckBox(check);
   const inTxt = txt ? (node === txt || txt.contains(node)) : false;
   const inBox = box ? (node === box || box.contains(node)) : false;
-
   return { check, txt, box, inTxt, inBox, node, range };
 }
 
@@ -1959,16 +2339,12 @@ function normalizeChecks(root) {
   root.querySelectorAll('.check').forEach((check) => {
     const txt = getCheckTxt(check);
     if (!txt) return;
-
     Array.from(check.childNodes).forEach((node) => {
       if (node === txt) return;
       if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('box')) return;
-
       if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
-        node.remove();
-        return;
+        node.remove(); return;
       }
-
       const nodeIdx = Array.prototype.indexOf.call(check.childNodes, node);
       const txtIdx = Array.prototype.indexOf.call(check.childNodes, txt);
       if (nodeIdx < txtIdx) txt.insertBefore(node, txt.firstChild);
@@ -1995,7 +2371,6 @@ function makeParagraph() {
 function insertChecklistItem() {
   const bodyEl = $('#noteBody');
   bodyEl.focus();
-
   const newCheck = createCheckEl();
   const node = caretElement();
 
@@ -2009,14 +2384,12 @@ function insertChecklistItem() {
   }
 
   const block = node && node.closest
-    ? node.closest('div, p, li, h1, h2, blockquote')
-    : null;
+    ? node.closest('div, p, li, h1, h2, blockquote') : null;
 
   if (block && block !== bodyEl && bodyEl.contains(block)) {
     const isEmpty = !block.textContent.trim() && block.children.length === 0;
     if (isEmpty) block.replaceWith(newCheck);
     else block.after(newCheck);
-
     focusCheckText(newCheck);
     syncBody();
     return;
@@ -2032,7 +2405,6 @@ function insertChecklistItem() {
 
 function handleChecklistKey(e) {
   if (e.isComposing) return;
-
   const bodyEl = e.currentTarget;
   const info = getCaretCheckInfo();
   if (!info) return;
@@ -2053,7 +2425,6 @@ function handleChecklistKey(e) {
 
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-
     if (!text) {
       const p = makeParagraph();
       outer.replaceWith(p);
@@ -2061,7 +2432,6 @@ function handleChecklistKey(e) {
       syncBody();
       return;
     }
-
     const next = createCheckEl();
     outer.after(next);
     focusCheckText(next);
@@ -2078,11 +2448,12 @@ function handleChecklistKey(e) {
   }
 }
 
-/* --------------------------------------------------------- FORMAT TOOLS --- */
+/* ============================================================
+   FORMAT TOOLS
+   ============================================================ */
 function updateToolbarState() {
   const cmds = ['bold', 'italic', 'underline', 'strikeThrough',
                 'insertUnorderedList', 'insertOrderedList'];
-
   cmds.forEach((cmd) => {
     const btn = $(`.tb[data-cmd="${cmd}"]`);
     if (!btn) return;
@@ -2102,7 +2473,7 @@ function updateToolbarState() {
 function handleToolbar(btn) {
   const cmd = btn.dataset.cmd;
   const note = activeNote();
-  if (!note || note.deletedAt != null) return;
+  if (!note || note.deletedAt != null || selectionMode !== null) return;
 
   if (cmd === 'pin')    { togglePin(); return; }
   if (cmd === 'delete') { deleteNote(); return; }
@@ -2118,39 +2489,31 @@ function handleToolbar(btn) {
   } else {
     document.execCommand(cmd, false, null);
   }
-
   syncBody();
 }
 
-/* --------------------------------------------------------------- INIT ----- */
+/* ============================================================
+   INIT
+   ============================================================ */
 function init() {
   state = load();
 
-  /* Auto-purge trashed notes older than 30 days (mirrors Apple Notes). */
+  /* Auto-purge notes in Trash for more than 30 days */
   const now = Date.now();
   const before = state.notes.length;
-  state.notes = state.notes.filter((n) =>
-    n.deletedAt == null || (now - n.deletedAt) < TRASH_TTL
-  );
+  state.notes = state.notes.filter((n) => n.deletedAt == null || (now - n.deletedAt) < TRASH_TTL);
   if (state.notes.length !== before) save(true);
 
   if (!state.theme) {
-    state.theme = window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
+    state.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   document.documentElement.setAttribute('data-theme', state.theme);
 
-  const validFolder =
-    state.activeFolder === TRASH_ID ||
+  const validFolder = state.activeFolder === TRASH_ID ||
     state.folders.some((f) => f.id === state.activeFolder);
-  if (!state.activeFolder || !validFolder) {
-    state.activeFolder = state.folders[0].id;
-  }
+  if (!state.activeFolder || !validFolder) state.activeFolder = state.folders[0].id;
 
   ensureActiveNoteValid();
-
-  /* --- Mobile always starts on the Folders screen --- */
   setMobileView(isMobile() ? 'folders' : 'list');
 
   renderFolders();
@@ -2161,6 +2524,16 @@ function init() {
   $('#newNoteBtn').addEventListener('click', createNote);
   $('#emptyTrashBtn').addEventListener('click', emptyTrash);
 
+  $('#selectNotesBtn').addEventListener('click', () => {
+    if (selectionMode === 'notes') exitSelectionMode();
+    else enterSelectionMode('notes');
+  });
+
+  $('#selectFoldersBtn').addEventListener('click', () => {
+    if (selectionMode === 'folders') exitSelectionMode();
+    else enterSelectionMode('folders');
+  });
+
   $('#searchInput').addEventListener('input', (e) => {
     state.query = e.target.value;
     renderList();
@@ -2170,10 +2543,9 @@ function init() {
   $('#noteTitle').addEventListener('input', syncTitle);
   $('#noteBody').addEventListener('input', syncBody);
 
-  /* Checkbox clicks — target the nearest `.check` only */
   $('#noteBody').addEventListener('click', (e) => {
     const note = activeNote();
-    if (!note || note.deletedAt != null) return;
+    if (!note || note.deletedAt != null || selectionMode !== null) return;
     const box = e.target.closest ? e.target.closest('.box') : null;
     if (!box) return;
     const check = box.closest('.check');
@@ -2182,12 +2554,10 @@ function init() {
     syncBody();
   });
 
-  /* Clicking the gap between checkbox and text drops the caret inside the text
-     (mouse/pen only — touch users tap the text directly). */
   $('#noteBody').addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
     const note = activeNote();
-    if (!note || note.deletedAt != null) return;
+    if (!note || note.deletedAt != null || selectionMode !== null) return;
     const check = e.target.closest ? e.target.closest('.check') : null;
     if (!check) return;
     if (e.target.closest('.box')) return;
@@ -2197,21 +2567,16 @@ function init() {
     focusCheckText(check);
   });
 
-  /* Enter / Backspace inside checklist items */
   $('#noteBody').addEventListener('keydown', handleChecklistKey);
 
-  /* Block any text insertion that would land outside the item's text span. */
   let redirectingInput = false;
   $('#noteBody').addEventListener('beforeinput', (e) => {
     if (e.isComposing || redirectingInput) return;
     const info = getCaretCheckInfo();
     if (!info || info.inTxt) return;
-
     e.preventDefault();
     if (info.inBox) return;
-
     focusCheckText(info.check);
-
     if (e.inputType === 'insertText' && typeof e.data === 'string' && e.data) {
       redirectingInput = true;
       try { document.execCommand('insertText', false, e.data); }
@@ -2220,17 +2585,13 @@ function init() {
     }
   });
 
-  /* Paste into a checklist row from outside its text span */
   $('#noteBody').addEventListener('paste', (e) => {
     const info = getCaretCheckInfo();
     if (!info || info.inTxt) return;
-
     e.preventDefault();
     const cd = e.clipboardData || window.clipboardData;
     const text = cd ? cd.getData('text/plain') : '';
-
     focusCheckText(info.check);
-
     if (text) {
       document.execCommand('insertText', false, text);
       syncBody();
@@ -2244,7 +2605,7 @@ function init() {
     if (bodyEl.contains(sel.anchorNode)) updateToolbarState();
   });
 
-  /* ---- Toolbar events (prevent focus loss) ---- */
+  /* ---- Toolbar events ---- */
   $$('.tb').forEach((btn) => {
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => handleToolbar(btn));
@@ -2254,24 +2615,30 @@ function init() {
   $('#restoreBtn').addEventListener('click', () => {
     if (state.activeNoteId) restoreNote(state.activeNoteId);
   });
-
   $('#deleteForeverBtn').addEventListener('click', () => {
     if (state.activeNoteId) deleteNote(state.activeNoteId);
   });
 
-  /* ---- Mobile navigation ---- */
-  $('#menuBtn').addEventListener('click', () => {
-    setMobileView('folders');
+  /* ---- Selection bar actions ---- */
+  $('#selDoneBtn').addEventListener('click', exitSelectionMode);
+  $('#selSelectAllBtn').addEventListener('click', selectAllItems);
+
+  $('#selDeleteBtn').addEventListener('click', () => {
+    if (selectionMode === 'notes') bulkDeleteNotes();
+    else if (selectionMode === 'folders') bulkDeleteFolders();
   });
 
-  $('#backBtn').addEventListener('click', () => {
-    setMobileView('list');
-  });
+  $('#selRestoreBtn').addEventListener('click', bulkRestoreNotes);
+
+  $('#selMoveBtn').addEventListener('click', (e) => openMoveMenu(e.currentTarget));
+
+  /* ---- Mobile navigation ---- */
+  $('#menuBtn').addEventListener('click', () => setMobileView('folders'));
+  $('#backBtn').addEventListener('click', () => setMobileView('list'));
 
   /* ---- New folder ---- */
   $('#newFolderBtn').addEventListener('click', () => {
     if ($('.folder-new')) return;
-
     const li = document.createElement('li');
     li.className = 'folder folder-new';
     li.innerHTML =
@@ -2310,16 +2677,13 @@ function init() {
     save(true);
   });
 
-  /* ---- Responsive transition: desktop ↔ mobile ---- */
+  /* ---- Responsive transition ---- */
   let lastMobile = isMobile();
   window.addEventListener('resize', () => {
     const nowMobile = isMobile();
     if (nowMobile === lastMobile) return;
     lastMobile = nowMobile;
-
-    if (nowMobile) {
-      setMobileView('folders');
-    }
+    if (nowMobile) setMobileView('folders');
   });
 
   /* ---- Keyboard shortcuts ---- */
@@ -2330,29 +2694,37 @@ function init() {
       if (!ctxMenu.hidden) { hideCtxMenu(); return; }
       if (!trashCtxMenu.hidden) { hideTrashMenu(); return; }
       if (!noteCtxMenu.hidden) { hideNoteMenu(); return; }
+      if (!moveMenu.hidden) { hideMoveMenu(); return; }
+      if (selectionMode) { exitSelectionMode(); return; }
       if (isMobile()) {
         if (windowEl.dataset.mobileView === 'editor') { setMobileView('list'); return; }
         if (windowEl.dataset.mobileView === 'list')   { setMobileView('folders'); return; }
       }
     }
 
-    if (mod && e.key.toLowerCase() === 'n') {
+    if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); createNote(); return; }
+
+    if (mod && e.key.toLowerCase() === 'a' && selectionMode) {
       e.preventDefault();
-      createNote();
+      selectAllItems();
       return;
     }
 
     if (mod && e.key.toLowerCase() === 'f') {
       e.preventDefault();
-      if (isMobile() && windowEl.dataset.mobileView === 'folders') {
-        setMobileView('list');
-      }
+      if (isMobile() && windowEl.dataset.mobileView === 'folders') setMobileView('list');
       $('#searchInput').focus();
       $('#searchInput').select();
       return;
     }
 
-    if (mod && e.key === 'Backspace') {
+    if (mod && e.key === 'Backspace' && selectionMode === 'notes') {
+      e.preventDefault();
+      bulkDeleteNotes();
+      return;
+    }
+
+    if (mod && e.key === 'Backspace' && !selectionMode) {
       e.preventDefault();
       deleteNote();
       return;
@@ -2361,7 +2733,7 @@ function init() {
     if (mod && e.key.toLowerCase() === 'b') {
       const bodyEl = $('#noteBody');
       const note = activeNote();
-      if (note && note.deletedAt == null &&
+      if (note && note.deletedAt == null && selectionMode === null &&
           (bodyEl.contains(document.activeElement) || document.activeElement === bodyEl)) {
         e.preventDefault();
         document.execCommand('bold');
