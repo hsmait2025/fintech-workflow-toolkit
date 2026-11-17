@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f2f1ef" />
 <title>Notes</title>
 <style>
 /* ============================================================
@@ -71,9 +72,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button { font-family: inherit; color: inherit; }
+
+button, .folder, .note-row, .tb, .icon-btn {
+  touch-action: manipulation;
+}
 
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -90,6 +96,7 @@ button { font-family: inherit; color: inherit; }
 .window {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
 }
@@ -219,6 +226,20 @@ button { font-family: inherit; color: inherit; }
 .theme-btn:hover { background: var(--hover); color: var(--text-primary); }
 
 /* ============================================================
+   DRAWER BACKDROP (mobile only)
+   ============================================================ */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 199;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* ============================================================
    CONTEXT MENU
    ============================================================ */
 .ctx-menu {
@@ -325,6 +346,7 @@ button { font-family: inherit; color: inherit; }
   overflow-y: auto;
   list-style: none;
   padding-bottom: 40px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .note-row {
@@ -405,6 +427,12 @@ button { font-family: inherit; color: inherit; }
   -webkit-user-select: none;
 }
 
+.toolbar-content {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
 .tb {
   width: 28px;
   height: 26px;
@@ -418,6 +446,7 @@ button { font-family: inherit; color: inherit; }
   cursor: default;
   font-size: 13px;
   transition: background 0.08s ease, color 0.08s ease;
+  flex: 0 0 auto;
 }
 .tb:hover { background: var(--hover); color: var(--text-primary); }
 .tb:active { background: var(--active); }
@@ -441,6 +470,7 @@ button { font-family: inherit; color: inherit; }
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .editor-wrap {
@@ -563,25 +593,196 @@ button { font-family: inherit; color: inherit; }
 .editor-empty .sub { font-size: 12px; opacity: 0.8; }
 
 /* ============================================================
-   RESPONSIVE
+   MOBILE-ONLY ELEMENTS (hidden by default)
    ============================================================ */
-@media (max-width: 900px) {
+.mobile-only { display: none !important; }
+
+/* ============================================================
+   RESPONSIVE — TABLET
+   ============================================================ */
+@media (max-width: 900px) and (min-width: 769px) {
   .sidebar { width: 180px; flex-basis: 180px; }
   .list-pane { width: 250px; flex-basis: 250px; }
   .editor-wrap { padding: 4px 24px 120px; }
 }
-@media (max-width: 680px) {
-  .sidebar { display: none; }
-  .list-pane { width: 200px; flex-basis: 200px; }
+
+/* ============================================================
+   RESPONSIVE — MOBILE / ANDROID
+   ============================================================ */
+@media (max-width: 768px) {
+  body { font-size: 15px; }
+
+  .mobile-only { display: flex !important; }
+  .traffic { display: none; }
+
+  /* --- Drawer backdrop --- */
+  .drawer-backdrop { display: block; }
+
+  .window[data-drawer="open"] .drawer-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* --- Sidebar becomes an off-canvas drawer --- */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 82vw;
+    flex-basis: auto;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.18);
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    border-right: none;
+  }
+
+  .window[data-drawer="open"] .sidebar {
+    transform: translateX(0);
+  }
+
+  /* --- Panes take full width and toggle --- */
+  .list-pane {
+    flex: 1 1 100%;
+    width: 100%;
+    border-right: none;
+  }
+
+  .editor-pane {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .window[data-mobile-view="list"] .editor-pane { display: none; }
+  .window[data-mobile-view="editor"] .list-pane { display: none; }
+
+  /* --- Larger touch targets --- */
+  .folder {
+    padding: 9px 10px 9px 12px;
+    font-size: 15px;
+    min-height: 40px;
+  }
+  .folder-input { font-size: 16px; }
+  .new-folder { font-size: 13px; padding: 8px 10px; }
+  .theme-btn { width: 34px; height: 34px; }
+
+  .note-row {
+    padding: 12px 16px;
+    min-height: 62px;
+  }
+  .row-title { font-size: 15px; }
+  .row-meta { font-size: 13px; }
+
+  /* --- List header --- */
+  .list-header {
+    padding: 10px 10px 8px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    gap: 8px;
+  }
+  .search {
+    font-size: 16px;
+    height: 36px;
+    padding-left: 30px;
+  }
+  .search-icon { left: 10px; }
+  .icon-btn { width: 38px; height: 36px; }
+
+  /* --- Editor toolbar --- */
+  .toolbar {
+    height: calc(46px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 6px 0;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .toolbar-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 1px;
+  }
+  .toolbar-content::-webkit-scrollbar { display: none; }
+
+  .tb {
+    width: 38px;
+    height: 34px;
+  }
+  .tb-sep { margin: 0 3px; }
+
+  #backBtn {
+    width: 42px;
+    height: 36px;
+    margin-right: 2px;
+    color: var(--text-primary);
+  }
+
+  /* --- Editor content --- */
+  .editor-wrap {
+    padding: 4px 18px calc(200px + env(safe-area-inset-bottom));
+  }
+  .note-title {
+    font-size: 22px;
+    padding: 10px 0 4px;
+  }
+  .note-date {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  .note-body {
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 200px;
+  }
+
+  .note-body .check {
+    gap: 10px;
+    margin: 3px 0;
+  }
+  .note-body .check > .box {
+    width: 20px;
+    height: 20px;
+    margin-top: 3px;
+    border-radius: 5px;
+  }
+  .note-body .check.checked > .box::after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border-width: 0 2px 2px 0;
+  }
+
+  /* --- Context menus --- */
+  .ctx-menu {
+    min-width: 180px;
+    padding: 6px;
+  }
+  .ctx-item {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  /* --- Prevent scroll behind drawer --- */
+  .window[data-drawer="open"] .list-pane,
+  .window[data-drawer="open"] .editor-pane {
+    overflow: hidden;
+  }
 }
 </style>
 </head>
 <body>
 
-<div class="window">
+<div class="window" id="windowEl">
 
   <!-- ==================== SIDEBAR ==================== -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="traffic">
       <span class="red"></span><span class="yellow"></span><span class="green"></span>
     </div>
@@ -610,9 +811,17 @@ button { font-family: inherit; color: inherit; }
     </div>
   </aside>
 
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
   <!-- ==================== NOTE LIST ==================== -->
   <div class="list-pane">
     <div class="list-header">
+      <button class="icon-btn mobile-only" id="menuBtn" title="Folders">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round">
+          <path d="M2 4h12M2 8h12M2 12h12"/>
+        </svg>
+      </button>
       <div class="search-wrap">
         <span class="search-icon">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
@@ -639,60 +848,68 @@ button { font-family: inherit; color: inherit; }
   <main class="editor-pane">
 
     <div class="toolbar" id="toolbar">
-      <button class="tb" data-cmd="formatBlock" title="Title / Body"><span class="ico-aa">Aa</span></button>
-      <span class="tb-sep"></span>
-      <button class="tb" data-cmd="bold" title="Bold (⌘B)"><span class="ico-b">B</span></button>
-      <button class="tb" data-cmd="italic" title="Italic (⌘I)"><span class="ico-i">I</span></button>
-      <button class="tb" data-cmd="underline" title="Underline (⌘U)"><span class="ico-u">U</span></button>
-      <button class="tb" data-cmd="strikeThrough" title="Strikethrough"><span class="ico-s">S</span></button>
-      <span class="tb-sep"></span>
-      <button class="tb" data-cmd="insertUnorderedList" title="Bulleted List">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round">
-          <circle cx="3" cy="4" r="1.05" fill="currentColor" stroke="none"/>
-          <circle cx="3" cy="8" r="1.05" fill="currentColor" stroke="none"/>
-          <circle cx="3" cy="12" r="1.05" fill="currentColor" stroke="none"/>
-          <path d="M6.4 4h7.1M6.4 8h7.1M6.4 12h7.1"/>
+      <button class="tb mobile-only" id="backBtn" title="Back">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3 5 8l5 5"/>
         </svg>
       </button>
-      <button class="tb" data-cmd="insertOrderedList" title="Numbered List">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round">
-          <path d="M6.6 4h6.9M6.6 8h6.9M6.6 12h6.9"/>
-          <text x="1.1" y="5.6" font-size="4.6" font-family="-apple-system, sans-serif"
-                fill="currentColor" stroke="none">1</text>
-          <text x="1.1" y="9.6" font-size="4.6" font-family="-apple-system, sans-serif"
-                fill="currentColor" stroke="none">2</text>
-          <text x="1.1" y="13.6" font-size="4.6" font-family="-apple-system, sans-serif"
-                fill="currentColor" stroke="none">3</text>
-        </svg>
-      </button>
-      <button class="tb" data-cmd="checklist" title="Checklist">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="1.4" y="2.4" width="4.4" height="4.4" rx="1.2"/>
-          <path d="m2.5 4.6 1 1 1.8-2"/>
-          <rect x="1.4" y="9.2" width="4.4" height="4.4" rx="1.2"/>
-          <path d="M8.6 4.6h6M8.6 11.4h6"/>
-        </svg>
-      </button>
-      <span class="tb-sep"></span>
-      <button class="tb" data-cmd="pin" id="pinBtn" title="Pin Note">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5.6 1.6h4.8M6.6 1.6v4.2L4 8.4v1.1h8V8.4L9.4 5.8V1.6"/>
-          <path d="M8 9.5v4.9"/>
-        </svg>
-      </button>
-      <button class="tb" data-cmd="delete" title="Delete Note">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2.3 4.1h11.4"/>
-          <path d="M5.9 4.1V2.4h4.2v1.7"/>
-          <path d="M3.9 4.1 4.6 13a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.7-8.9"/>
-          <path d="M6.6 6.6v4.6M9.4 6.6v4.6"/>
-        </svg>
-      </button>
+      <div class="toolbar-content">
+        <button class="tb" data-cmd="formatBlock" title="Title / Body"><span class="ico-aa">Aa</span></button>
+        <span class="tb-sep"></span>
+        <button class="tb" data-cmd="bold" title="Bold (⌘B)"><span class="ico-b">B</span></button>
+        <button class="tb" data-cmd="italic" title="Italic (⌘I)"><span class="ico-i">I</span></button>
+        <button class="tb" data-cmd="underline" title="Underline (⌘U)"><span class="ico-u">U</span></button>
+        <button class="tb" data-cmd="strikeThrough" title="Strikethrough"><span class="ico-s">S</span></button>
+        <span class="tb-sep"></span>
+        <button class="tb" data-cmd="insertUnorderedList" title="Bulleted List">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.5" stroke-linecap="round">
+            <circle cx="3" cy="4" r="1.05" fill="currentColor" stroke="none"/>
+            <circle cx="3" cy="8" r="1.05" fill="currentColor" stroke="none"/>
+            <circle cx="3" cy="12" r="1.05" fill="currentColor" stroke="none"/>
+            <path d="M6.4 4h7.1M6.4 8h7.1M6.4 12h7.1"/>
+          </svg>
+        </button>
+        <button class="tb" data-cmd="insertOrderedList" title="Numbered List">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.5" stroke-linecap="round">
+            <path d="M6.6 4h6.9M6.6 8h6.9M6.6 12h6.9"/>
+            <text x="1.1" y="5.6" font-size="4.6" font-family="-apple-system, sans-serif"
+                  fill="currentColor" stroke="none">1</text>
+            <text x="1.1" y="9.6" font-size="4.6" font-family="-apple-system, sans-serif"
+                  fill="currentColor" stroke="none">2</text>
+            <text x="1.1" y="13.6" font-size="4.6" font-family="-apple-system, sans-serif"
+                  fill="currentColor" stroke="none">3</text>
+          </svg>
+        </button>
+        <button class="tb" data-cmd="checklist" title="Checklist">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1.4" y="2.4" width="4.4" height="4.4" rx="1.2"/>
+            <path d="m2.5 4.6 1 1 1.8-2"/>
+            <rect x="1.4" y="9.2" width="4.4" height="4.4" rx="1.2"/>
+            <path d="M8.6 4.6h6M8.6 11.4h6"/>
+          </svg>
+        </button>
+        <span class="tb-sep"></span>
+        <button class="tb" data-cmd="pin" id="pinBtn" title="Pin Note">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5.6 1.6h4.8M6.6 1.6v4.2L4 8.4v1.1h8V8.4L9.4 5.8V1.6"/>
+            <path d="M8 9.5v4.9"/>
+          </svg>
+        </button>
+        <button class="tb" data-cmd="delete" title="Delete Note">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.3 4.1h11.4"/>
+            <path d="M5.9 4.1V2.4h4.2v1.7"/>
+            <path d="M3.9 4.1 4.6 13a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.7-8.9"/>
+            <path d="M6.6 6.6v4.6M9.4 6.6v4.6"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="editor-scroll" id="editorScroll">
@@ -726,12 +943,19 @@ button { font-family: inherit; color: inherit; }
   <button class="ctx-item ctx-danger" data-action="delete">Delete Folder</button>
 </div>
 
+<!-- ==================== NOTE CONTEXT MENU ==================== -->
+<div class="ctx-menu" id="noteCtxMenu" hidden>
+  <button class="ctx-item" data-action="pin">Pin Note</button>
+  <button class="ctx-item ctx-danger" data-action="delete">Delete Note</button>
+</div>
+
 <script>
 /* ============================================================================
    Apple Notes — Application Logic
    ============================================================================ */
 
 const STORAGE_KEY = 'apple-notes-clone-v1';
+const MOBILE_BREAKPOINT = 768;
 
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -748,6 +972,8 @@ function plainText(html) {
   d.innerHTML = html || '';
   return d.textContent.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 }
+
+const isMobile = () => window.innerWidth <= MOBILE_BREAKPOINT;
 
 /* ---------------------------------------------------------------- ICONS --- */
 const FOLDER_SVG = `
@@ -846,6 +1072,59 @@ function formatFullDate(ts) {
   return `${date} at ${time}`;
 }
 
+/* -------------------------------------------------- MOBILE VIEW / DRAWER --- */
+const windowEl = $('#windowEl');
+
+function setMobileView(view) {
+  windowEl.dataset.mobileView = view;
+}
+
+function openDrawer() {
+  if (!isMobile()) return;
+  windowEl.dataset.drawer = 'open';
+}
+
+function closeDrawer() {
+  if (windowEl.dataset.drawer === 'open') {
+    windowEl.dataset.drawer = 'closed';
+  }
+}
+
+/* ------------------------------------------------------ LONG PRESS HELPER -- */
+function attachLongPress(el, callback, ms = 500) {
+  let timer = null;
+  let startX = 0, startY = 0;
+
+  const clear = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'pen' && e.button !== 0) return;
+
+    startX = e.clientX;
+    startY = e.clientY;
+    clear();
+    timer = setTimeout(() => {
+      timer = null;
+      if (navigator.vibrate) { try { navigator.vibrate(20); } catch (_) {} }
+      callback(e.clientX, e.clientY);
+    }, ms);
+  }, { passive: true });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!timer) return;
+    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+      clear();
+    }
+  }, { passive: true });
+
+  el.addEventListener('pointerup', clear, { passive: true });
+  el.addEventListener('pointercancel', clear, { passive: true });
+  el.addEventListener('pointerleave', clear, { passive: true });
+}
+
 /* ------------------------------------------------------------ RENDERING --- */
 function visibleNotes() {
   const q = state.query.trim().toLowerCase();
@@ -886,7 +1165,11 @@ function renderFolders() {
       openFolderMenu(e.clientX, e.clientY, f.id);
     });
 
-    li.addEventListener('dblclick', () => startRenameFolder(f.id));
+    li.addEventListener('dblclick', () => {
+      if (!isMobile()) startRenameFolder(f.id);
+    });
+
+    attachLongPress(li, (x, y) => openFolderMenu(x, y, f.id));
 
     list.appendChild(li);
   });
@@ -922,11 +1205,14 @@ function renderList() {
       `</div>`;
 
     li.addEventListener('click', () => selectNote(note.id));
+
     li.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      selectNote(note.id);
-      togglePin(note.id);
+      if (!isMobile()) selectNote(note.id);
+      openNoteMenu(e.clientX, e.clientY, note.id);
     });
+
+    attachLongPress(li, (x, y) => openNoteMenu(x, y, note.id));
 
     listEl.appendChild(li);
   });
@@ -954,7 +1240,6 @@ function renderEditor() {
 
   if (bodyEl.innerHTML !== note.body) bodyEl.innerHTML = note.body;
 
-  // Clean up any legacy checklist markup so the editor structure is consistent.
   normalizeChecks(bodyEl);
 
   const pinBtn = $('#pinBtn');
@@ -992,6 +1277,9 @@ function selectFolder(folderId) {
   renderFolders();
   renderList();
   renderEditor();
+  closeDrawer();
+
+  if (isMobile()) setMobileView('list');
 }
 
 function selectNote(noteId) {
@@ -1006,6 +1294,9 @@ function selectNote(noteId) {
   save(true);
   renderList();
   renderEditor();
+  closeDrawer();
+
+  if (isMobile()) setMobileView('editor');
 }
 
 function createNote() {
@@ -1027,6 +1318,9 @@ function createNote() {
   save(true);
   renderList();
   renderEditor();
+  closeDrawer();
+
+  if (isMobile()) setMobileView('editor');
 
   requestAnimationFrame(() => {
     $('#noteTitle').focus();
@@ -1046,6 +1340,8 @@ function deleteNote(id = state.activeNoteId) {
   save(true);
   renderList();
   renderEditor();
+
+  if (isMobile() && !state.activeNoteId) setMobileView('list');
 }
 
 function togglePin(id = state.activeNoteId) {
@@ -1063,6 +1359,7 @@ const ctxMenu = $('#ctxMenu');
 let ctxFolderId = null;
 
 function openFolderMenu(x, y, folderId) {
+  hideNoteMenu();
   ctxFolderId = folderId;
 
   const delBtn = ctxMenu.querySelector('[data-action="delete"]');
@@ -1096,13 +1393,59 @@ ctxMenu.addEventListener('click', (e) => {
   if (action === 'delete') deleteFolder(id);
 });
 
-document.addEventListener('mousedown', (e) => {
-  if (!ctxMenu.hidden && !ctxMenu.contains(e.target)) hideCtxMenu();
-});
-window.addEventListener('resize', hideCtxMenu);
-window.addEventListener('blur', hideCtxMenu);
-$('#editorScroll').addEventListener('scroll', hideCtxMenu, { passive: true });
+/* ----------------------------------------------------- NOTE CONTEXT MENU -- */
+const noteCtxMenu = $('#noteCtxMenu');
+let noteCtxId = null;
 
+function openNoteMenu(x, y, noteId) {
+  hideCtxMenu();
+  const note = state.notes.find((n) => n.id === noteId);
+  if (!note) return;
+
+  noteCtxId = noteId;
+
+  const pinItem = noteCtxMenu.querySelector('[data-action="pin"]');
+  pinItem.textContent = note.pinned ? 'Unpin Note' : 'Pin Note';
+
+  noteCtxMenu.hidden = false;
+  noteCtxMenu.style.left = '0px';
+  noteCtxMenu.style.top = '0px';
+
+  const rect = noteCtxMenu.getBoundingClientRect();
+  const px = Math.max(6, Math.min(x, window.innerWidth  - rect.width  - 8));
+  const py = Math.max(6, Math.min(y, window.innerHeight - rect.height - 8));
+  noteCtxMenu.style.left = px + 'px';
+  noteCtxMenu.style.top  = py + 'px';
+}
+
+function hideNoteMenu() {
+  noteCtxMenu.hidden = true;
+  noteCtxId = null;
+}
+
+noteCtxMenu.addEventListener('click', (e) => {
+  const btn = e.target.closest('.ctx-item');
+  if (!btn || btn.disabled) return;
+  const action = btn.dataset.action;
+  const id = noteCtxId;
+  hideNoteMenu();
+  if (!id) return;
+  if (action === 'pin') togglePin(id);
+  if (action === 'delete') deleteNote(id);
+});
+
+/* --- Global menu dismissal --- */
+document.addEventListener('pointerdown', (e) => {
+  if (!ctxMenu.hidden && !ctxMenu.contains(e.target)) hideCtxMenu();
+  if (!noteCtxMenu.hidden && !noteCtxMenu.contains(e.target)) hideNoteMenu();
+}, true);
+
+window.addEventListener('resize', () => { hideCtxMenu(); hideNoteMenu(); });
+window.addEventListener('blur', () => { hideCtxMenu(); hideNoteMenu(); });
+$('#editorScroll').addEventListener('scroll', () => { hideCtxMenu(); hideNoteMenu(); }, { passive: true });
+$('#noteList').addEventListener('scroll', () => { hideCtxMenu(); hideNoteMenu(); }, { passive: true });
+
+/* --------------------------------------------------- FOLDER RENAME/DELETE -- */
 function startRenameFolder(id) {
   const li = $(`.folder[data-folder="${id}"]`);
   if (!li) return;
@@ -1150,7 +1493,6 @@ function deleteFolder(id) {
 
   state.folders.splice(idx, 1);
 
-  // Notes in the removed folder are moved to the first remaining folder.
   const fallback = state.folders[0].id;
   state.notes.forEach((n) => { if (n.folder === id) n.folder = fallback; });
 
@@ -1218,10 +1560,6 @@ function getCheckBox(checkEl) {
   return checkEl.querySelector(':scope > .box') || checkEl.querySelector('.box');
 }
 
-/**
- * Collapse the caret to the start of a checklist item's text span.
- * Also makes sure the editor is focused so the selection sticks.
- */
 function focusCheckText(checkEl) {
   const bodyEl = $('#noteBody');
   if (bodyEl && document.activeElement !== bodyEl) bodyEl.focus();
@@ -1238,7 +1576,6 @@ function focusCheckText(checkEl) {
   sel.addRange(range);
 }
 
-/** Returns the outermost `.check` ancestor (protects against legacy nesting). */
 function outermostCheck(el) {
   let cur = el.closest ? el.closest('.check') : null;
   while (cur) {
@@ -1258,11 +1595,6 @@ function caretElement() {
   return node;
 }
 
-/**
- * Inspects the caret and, if it sits inside a checklist row, reports
- * whether it is inside the editable text span (`.txt`) or somewhere
- * else (e.g. before the checkbox).
- */
 function getCaretCheckInfo() {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return null;
@@ -1283,11 +1615,6 @@ function getCaretCheckInfo() {
   return { check, txt, box, inTxt, inBox, node, range };
 }
 
-/**
- * Moves any stray nodes inside a `.check` (text typed before the box,
- * legacy markup, drag-and-drop leftovers, etc.) into its `.txt` span,
- * so the checkbox always stays pinned to the left of the line.
- */
 function normalizeChecks(root) {
   if (!root) return;
   root.querySelectorAll('.check').forEach((check) => {
@@ -1298,13 +1625,11 @@ function normalizeChecks(root) {
       if (node === txt) return;
       if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('box')) return;
 
-      // Drop empty whitespace text nodes between the box and the text.
       if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
         node.remove();
         return;
       }
 
-      // Re-home stray content into the text span, preserving order.
       const nodeIdx = Array.prototype.indexOf.call(check.childNodes, node);
       const txtIdx = Array.prototype.indexOf.call(check.childNodes, txt);
       if (nodeIdx < txtIdx) txt.insertBefore(node, txt.firstChild);
@@ -1335,7 +1660,6 @@ function insertChecklistItem() {
   const newCheck = createCheckEl();
   const node = caretElement();
 
-  // 1. Caret is already inside a checklist item → insert a sibling AFTER the outer item
   const insideCheck = node && node.closest ? node.closest('.check') : null;
   if (insideCheck && bodyEl.contains(insideCheck)) {
     const outer = outermostCheck(insideCheck) || insideCheck;
@@ -1345,7 +1669,6 @@ function insertChecklistItem() {
     return;
   }
 
-  // 2. Caret is in a normal block
   const block = node && node.closest
     ? node.closest('div, p, li, h1, h2, blockquote')
     : null;
@@ -1360,7 +1683,6 @@ function insertChecklistItem() {
     return;
   }
 
-  // 3. Fallback — append at the end
   if (!bodyEl.textContent.trim() && !bodyEl.querySelector('.check')) {
     bodyEl.innerHTML = '';
   }
@@ -1369,14 +1691,6 @@ function insertChecklistItem() {
   syncBody();
 }
 
-/**
- * Enter / Backspace behaviour inside checklist items (Apple Notes style).
- *
- * Crucially, if the caret is somehow inside the checklist row but NOT
- * inside its text span (e.g. it was moved before the checkbox), we bounce
- * it back into the text and block the default action. This prevents the
- * user from typing or pressing Enter "before the checkbox".
- */
 function handleChecklistKey(e) {
   if (e.isComposing) return;
 
@@ -1387,7 +1701,6 @@ function handleChecklistKey(e) {
 
   const { check, txt, inTxt } = info;
 
-  // Caret is in the checklist row but outside the editable text.
   if (!inTxt) {
     if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
@@ -1403,7 +1716,6 @@ function handleChecklistKey(e) {
     e.preventDefault();
 
     if (!text) {
-      // Empty item → exit the checklist (become a normal paragraph)
       const p = makeParagraph();
       outer.replaceWith(p);
       placeCaretAtStart(p);
@@ -1475,6 +1787,10 @@ function handleToolbar(btn) {
 function init() {
   state = load();
 
+  /* Mobile UI state */
+  windowEl.dataset.drawer = 'closed';
+  windowEl.dataset.mobileView = 'list';
+
   if (!state.theme) {
     state.theme = window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
@@ -1516,16 +1832,15 @@ function init() {
     syncBody();
   });
 
-  /**
-   * Clicking in the row's empty gap (between the checkbox and the text)
-   * should drop the caret into the text, never before the checkbox.
-   */
-  $('#noteBody').addEventListener('mousedown', (e) => {
+  /* Clicking the gap between checkbox and text drops the caret inside the text
+     (mouse/pen only — touch users tap the text directly). */
+  $('#noteBody').addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
     const check = e.target.closest ? e.target.closest('.check') : null;
     if (!check) return;
-    if (e.target.closest('.box')) return;        // checkbox click — let it toggle
+    if (e.target.closest('.box')) return;
     const txt = getCheckTxt(check);
-    if (txt && (txt === e.target || txt.contains(e.target))) return; // text click — normal
+    if (txt && (txt === e.target || txt.contains(e.target))) return;
     e.preventDefault();
     focusCheckText(check);
   });
@@ -1533,10 +1848,7 @@ function init() {
   /* Enter / Backspace inside checklist items */
   $('#noteBody').addEventListener('keydown', handleChecklistKey);
 
-  /**
-   * Block any text insertion that would land outside the item's text span.
-   * The caret is redirected to the start of the text instead.
-   */
+  /* Block any text insertion that would land outside the item's text span. */
   let redirectingInput = false;
   $('#noteBody').addEventListener('beforeinput', (e) => {
     if (e.isComposing || redirectingInput) return;
@@ -1586,6 +1898,18 @@ function init() {
     btn.addEventListener('click', () => handleToolbar(btn));
   });
 
+  /* ---- Mobile: menu / back / backdrop ---- */
+  $('#menuBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openDrawer();
+  });
+
+  $('#backBtn').addEventListener('click', () => {
+    setMobileView('list');
+  });
+
+  $('#drawerBackdrop').addEventListener('click', closeDrawer);
+
   /* ---- New folder ---- */
   $('#newFolderBtn').addEventListener('click', () => {
     if ($('.folder-new')) return;
@@ -1623,16 +1947,36 @@ function init() {
   $('#themeBtn').addEventListener('click', () => {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', state.theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', state.theme === 'dark' ? '#1f1f1f' : '#f2f1ef');
     save(true);
+  });
+
+  /* ---- Responsive transition: desktop ↔ mobile ---- */
+  let lastMobile = isMobile();
+  window.addEventListener('resize', () => {
+    const nowMobile = isMobile();
+    if (nowMobile === lastMobile) return;
+    lastMobile = nowMobile;
+
+    if (nowMobile) {
+      setMobileView(state.activeNoteId ? 'editor' : 'list');
+    }
+    // Returning to desktop shows both panes again via CSS.
   });
 
   /* ---- Keyboard shortcuts ---- */
   document.addEventListener('keydown', (e) => {
     const mod = e.metaKey || e.ctrlKey;
 
-    if (e.key === 'Escape' && !ctxMenu.hidden) {
-      hideCtxMenu();
-      return;
+    if (e.key === 'Escape') {
+      if (!ctxMenu.hidden) { hideCtxMenu(); return; }
+      if (!noteCtxMenu.hidden) { hideNoteMenu(); return; }
+      if (windowEl.dataset.drawer === 'open') { closeDrawer(); return; }
+      if (isMobile() && windowEl.dataset.mobileView === 'editor') {
+        setMobileView('list');
+        return;
+      }
     }
 
     if (mod && e.key.toLowerCase() === 'n') {
@@ -1674,6 +2018,10 @@ function init() {
 
   /* ---- Persist on exit ---- */
   window.addEventListener('beforeunload', () => save(true));
+  window.addEventListener('pagehide', () => save(true));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') save(true);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
