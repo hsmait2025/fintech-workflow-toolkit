@@ -136,6 +136,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 0 0 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-title {
@@ -226,20 +227,6 @@ button, .folder, .note-row, .tb, .icon-btn {
 .theme-btn:hover { background: var(--hover); color: var(--text-primary); }
 
 /* ============================================================
-   DRAWER BACKDROP (mobile only)
-   ============================================================ */
-.drawer-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 199;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-
-/* ============================================================
    CONTEXT MENU
    ============================================================ */
 .ctx-menu {
@@ -293,6 +280,20 @@ button, .folder, .note-row, .tb, .icon-btn {
   padding: 12px 12px 10px;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Mobile-only folder name + back button */
+.list-folder-name {
+  display: none;
+  flex: 1 1 auto;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+  letter-spacing: -0.02em;
 }
 
 .search-wrap {
@@ -615,37 +616,28 @@ button, .folder, .note-row, .tb, .icon-btn {
   .mobile-only { display: flex !important; }
   .traffic { display: none; }
 
-  /* --- Drawer backdrop --- */
-  .drawer-backdrop { display: block; }
-
-  .window[data-drawer="open"] .drawer-backdrop {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* --- Sidebar becomes an off-canvas drawer --- */
+  /* --- Sidebar becomes a full-screen "Folders" view --- */
   .sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    max-width: 82vw;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
     flex-basis: auto;
     z-index: 200;
-    transform: translateX(-100%);
-    transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.18);
+    border-right: none;
     padding-top: calc(12px + env(safe-area-inset-top));
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    border-right: none;
   }
 
-  .window[data-drawer="open"] .sidebar {
-    transform: translateX(0);
+  .sidebar-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    padding: 8px 20px 12px;
   }
 
-  /* --- Panes take full width and toggle --- */
+  /* --- Panes take full width --- */
   .list-pane {
     flex: 1 1 100%;
     width: 100%;
@@ -657,10 +649,20 @@ button, .folder, .note-row, .tb, .icon-btn {
     width: 100%;
   }
 
-  .window[data-mobile-view="list"] .editor-pane { display: none; }
-  .window[data-mobile-view="editor"] .list-pane { display: none; }
+  /* --- Three-state view switching --- */
+  .window[data-mobile-view="folders"] .sidebar    { display: flex; }
+  .window[data-mobile-view="folders"] .list-pane  { display: none; }
+  .window[data-mobile-view="folders"] .editor-pane{ display: none; }
 
-  /* --- Larger touch targets --- */
+  .window[data-mobile-view="list"]    .sidebar    { display: none; }
+  .window[data-mobile-view="list"]    .list-pane  { display: flex; }
+  .window[data-mobile-view="list"]    .editor-pane{ display: none; }
+
+  .window[data-mobile-view="editor"]  .sidebar    { display: none; }
+  .window[data-mobile-view="editor"]  .list-pane  { display: none; }
+  .window[data-mobile-view="editor"]  .editor-pane{ display: flex; }
+
+  /* --- Larger touch targets in folder list --- */
   .folder {
     padding: 9px 10px 9px 12px;
     font-size: 15px;
@@ -670,26 +672,61 @@ button, .folder, .note-row, .tb, .icon-btn {
   .new-folder { font-size: 13px; padding: 8px 10px; }
   .theme-btn { width: 34px; height: 34px; }
 
-  .note-row {
-    padding: 12px 16px;
-    min-height: 62px;
-  }
-  .row-title { font-size: 15px; }
-  .row-meta { font-size: 13px; }
-
-  /* --- List header --- */
+  /* --- List header: back + folder name + new note, then search --- */
   .list-header {
-    padding: 10px 10px 8px;
-    padding-top: calc(10px + env(safe-area-inset-top));
+    flex-wrap: wrap;
     gap: 8px;
+    padding: 10px 12px 8px;
+    padding-top: calc(10px + env(safe-area-inset-top));
   }
+
+  .list-header .search-wrap {
+    order: 10;
+    flex: 1 1 100%;
+  }
+
+  #menuBtn {
+    order: 1;
+    width: 36px;
+    height: 36px;
+    color: var(--text-primary);
+    margin-left: -4px;
+  }
+
+  .list-folder-name {
+    display: block;
+    order: 2;
+    flex: 1 1 auto;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    align-self: center;
+    letter-spacing: -0.02em;
+  }
+
+  #newNoteBtn {
+    order: 3;
+    width: 36px;
+    height: 36px;
+  }
+
   .search {
     font-size: 16px;
     height: 36px;
     padding-left: 30px;
   }
   .search-icon { left: 10px; }
-  .icon-btn { width: 38px; height: 36px; }
+
+  /* --- Note list rows --- */
+  .note-row {
+    padding: 12px 16px;
+    min-height: 62px;
+  }
+  .row-title { font-size: 15px; }
+  .row-meta { font-size: 13px; }
 
   /* --- Editor toolbar --- */
   .toolbar {
@@ -710,10 +747,7 @@ button, .folder, .note-row, .tb, .icon-btn {
   }
   .toolbar-content::-webkit-scrollbar { display: none; }
 
-  .tb {
-    width: 38px;
-    height: 34px;
-  }
+  .tb { width: 38px; height: 34px; }
   .tb-sep { margin: 0 3px; }
 
   #backBtn {
@@ -768,12 +802,6 @@ button, .folder, .note-row, .tb, .icon-btn {
     padding: 10px 14px;
     font-size: 15px;
   }
-
-  /* --- Prevent scroll behind drawer --- */
-  .window[data-drawer="open"] .list-pane,
-  .window[data-drawer="open"] .editor-pane {
-    overflow: hidden;
-  }
 }
 </style>
 </head>
@@ -781,7 +809,7 @@ button, .folder, .note-row, .tb, .icon-btn {
 
 <div class="window" id="windowEl">
 
-  <!-- ==================== SIDEBAR ==================== -->
+  <!-- ==================== SIDEBAR / FOLDERS VIEW ==================== -->
   <aside class="sidebar" id="sidebar">
     <div class="traffic">
       <span class="red"></span><span class="yellow"></span><span class="green"></span>
@@ -811,17 +839,16 @@ button, .folder, .note-row, .tb, .icon-btn {
     </div>
   </aside>
 
-  <div class="drawer-backdrop" id="drawerBackdrop"></div>
-
   <!-- ==================== NOTE LIST ==================== -->
   <div class="list-pane">
     <div class="list-header">
       <button class="icon-btn mobile-only" id="menuBtn" title="Folders">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-             stroke-width="1.7" stroke-linecap="round">
-          <path d="M2 4h12M2 8h12M2 12h12"/>
+        <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3 5 8l5 5"/>
         </svg>
       </button>
+      <span class="list-folder-name" id="listFolderName">Notes</span>
       <div class="search-wrap">
         <span class="search-icon">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
@@ -993,7 +1020,6 @@ const PIN_SVG = `
 let state = null;
 let saveTimer = null;
 
-/* A clean slate — only the default folder exists and no notes are created. */
 function defaultState() {
   return {
     folders: [{ id: 'notes', name: 'Notes' }],
@@ -1072,22 +1098,17 @@ function formatFullDate(ts) {
   return `${date} at ${time}`;
 }
 
-/* -------------------------------------------------- MOBILE VIEW / DRAWER --- */
+/* -------------------------------------------------- MOBILE VIEW SWITCH --- */
 const windowEl = $('#windowEl');
 
 function setMobileView(view) {
   windowEl.dataset.mobileView = view;
 }
 
-function openDrawer() {
-  if (!isMobile()) return;
-  windowEl.dataset.drawer = 'open';
-}
-
-function closeDrawer() {
-  if (windowEl.dataset.drawer === 'open') {
-    windowEl.dataset.drawer = 'closed';
-  }
+function syncListFolderName() {
+  const folder = state.folders.find((f) => f.id === state.activeFolder);
+  const nameEl = $('#listFolderName');
+  if (nameEl && folder) nameEl.textContent = folder.name;
 }
 
 /* ------------------------------------------------------ LONG PRESS HELPER -- */
@@ -1173,9 +1194,13 @@ function renderFolders() {
 
     list.appendChild(li);
   });
+
+  syncListFolderName();
 }
 
 function renderList() {
+  syncListFolderName();
+
   const listEl = $('#noteList');
   const notes = visibleNotes();
 
@@ -1277,7 +1302,6 @@ function selectFolder(folderId) {
   renderFolders();
   renderList();
   renderEditor();
-  closeDrawer();
 
   if (isMobile()) setMobileView('list');
 }
@@ -1294,7 +1318,6 @@ function selectNote(noteId) {
   save(true);
   renderList();
   renderEditor();
-  closeDrawer();
 
   if (isMobile()) setMobileView('editor');
 }
@@ -1318,7 +1341,6 @@ function createNote() {
   save(true);
   renderList();
   renderEditor();
-  closeDrawer();
 
   if (isMobile()) setMobileView('editor');
 
@@ -1787,10 +1809,6 @@ function handleToolbar(btn) {
 function init() {
   state = load();
 
-  /* Mobile UI state */
-  windowEl.dataset.drawer = 'closed';
-  windowEl.dataset.mobileView = 'list';
-
   if (!state.theme) {
     state.theme = window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
@@ -1805,6 +1823,9 @@ function init() {
     const vis = visibleNotes();
     state.activeNoteId = vis.length ? vis[0].id : null;
   }
+
+  /* --- Mobile always starts on the Folders screen --- */
+  setMobileView(isMobile() ? 'folders' : 'list');
 
   renderFolders();
   renderList();
@@ -1898,17 +1919,14 @@ function init() {
     btn.addEventListener('click', () => handleToolbar(btn));
   });
 
-  /* ---- Mobile: menu / back / backdrop ---- */
-  $('#menuBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    openDrawer();
+  /* ---- Mobile navigation ---- */
+  $('#menuBtn').addEventListener('click', () => {
+    setMobileView('folders');
   });
 
   $('#backBtn').addEventListener('click', () => {
     setMobileView('list');
   });
-
-  $('#drawerBackdrop').addEventListener('click', closeDrawer);
 
   /* ---- New folder ---- */
   $('#newFolderBtn').addEventListener('click', () => {
@@ -1960,9 +1978,10 @@ function init() {
     lastMobile = nowMobile;
 
     if (nowMobile) {
-      setMobileView(state.activeNoteId ? 'editor' : 'list');
+      /* Entering mobile: start at Folders */
+      setMobileView('folders');
     }
-    // Returning to desktop shows both panes again via CSS.
+    /* Returning to desktop: base CSS shows all three panes again */
   });
 
   /* ---- Keyboard shortcuts ---- */
@@ -1972,10 +1991,9 @@ function init() {
     if (e.key === 'Escape') {
       if (!ctxMenu.hidden) { hideCtxMenu(); return; }
       if (!noteCtxMenu.hidden) { hideNoteMenu(); return; }
-      if (windowEl.dataset.drawer === 'open') { closeDrawer(); return; }
-      if (isMobile() && windowEl.dataset.mobileView === 'editor') {
-        setMobileView('list');
-        return;
+      if (isMobile()) {
+        if (windowEl.dataset.mobileView === 'editor') { setMobileView('list'); return; }
+        if (windowEl.dataset.mobileView === 'list')   { setMobileView('folders'); return; }
       }
     }
 
@@ -1987,6 +2005,9 @@ function init() {
 
     if (mod && e.key.toLowerCase() === 'f') {
       e.preventDefault();
+      if (isMobile() && windowEl.dataset.mobileView === 'folders') {
+        setMobileView('list');
+      }
       $('#searchInput').focus();
       $('#searchInput').select();
       return;
