@@ -240,6 +240,8 @@
 
   .key.fn{ background:var(--fn); color:#000; font-weight:500; }
   .key.op{ background:var(--op); color:#fff; font-size: calc(var(--btn) * 0.46); }
+  .key.add{ background:var(--green); color:#000; font-size:clamp(15px, calc(var(--btn) * 0.27), 21px); font-weight:700; }
+  .key.add:active{ background:#28b94c; }
 
   .key.op.active{ background:#fff; color:var(--op); }
   .key.dim{ opacity:.32; pointer-events:none; }
@@ -500,19 +502,19 @@
 
   <!-- Weight / price helper row -->
   <div class="grocery">
-    <button class="gkey rate" id="rateKey" data-g="rate">₹/kg</button>
+    <span aria-hidden="true"></span>
     <button class="gkey" data-g="half">½</button>
     <button class="gkey" data-g="quarter">¼</button>
     <button class="gkey" data-g="threeq">¾</button>
-    <button class="gkey add" data-g="add">Add</button>
+    <button class="gkey rate" id="rateKey" data-g="rate">₹/kg</button>
   </div>
 
   <!-- iOS style keypad -->
   <div class="keypad" id="keypad">
     <button class="key fn" data-fn="ac">AC</button>
-    <button class="key fn" data-fn="sign">±</button>
-    <button class="key fn" data-fn="pct">%</button>
     <button class="key op" data-op="÷">÷</button>
+    <button class="key fn" data-fn="pct">%</button>
+    <button class="key add" data-g="add">Add</button>
 
     <button class="key" data-digit="7">7</button>
     <button class="key" data-digit="8">8</button>
@@ -991,6 +993,7 @@
     if (btn.dataset.digit !== undefined)      pressDigit(btn.dataset.digit);
     else if (btn.dataset.op !== undefined)    pressOp(btn.dataset.op);
     else if (btn.dataset.fn !== undefined)    pressFn(btn.dataset.fn);
+    else if (btn.dataset.g === 'add')         addToCart();
   });
 
   // Grocery row
