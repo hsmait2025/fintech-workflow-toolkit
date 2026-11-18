@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<title>Veg Calc — Market Calculator</title>
+<style>
+  :root{
+    --bg:#000;
+    --num:#333333;
+    --fn:#a5a5a5;
+    --op:#ff9f0a;
+    --green:#30d158;
+    --gray:#8e8e93;
+    --card:#1c1c1e;
+    --line:#2c2c2e;
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html{
+    height:100%;
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+  body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:#fff;
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                "Helvetica Neue", Roboto, "Segoe UI", Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    overscroll-behavior:none;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  @supports (height:100dvh){
+    html, body{ height:100dvh; }
+  }
+
+  /* ============================================================
+     APP SHELL — fluid sizing that adapts to any Android screen
+     ============================================================ */
+  .app{
+    --vh:100vh;
+    --gap: clamp(7px, 2.2vw, 12px);
+    --pad: clamp(11px, 3.1vw, 18px);
+    /* vertical space reserved for top bar + display + weight row */
+    --reserved: clamp(236px, 33vh, 320px);
+
+    /* One square key: bounded by width (4 per row) AND height (5 rows) */
+    --btn: clamp(46px,
+              min(
+                calc((100vw - 2 * var(--pad) - 3 * var(--gap)) / 4),
+                calc((var(--vh) - var(--reserved) - 4 * var(--gap)) / 5)
+              ),
+              88px);
+
+    width:100%;
+    max-width:440px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    padding: calc(6px + env(safe-area-inset-top))
+             var(--pad)
+             calc(8px + env(safe-area-inset-bottom));
+    touch-action:manipulation;
+  }
+  @supports (height:100dvh){
+    .app{ --vh:100dvh; }
+  }
+
+  /* ---------------- TOP BAR ---------------- */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    justify-content:flex-end;
+    padding:2px 0 6px;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--card);
+    border:1px solid var(--line);
+    color:#fff;
+    padding: clamp(8px, 2.4vw, 10px) clamp(14px, 4vw, 18px);
+    border-radius:999px;
+    font-size: clamp(13px, 3.6vw, 15px);
+    font-weight:500;
+    letter-spacing:.1px;
+    cursor:pointer;
+    font-family:inherit;
+    touch-action:manipulation;
+    transition:transform .12s cubic-bezier(.32,.72,0,1), background .15s;
+  }
+  .pill:active{ transform:scale(.955); background:#2c2c2e; }
+  .pill-count{ color:var(--gray); font-weight:400; }
+  .pill-dot{ width:3px; height:3px; border-radius:50%; background:#48484a; flex:0 0 auto; }
+  .pill-total{
+    color:var(--green);
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    min-width:28px;
+    text-align:right;
+  }
+
+  /* ---------------- DISPLAY ---------------- */
+  .display{
+    flex:1 1 auto;
+    min-height: clamp(72px, 15vh, 150px);
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    align-items:flex-end;
+    padding:4px 2px 10px;
+    overflow:hidden;
+  }
+
+  .expr{
+    font-size: clamp(13px, 3.5vw, 15px);
+    line-height:1.35;
+    max-width:100%;
+    color:var(--gray);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    letter-spacing:.1px;
+    font-variant-numeric:tabular-nums;
+    transition:color .2s;
+    padding-bottom:2px;
+  }
+  .expr.rate{ color:var(--op); }
+
+  .value{
+    font-size:clamp(40px, 19vw, 80px);   /* JS refines this to fit */
+    font-weight:200;
+    letter-spacing:-.035em;
+    line-height:1.06;
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+    transform-origin:right bottom;
+    max-width:100%;
+  }
+
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-9px); }
+    40%{ transform:translateX(9px); }
+    60%{ transform:translateX(-5px); }
+    80%{ transform:translateX(5px); }
+  }
+  .display.shake{ animation:shake .36s cubic-bezier(.36,.07,.19,.97); }
+
+  /* ---------------- GROCERY / WEIGHT ROW ---------------- */
+  .grocery{
+    flex:0 0 auto;
+    width: calc(4 * var(--btn) + 3 * var(--gap));
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0,1fr));
+    gap: var(--gap);
+    padding-bottom: calc(var(--gap) * 1.2);
+  }
+
+  .gkey{
+    height: clamp(44px, calc(var(--btn) * 0.62), 58px);
+    min-height:44px;                       /* Android touch target */
+    border:none;
+    border-radius:999px;
+    background:#2c2c2e;
+    color:#fff;
+    font-family:inherit;
+    font-size: clamp(15px, calc(var(--btn) * 0.235), 21px);
+    font-weight:600;
+    letter-spacing:.2px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:0 2px;
+    touch-action:manipulation;
+    transition:transform .08s, background .15s, color .15s;
+  }
+  .gkey:active{ transform:scale(.93); background:#3a3a3c; }
+
+  .gkey.rate{ color:var(--op); }
+  .gkey.rate.locked{
+    background:var(--op);
+    color:#000;
+  }
+
+  .gkey.add{
+    background:var(--green);
+    color:#000;
+    font-weight:700;
+  }
+  .gkey.add:active{ background:#28b94c; }
+
+  /* ---------------- KEYPAD ---------------- */
+  .keypad{
+    flex:0 0 auto;
+    width: calc(4 * var(--btn) + 3 * var(--gap));
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0,1fr));
+    gap: var(--gap);
+  }
+
+  .key{
+    width:100%;
+    aspect-ratio:1;
+    border:none;
+    border-radius:50%;
+    background:var(--num);
+    color:#fff;
+    font-family:inherit;
+    font-size: calc(var(--btn) * 0.40);
+    font-weight:400;
+    letter-spacing:-.01em;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    touch-action:manipulation;
+    transition:transform .07s, background .13s, filter .13s, opacity .18s;
+    padding:0;
+  }
+  .key:active{ filter:brightness(1.55); transform:scale(.96); }
+
+  .key.fn{ background:var(--fn); color:#000; font-weight:500; }
+  .key.op{ background:var(--op); color:#fff; font-size: calc(var(--btn) * 0.46); }
+
+  .key.op.active{ background:#fff; color:var(--op); }
+  .key.dim{ opacity:.32; pointer-events:none; }
+
+  .key.zero{
+    grid-column:span 2;
+    aspect-ratio:auto;
+    height:var(--btn);
+    border-radius:999px;
+    justify-content:flex-start;
+    padding-left: calc(var(--btn) * 0.33);
+  }
+
+  /* ---------------- MODAL ---------------- */
+  .modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .26s ease;
+  }
+  .modal.open{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    width:100%;
+    max-width:440px;
+    background:var(--card);
+    border-radius:26px 26px 0 0;
+    padding:10px clamp(16px, 4.4vw, 22px) calc(18px + env(safe-area-inset-bottom));
+    transform:translateY(100%);
+    transition:transform .34s cubic-bezier(.32,.72,0,1);
+    max-height:86vh;
+    max-height:86dvh;
+    display:flex;
+    flex-direction:column;
+    border-top:1px solid #2c2c2e;
+  }
+  .modal.open .sheet{ transform:translateY(0); }
+
+  .grabber{
+    width:38px; height:5px; border-radius:3px;
+    background:#3a3a3c; margin:0 auto 12px; flex:0 0 auto;
+  }
+
+  .sheet-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:12px;
+    border-bottom:1px solid #2c2c2e;
+    flex:0 0 auto;
+  }
+  .sheet-head h2{
+    margin:0;
+    font-size:clamp(17px, 4.6vw, 20px);
+    font-weight:600;
+    letter-spacing:-.02em;
+  }
+  .close{
+    width:32px; height:32px; border-radius:50%;
+    background:#2c2c2e; border:none; color:#8e8e93;
+    font-size:13px; cursor:pointer; display:flex;
+    align-items:center; justify-content:center;
+    font-family:inherit;
+    touch-action:manipulation;
+    transition:transform .1s;
+  }
+  .close:active{ transform:scale(.9); }
+
+  .items{
+    flex:1 1 auto;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:8px 0;
+    min-height:70px;
+    overscroll-behavior:contain;
+  }
+
+  .empty{
+    text-align:center;
+    color:#636366;
+    font-size:14px;
+    line-height:1.6;
+    padding:34px 12px;
+  }
+
+  .item{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:11px 0;
+    border-bottom:1px solid #242426;
+    animation:rowIn .26s cubic-bezier(.32,.72,0,1);
+  }
+  @keyframes rowIn{
+    from{ opacity:0; transform:translateY(7px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .item:last-child{ border-bottom:none; }
+
+  .item-idx{
+    flex:0 0 auto;
+    width:24px; height:24px;
+    border-radius:50%;
+    background:#2c2c2e;
+    color:#8e8e93;
+    font-size:11.5px;
+    font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .item-info{ flex:1 1 auto; min-width:0; }
+  .item-main{
+    font-size:14.5px;
+    font-weight:500;
+    letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .item-sub{
+    font-size:12px;
+    color:#636366;
+    margin-top:2px;
+    font-variant-numeric:tabular-nums;
+  }
+  .item-amt{
+    flex:0 0 auto;
+    font-size:16px;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em;
+  }
+  .item-del{
+    flex:0 0 auto;
+    width:28px; height:28px;
+    border-radius:50%;
+    background:transparent;
+    border:none;
+    color:#48484a;
+    font-size:13px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation;
+    transition:background .15s, color .15s;
+    font-family:inherit;
+  }
+  .item-del:active{ background:#3a1f1f; color:#ff453a; }
+
+  .sheet-foot{
+    flex:0 0 auto;
+    border-top:1px solid #2c2c2e;
+    padding-top:14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .total-label{
+    font-size:13px;
+    color:#8e8e93;
+    font-weight:500;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  .total-value{
+    font-size:clamp(26px, 7.2vw, 32px);
+    font-weight:300;
+    letter-spacing:-.03em;
+    color:var(--green);
+    font-variant-numeric:tabular-nums;
+    line-height:1.1;
+  }
+  .clear-all{
+    background:transparent;
+    border:1px solid #3a3a3c;
+    color:#ff453a;
+    border-radius:999px;
+    padding:9px 16px;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    font-family:inherit;
+    touch-action:manipulation;
+    transition:background .15s;
+  }
+  .clear-all:active{ background:#2a1517; }
+
+  /* ---------------- TOAST ---------------- */
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    transform:translate(-50%, 22px);
+    background:rgba(44,44,46,.94);
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    color:#fff;
+    font-size:13.5px;
+    font-weight:500;
+    padding:10px 18px;
+    border-radius:999px;
+    border:1px solid #3a3a3c;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .22s, transform .28s cubic-bezier(.32,.72,0,1);
+    z-index:200;
+    max-width:88vw;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
+
+  /* ---------------- SHORT / LANDSCAPE FALLBACK ---------------- */
+  @media (max-height: 560px) and (orientation: landscape){
+    .app{
+      --reserved: clamp(150px, 30vh, 210px);
+      max-width:520px;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+    }
+    .display{ min-height:56px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Running bill -->
+  <div class="topbar">
+    <button class="pill" id="pill" aria-label="View bill breakdown">
+      <span class="pill-count" id="pillCount">No items</span>
+      <span class="pill-dot"></span>
+      <span class="pill-total" id="pillTotal">₹0</span>
+    </button>
+  </div>
+
+  <!-- Display -->
+  <div class="display" id="displayWrap">
+    <div class="expr" id="expr"></div>
+    <div class="value" id="display">0</div>
+  </div>
+
+  <!-- Weight / price helper row -->
+  <div class="grocery">
+    <button class="gkey rate" id="rateKey" data-g="rate">₹/kg</button>
+    <button class="gkey" data-g="half">½</button>
+    <button class="gkey" data-g="quarter">¼</button>
+    <button class="gkey" data-g="threeq">¾</button>
+    <button class="gkey add" data-g="add">Add</button>
+  </div>
+
+  <!-- iOS style keypad -->
+  <div class="keypad" id="keypad">
+    <button class="key fn" data-fn="ac">AC</button>
+    <button class="key fn" data-fn="sign">±</button>
+    <button class="key fn" data-fn="pct">%</button>
+    <button class="key op" data-op="÷">÷</button>
+
+    <button class="key" data-digit="7">7</button>
+    <button class="key" data-digit="8">8</button>
+    <button class="key" data-digit="9">9</button>
+    <button class="key op" data-op="×">×</button>
+
+    <button class="key" data-digit="4">4</button>
+    <button class="key" data-digit="5">5</button>
+    <button class="key" data-digit="6">6</button>
+    <button class="key op" data-op="−">−</button>
+
+    <button class="key" data-digit="1">1</button>
+    <button class="key" data-digit="2">2</button>
+    <button class="key" data-digit="3">3</button>
+    <button class="key op" data-op="+">+</button>
+
+    <button class="key zero" data-digit="0">0</button>
+    <button class="key" data-digit=".">.</button>
+    <button class="key op" data-fn="eq">=</button>
+  </div>
+
+</div>
+
+<!-- ================= BILL MODAL ================= -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Bill breakdown">
+  <div class="sheet">
+    <div class="grabber"></div>
+
+    <div class="sheet-head">
+      <h2>Bill Breakdown</h2>
+      <button class="close" id="closeBtn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="items" id="items"></div>
+
+    <div class="sheet-foot">
+      <div>
+        <div class="total-label">Total</div>
+        <div class="total-value" id="modalTotal">₹0</div>
+      </div>
+      <button class="clear-all" id="clearAll">Clear all</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     DOM
+  ========================================================= */
+  const $ = (id) => document.getElementById(id);
+
+  const displayEl    = $('display');
+  const displayWrap  = $('displayWrap');
+  const exprEl       = $('expr');
+  const pillEl       = $('pill');
+  const pillCountEl  = $('pillCount');
+  const pillTotalEl  = $('pillTotal');
+  const modalEl      = $('modal');
+  const itemsEl      = $('items');
+  const modalTotalEl = $('modalTotal');
+  const rateKeyEl    = $('rateKey');
+  const toastEl      = $('toast');
+
+  /* =========================================================
+     STATE
+  ========================================================= */
+  const S = {
+    mode:     'calc',   // 'calc' | 'weight'
+    entry:    '0',      // raw string of the calculator operand
+    acc:      null,     // accumulator
+    op:       null,     // pending operator
+    fresh:    true,     // next digit starts a new entry
+    lastExpr: '',       // shown after "="
+
+    rate:     null,     // ₹ per kg (locked)
+    wEntry:   '0',      // raw string of the weight
+    wFresh:   true,
+
+    cart:     []        // [{ rate, weight, amount }]
+  };
+
+  /* =========================================================
+     NUMBER FORMATTING
+  ========================================================= */
+  const num = (s) => { const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+  const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+  /** Pretty currency/number, Indian grouping, max 6 decimals. */
+  function fmt(n) {
+    if (!isFinite(n)) return 'Error';
+    if (Math.abs(n) >= 1e12) return n.toExponential(4);
+
+    const r = Math.round(n * 1e6) / 1e6;
+    const neg = r < 0;
+    const parts = Math.abs(r).toString().split('.');
+    const intPart = Number(parts[0]).toLocaleString('en-IN');
+    const out = parts[1] ? intPart + '.' + parts[1].slice(0, 6) : intPart;
+    return neg ? '-' + out : out;
+  }
+
+  /** Formats a raw entry string, preserving a trailing dot ("0." stays "0."). */
+  function fmtEntry(e) {
+    if (e === '' ) return '0';
+    if (e === '-')  return '-';
+    const neg = e.charAt(0) === '-';
+    const s   = neg ? e.slice(1) : e;
+    const dot = s.indexOf('.');
+    const intRaw = dot === -1 ? s : s.slice(0, dot);
+    const decRaw = dot === -1 ? null : s.slice(dot + 1);
+
+    const intFmt = Number(intRaw === '' ? '0' : intRaw).toLocaleString('en-IN');
+    const out = decRaw !== null ? intFmt + '.' + decRaw : intFmt;
+    return (neg ? '-' : '') + out;
+  }
+
+  /* =========================================================
+     DISPLAY
+  ========================================================= */
+  function fitDisplay() {
+    const txt = displayEl.textContent || '0';
+    const available = Math.max(displayWrap.clientWidth - 8, 110);
+    // ~0.56em average glyph width for SF Pro Thin / Roboto Light digits
+    let size = available / (Math.max(txt.length, 1) * 0.56);
+    size = Math.min(80, Math.max(32, size));
+    displayEl.style.fontSize = size.toFixed(1) + 'px';
+  }
+
+  function render() {
+    if (S.mode === 'weight') {
+      const w = num(S.wEntry);
+      const amt = S.rate * w;
+
+      displayEl.textContent = fmt(amt);
+
+      if (w > 0) {
+        exprEl.textContent = '₹' + fmt(S.rate) + ' / kg  ×  ' + fmtEntry(S.wEntry) + ' kg';
+      } else {
+        exprEl.textContent = '₹' + fmt(S.rate) + ' / kg  ·  enter weight';
+      }
+      exprEl.classList.add('rate');
+    } else {
+      displayEl.textContent = fmtEntry(S.entry);
+      exprEl.classList.remove('rate');
+      if (S.op !== null && S.acc !== null) {
+        exprEl.textContent = fmt(S.acc) + ' ' + S.op;
+      } else {
+        exprEl.textContent = S.lastExpr || '';
+      }
+    }
+
+    fitDisplay();
+    updateKeypadState();
+    renderPill();
+  }
+
+  function updateKeypadState() {
+    const weightMode = S.mode === 'weight';
+
+    document.querySelectorAll('[data-op]').forEach((b) => {
+      const isActive = !weightMode && S.op === b.dataset.op && S.fresh;
+      b.classList.toggle('active', isActive);
+      // In weight mode only "+" stays useful (it commits the line item)
+      b.classList.toggle('dim', weightMode && b.dataset.op !== '+');
+    });
+
+    document.querySelectorAll('[data-fn="sign"], [data-fn="pct"]').forEach((b) => {
+      b.classList.toggle('dim', weightMode);
+    });
+
+    rateKeyEl.classList.toggle('locked', weightMode);
+  }
+
+  /* =========================================================
+     FEEDBACK HELPERS
+  ========================================================= */
+  let toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1900);
+  }
+
+  function shake() {
+    displayWrap.classList.remove('shake');
+    void displayWrap.offsetWidth;
+    displayWrap.classList.add('shake');
+  }
+
+  function buzz(ms) {
+    if (navigator.vibrate) { try { navigator.vibrate(ms || 8); } catch (e) {} }
+  }
+
+  /* =========================================================
+     ARITHMETIC
+  ========================================================= */
+  function compute(a, b, op) {
+    switch (op) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? NaN : a / b;
+    }
+    return b;
+  }
+  const clean = (n) => String(Math.round(n * 1e10) / 1e10);
+
+  /* =========================================================
+     INPUT — DIGITS
+  ========================================================= */
+  function pressDigit(d) {
+    if (S.mode === 'weight') {
+      if (S.wFresh) {
+        S.wEntry = (d === '.') ? '0.' : d;
+        S.wFresh = false;
+      } else {
+        if (d === '.' && S.wEntry.indexOf('.') !== -1) return;
+        if (S.wEntry.replace(/[^0-9]/g, '').length >= 8) return;
+        S.wEntry = (S.wEntry === '0' && d !== '.') ? d : S.wEntry + d;
+      }
+    } else {
+      if (S.fresh) {
+        S.entry = (d === '.') ? '0.' : d;
+        S.fresh = false;
+        S.lastExpr = '';
+      } else {
+        if (d === '.' && S.entry.indexOf('.') !== -1) return;
+        if (S.entry.replace(/[^0-9]/g, '').length >= 12) return;
+        S.entry = (S.entry === '0' && d !== '.') ? d : S.entry + d;
+      }
+    }
+    render();
+  }
+
+  /* =========================================================
+     INPUT — OPERATORS
+  ========================================================= */
+  function pressOp(op) {
+    if (S.mode === 'weight') {
+      if (op === '+') addToCart();       // "+" commits the line item
+      return;
+    }
+
+    const val = num(S.entry);
+
+    if (S.op !== null && !S.fresh) {
+      const r = compute(S.acc, val, S.op);
+      S.acc = r;
+      S.entry = clean(r);
+    } else if (S.acc === null) {
+      S.acc = val;
+    }
+    // if (S.op !== null && S.fresh) → user just swaps the operator
+
+    S.op = op;
+    S.fresh = true;
+    S.lastExpr = '';
+    render();
+  }
+
+  /* =========================================================
+     INPUT — FUNCTION KEYS
+  ========================================================= */
+  function pressFn(fn) {
+    switch (fn) {
+      case 'ac':   resetAll();       break;
+      case 'sign': toggleSign();     break;
+      case 'pct':  percent();        break;
+      case 'eq':   equals();         break;
+    }
+    render();
+  }
+
+  function resetAll() {
+    S.entry = '0';
+    S.acc = null;
+    S.op = null;
+    S.fresh = true;
+    S.lastExpr = '';
+    S.mode = 'calc';
+    S.rate = null;
+    S.wEntry = '0';
+    S.wFresh = true;
+  }
+
+  function toggleSign() {
+    if (S.mode === 'weight') return;
+    if (S.entry.charAt(0) === '-') S.entry = S.entry.slice(1);
+    else if (S.entry !== '0') S.entry = '-' + S.entry;
+  }
+
+  function percent() {
+    if (S.mode === 'weight') return;
+    S.entry = clean(num(S.entry) / 100);
+    S.fresh = false;
+  }
+
+  function equals() {
+    if (S.mode === 'weight') { addToCart(); return; }
+
+    if (S.op !== null) {
+      const a = S.acc;
+      const b = num(S.entry);
+      const r = compute(a, b, S.op);
+      S.lastExpr = fmt(a) + ' ' + S.op + ' ' + fmt(b) + ' =';
+      S.entry = clean(r);
+      S.acc = null;
+      S.op = null;
+      S.fresh = true;
+    } else {
+      S.fresh = true;
+    }
+  }
+
+  function backspace() {
+    if (S.mode === 'weight') {
+      S.wEntry = S.wEntry.length > 1 ? S.wEntry.slice(0, -1) : '0';
+      if (S.wEntry === '' || S.wEntry === '-') S.wEntry = '0';
+    } else {
+      S.entry = S.entry.length > 1 ? S.entry.slice(0, -1) : '0';
+      if (S.entry === '' || S.entry === '-') S.entry = '0';
+    }
+    render();
+  }
+
+  /* =========================================================
+     GROCERY ACTIONS
+  ========================================================= */
+  function setRate() {
+    // Already in weight mode → hand the rate back for editing
+    if (S.mode === 'weight') {
+      S.entry = clean(S.rate);
+      S.rate = null;
+      S.mode = 'calc';
+      S.fresh = true;
+      S.wEntry = '0';
+      S.wFresh = true;
+      render();
+      toast('Edit the rate, then tap ₹/kg');
+      return;
+    }
+
+    const v = num(S.entry);
+    if (!(v > 0)) {
+      shake();
+      toast('Type a price first, then tap ₹/kg');
+      return;
+    }
+
+    S.rate   = v;
+    S.mode   = 'weight';
+    S.wEntry = '0';
+    S.wFresh = true;
+    S.lastExpr = '';
+    render();
+    buzz(12);
+    toast('Rate locked at ₹' + fmt(v) + ' / kg');
+  }
+
+  function pressFraction(v) {
+    if (S.mode === 'weight') {
+      S.wEntry = String(v);
+      S.wFresh = false;
+    } else {
+      S.entry = String(v);
+      S.fresh = true;
+      S.lastExpr = '';
+    }
+    render();
+    buzz();
+  }
+
+  function addToCart() {
+    if (S.mode !== 'weight') {
+      shake();
+      toast('Set a rate first — type price, then tap ₹/kg');
+      return;
+    }
+
+    const w = num(S.wEntry);
+    if (!(w > 0)) {
+      shake();
+      toast('Enter a weight in kg');
+      return;
+    }
+
+    const amount = round2(S.rate * w);
+    S.cart.push({ rate: S.rate, weight: w, amount: amount });
+
+    // Reset for the next item
+    S.mode = 'calc';
+    S.rate = null;
+    S.entry = '0';
+    S.acc = null;
+    S.op = null;
+    S.fresh = true;
+    S.lastExpr = '';
+    S.wEntry = '0';
+    S.wFresh = true;
+
+    render();
+    renderCart();
+    buzz(18);
+    toast('Added ₹' + fmt(amount) + '  ·  ' + fmt(w) + ' kg');
+  }
+
+  /* =========================================================
+     CART RENDERING
+  ========================================================= */
+  function cartTotal() {
+    return round2(S.cart.reduce((a, b) => a + b.amount, 0));
+  }
+
+  function renderPill() {
+    const n = S.cart.length;
+    pillCountEl.textContent =
+      n === 0 ? 'No items' : (n === 1 ? '1 item' : n + ' items');
+    pillTotalEl.textContent = '₹' + fmt(cartTotal());
+  }
+
+  function renderCart() {
+    if (!S.cart.length) {
+      itemsEl.innerHTML =
+        '<div class="empty">No items yet.<br>Tap ₹/kg → enter weight → Add.</div>';
+      modalTotalEl.textContent = '₹0';
+      return;
+    }
+
+    itemsEl.innerHTML = S.cart.map(function (it, i) {
+      const grams = it.weight < 1
+        ? '<div class="item-sub">' + Math.round(it.weight * 1000) + ' g</div>'
+        : '<div class="item-sub">' + fmt(it.weight) + ' kg</div>';
+
+      return (
+        '<div class="item">' +
+          '<div class="item-idx">' + (i + 1) + '</div>' +
+          '<div class="item-info">' +
+            '<div class="item-main">₹' + fmt(it.rate) + '/kg × ' + fmt(it.weight) + ' kg</div>' +
+            grams +
+          '</div>' +
+          '<div class="item-amt">₹' + fmt(it.amount) + '</div>' +
+          '<button class="item-del" data-del="' + i + '" aria-label="Remove item ' + (i + 1) + '">✕</button>' +
+        '</div>'
+      );
+    }).join('');
+
+    modalTotalEl.textContent = '₹' + fmt(cartTotal());
+  }
+
+  /* =========================================================
+     MODAL
+  ========================================================= */
+  function openModal() {
+    renderCart();
+    modalEl.classList.add('open');
+    buzz();
+  }
+  function closeModal() {
+    modalEl.classList.remove('open');
+  }
+
+  /* =========================================================
+     EVENT WIRING
+  ========================================================= */
+  // Keypad
+  $('keypad').addEventListener('click', function (e) {
+    const btn = e.target.closest('button');
+    if (!btn || btn.classList.contains('dim')) return;
+    buzz();
+
+    if (btn.dataset.digit !== undefined)      pressDigit(btn.dataset.digit);
+    else if (btn.dataset.op !== undefined)    pressOp(btn.dataset.op);
+    else if (btn.dataset.fn !== undefined)    pressFn(btn.dataset.fn);
+  });
+
+  // Grocery row
+  document.querySelector('.grocery').addEventListener('click', function (e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    const g = btn.dataset.g;
+    if (g === 'rate')        setRate();
+    else if (g === 'half')   pressFraction(0.5);
+    else if (g === 'quarter') pressFraction(0.25);
+    else if (g === 'threeq') pressFraction(0.75);
+    else if (g === 'add')    addToCart();
+  });
+
+  // Bill pill
+  pillEl.addEventListener('click', openModal);
+
+  // Modal close
+  $('closeBtn').addEventListener('click', closeModal);
+  modalEl.addEventListener('click', function (e) {
+    if (e.target === modalEl) closeModal();
+  });
+
+  // Delete a line item
+  itemsEl.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    S.cart.splice(Number(btn.dataset.del), 1);
+    renderCart();
+    renderPill();
+    buzz();
+  });
+
+  // Clear all
+  $('clearAll').addEventListener('click', function () {
+    if (!S.cart.length) return;
+    S.cart = [];
+    renderCart();
+    renderPill();
+    toast('Bill cleared');
+    buzz();
+  });
+
+  /* =========================================================
+     KEYBOARD SUPPORT (desktop / testing)
+  ========================================================= */
+  window.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+
+    if (/^[0-9]$/.test(k))          { pressDigit(k); e.preventDefault(); }
+    else if (k === '.')             { pressDigit('.'); e.preventDefault(); }
+    else if (k === '+')             { pressOp('+'); }
+    else if (k === '-')             { pressOp('−'); }
+    else if (k === '*')             { pressOp('×'); }
+    else if (k === '/')             { pressOp('÷'); e.preventDefault(); }
+    else if (k === 'Enter' || k === '=') { pressFn('eq'); e.preventDefault(); }
+    else if (k === 'Backspace')     { backspace(); e.preventDefault(); }
+    else if (k === 'Escape')        { closeModal(); }
+  });
+
+  /* =========================================================
+     BOOT
+  ========================================================= */
+  window.addEventListener('resize', fitDisplay);
+  window.addEventListener('orientationchange', function () {
+    setTimeout(fitDisplay, 260);
+  });
+
+  render();
+  renderCart();
+})();
+</script>
+</body>
+</html>
