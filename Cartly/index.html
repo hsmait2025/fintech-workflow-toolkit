@@ -53,8 +53,10 @@
     --vh:100vh;
     --gap: clamp(7px, 2.2vw, 12px);
     --pad: clamp(11px, 3.1vw, 18px);
+    /* vertical space reserved for top bar + display + weight row */
     --reserved: clamp(236px, 33vh, 320px);
 
+    /* One square key: bounded by width (4 per row) AND height (5 rows) */
     --btn: clamp(46px,
               min(
                 calc((100vw - 2 * var(--pad) - 3 * var(--gap)) / 4),
@@ -140,7 +142,7 @@
   .expr.rate{ color:var(--op); }
 
   .value{
-    font-size:clamp(40px, 19vw, 80px);
+    font-size:clamp(40px, 19vw, 80px);   /* JS refines this to fit */
     font-weight:200;
     letter-spacing:-.035em;
     line-height:1.06;
@@ -165,20 +167,20 @@
     width: calc(4 * var(--btn) + 3 * var(--gap));
     margin:0 auto;
     display:grid;
-    grid-template-columns:repeat(4, minmax(0,1fr));
+    grid-template-columns:repeat(5, minmax(0,1fr));
     gap: var(--gap);
     padding-bottom: calc(var(--gap) * 1.2);
   }
 
   .gkey{
     height: clamp(44px, calc(var(--btn) * 0.62), 58px);
-    min-height:44px;
+    min-height:44px;                       /* Android touch target */
     border:none;
     border-radius:999px;
     background:#2c2c2e;
     color:#fff;
     font-family:inherit;
-    font-size: clamp(16px, calc(var(--btn) * 0.26), 23px);
+    font-size: clamp(15px, calc(var(--btn) * 0.235), 21px);
     font-weight:600;
     letter-spacing:.2px;
     line-height:1;
@@ -188,7 +190,7 @@
     cursor:pointer;
     padding:0 2px;
     touch-action:manipulation;
-    transition:transform .08s, background .15s, color .15s, opacity .18s;
+    transition:transform .08s, background .15s, color .15s;
   }
   .gkey:active{ transform:scale(.93); background:#3a3a3c; }
 
@@ -198,7 +200,12 @@
     color:#000;
   }
 
-  .gkey.dim{ opacity:.32; pointer-events:none; }
+  .gkey.add{
+    background:var(--green);
+    color:#000;
+    font-weight:700;
+  }
+  .gkey.add:active{ background:#28b94c; }
 
   /* ---------------- KEYPAD ---------------- */
   .keypad{
@@ -236,15 +243,6 @@
 
   .key.op.active{ background:#fff; color:var(--op); }
   .key.dim{ opacity:.32; pointer-events:none; }
-
-  .key.add{
-    background:var(--green);
-    color:#000;
-    font-weight:700;
-    font-size: calc(var(--btn) * 0.27);
-    letter-spacing:0;
-  }
-  .key.add:active{ background:#28b94c; filter:none; transform:scale(.96); }
 
   .key.zero{
     grid-column:span 2;
@@ -500,20 +498,21 @@
     <div class="value" id="display">0</div>
   </div>
 
-  <!-- Weight / price helper row: fractions + ₹/kg (Set) -->
+  <!-- Weight / price helper row -->
   <div class="grocery">
+    <button class="gkey rate" id="rateKey" data-g="rate">₹/kg</button>
     <button class="gkey" data-g="half">½</button>
     <button class="gkey" data-g="quarter">¼</button>
     <button class="gkey" data-g="threeq">¾</button>
-    <button class="gkey rate" id="rateKey" data-g="rate">₹/kg</button>
+    <button class="gkey add" data-g="add">Add</button>
   </div>
 
-  <!-- iOS style keypad — Add moved to top-right -->
+  <!-- iOS style keypad -->
   <div class="keypad" id="keypad">
     <button class="key fn" data-fn="ac">AC</button>
-    <button class="key op" data-op="÷">÷</button>
+    <button class="key fn" data-fn="sign">±</button>
     <button class="key fn" data-fn="pct">%</button>
-    <button class="key add" id="addKey">Add</button>
+    <button class="key op" data-op="÷">÷</button>
 
     <button class="key" data-digit="7">7</button>
     <button class="key" data-digit="8">8</button>
@@ -580,28 +579,24 @@
   const itemsEl      = $('items');
   const modalTotalEl = $('modalTotal');
   const rateKeyEl    = $('rateKey');
-  const addKeyEl     = $('addKey');
   const toastEl      = $('toast');
 
   /* =========================================================
      STATE
-     mode: 'calc'  — normal calculator (default)
-           'rate'  — asking for price per kg (₹/kg tapped)
-           'weight'— asking for weight (rate locked)
   ========================================================= */
   const S = {
-    mode:     'calc',
-    entry:    '0',
-    acc:      null,
-    op:       null,
-    fresh:    true,
-    lastExpr: '',
+    mode:     'calc',   // 'calc' | 'weight'
+    entry:    '0',      // raw string of the calculator operand
+    acc:      null,     // accumulator
+    op:       null,     // pending operator
+    fresh:    true,     // next digit starts a new entry
+    lastExpr: '',       // shown after "="
 
-    rate:     null,
-    wEntry:   '0',
+    rate:     null,     // ₹ per kg (locked)
+    wEntry:   '0',      // raw string of the weight
     wFresh:   true,
 
-    cart:     []
+    cart:     []        // [{ rate, weight, amount }]
   };
 
   /* =========================================================
@@ -610,6 +605,7 @@
   const num = (s) => { const n = parseFloat(s); return isNaN(n) ? 0 : n; };
   const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+  /** Pretty currency/number, Indian grouping, max 6 decimals. */
   function fmt(n) {
     if (!isFinite(n)) return 'Error';
     if (Math.abs(n) >= 1e12) return n.toExponential(4);
@@ -622,6 +618,7 @@
     return neg ? '-' + out : out;
   }
 
+  /** Formats a raw entry string, preserving a trailing dot ("0." stays "0."). */
   function fmtEntry(e) {
     if (e === '' ) return '0';
     if (e === '-')  return '-';
@@ -642,6 +639,7 @@
   function fitDisplay() {
     const txt = displayEl.textContent || '0';
     const available = Math.max(displayWrap.clientWidth - 8, 110);
+    // ~0.56em average glyph width for SF Pro Thin / Roboto Light digits
     let size = available / (Math.max(txt.length, 1) * 0.56);
     size = Math.min(80, Math.max(32, size));
     displayEl.style.fontSize = size.toFixed(1) + 'px';
@@ -660,15 +658,6 @@
         exprEl.textContent = '₹' + fmt(S.rate) + ' / kg  ·  enter weight';
       }
       exprEl.classList.add('rate');
-
-    } else if (S.mode === 'rate') {
-      const v = num(S.entry);
-      displayEl.textContent = fmtEntry(S.entry);
-      exprEl.textContent = v > 0
-        ? 'Tap Set to confirm ₹' + fmt(v) + ' / kg'
-        : 'Enter price per kg';
-      exprEl.classList.add('rate');
-
     } else {
       displayEl.textContent = fmtEntry(S.entry);
       exprEl.classList.remove('rate');
@@ -685,28 +674,20 @@
   }
 
   function updateKeypadState() {
-    const calcMode   = S.mode === 'calc';
-    const rateMode   = S.mode === 'rate';
     const weightMode = S.mode === 'weight';
 
     document.querySelectorAll('[data-op]').forEach((b) => {
-      b.classList.toggle('active', calcMode && S.op === b.dataset.op && S.fresh);
-      b.classList.toggle('dim', !calcMode);
+      const isActive = !weightMode && S.op === b.dataset.op && S.fresh;
+      b.classList.toggle('active', isActive);
+      // In weight mode only "+" stays useful (it commits the line item)
+      b.classList.toggle('dim', weightMode && b.dataset.op !== '+');
     });
 
-    const pctBtn = document.querySelector('[data-fn="pct"]');
-    if (pctBtn) pctBtn.classList.toggle('dim', !calcMode);
+    document.querySelectorAll('[data-fn="sign"], [data-fn="pct"]').forEach((b) => {
+      b.classList.toggle('dim', weightMode);
+    });
 
-    // Fractions only make sense for weights (and normal calc entry)
-    document.querySelectorAll('[data-g="half"],[data-g="quarter"],[data-g="threeq"]')
-      .forEach((b) => b.classList.toggle('dim', rateMode));
-
-    // Add key: only active while entering a weight
-    if (addKeyEl) addKeyEl.classList.toggle('dim', !weightMode);
-
-    // ₹/kg button: reads "Set" while confirming the price
-    rateKeyEl.textContent = rateMode ? 'Set' : '₹/kg';
-    rateKeyEl.classList.toggle('locked', rateMode || weightMode);
+    rateKeyEl.classList.toggle('locked', weightMode);
   }
 
   /* =========================================================
@@ -731,7 +712,7 @@
   }
 
   /* =========================================================
-     ARITHMETIC (calculator mode only)
+     ARITHMETIC
   ========================================================= */
   function compute(a, b, op) {
     switch (op) {
@@ -745,7 +726,7 @@
   const clean = (n) => String(Math.round(n * 1e10) / 1e10);
 
   /* =========================================================
-     DIGITS
+     INPUT — DIGITS
   ========================================================= */
   function pressDigit(d) {
     if (S.mode === 'weight') {
@@ -758,11 +739,10 @@
         S.wEntry = (S.wEntry === '0' && d !== '.') ? d : S.wEntry + d;
       }
     } else {
-      // calc or rate — both edit S.entry
       if (S.fresh) {
         S.entry = (d === '.') ? '0.' : d;
         S.fresh = false;
-        if (S.mode === 'calc') S.lastExpr = '';
+        S.lastExpr = '';
       } else {
         if (d === '.' && S.entry.indexOf('.') !== -1) return;
         if (S.entry.replace(/[^0-9]/g, '').length >= 12) return;
@@ -773,10 +753,13 @@
   }
 
   /* =========================================================
-     OPERATORS (calculator mode only)
+     INPUT — OPERATORS
   ========================================================= */
   function pressOp(op) {
-    if (S.mode !== 'calc') return;
+    if (S.mode === 'weight') {
+      if (op === '+') addToCart();       // "+" commits the line item
+      return;
+    }
 
     const val = num(S.entry);
 
@@ -787,6 +770,7 @@
     } else if (S.acc === null) {
       S.acc = val;
     }
+    // if (S.op !== null && S.fresh) → user just swaps the operator
 
     S.op = op;
     S.fresh = true;
@@ -795,11 +779,12 @@
   }
 
   /* =========================================================
-     FUNCTION KEYS
+     INPUT — FUNCTION KEYS
   ========================================================= */
   function pressFn(fn) {
     switch (fn) {
       case 'ac':   resetAll();       break;
+      case 'sign': toggleSign();     break;
       case 'pct':  percent();        break;
       case 'eq':   equals();         break;
     }
@@ -807,27 +792,31 @@
   }
 
   function resetAll() {
-    S.mode = 'calc';
     S.entry = '0';
     S.acc = null;
     S.op = null;
     S.fresh = true;
     S.lastExpr = '';
-
+    S.mode = 'calc';
     S.rate = null;
     S.wEntry = '0';
     S.wFresh = true;
   }
 
+  function toggleSign() {
+    if (S.mode === 'weight') return;
+    if (S.entry.charAt(0) === '-') S.entry = S.entry.slice(1);
+    else if (S.entry !== '0') S.entry = '-' + S.entry;
+  }
+
   function percent() {
-    if (S.mode !== 'calc') return;
+    if (S.mode === 'weight') return;
     S.entry = clean(num(S.entry) / 100);
     S.fresh = false;
   }
 
   function equals() {
-    if (S.mode === 'rate')   { confirmRate(); return; }
-    if (S.mode === 'weight') { addToCart();   return; }
+    if (S.mode === 'weight') { addToCart(); return; }
 
     if (S.op !== null) {
       const a = S.acc;
@@ -855,51 +844,40 @@
   }
 
   /* =========================================================
-     GROCERY FLOW
+     GROCERY ACTIONS
   ========================================================= */
-  function rateKeyTap() {
-    if (S.mode === 'rate') {
-      confirmRate();
-    } else if (S.mode === 'weight') {
-      // take the locked rate back into the entry for editing
-      const r = S.rate;
-      S.mode = 'rate';
+  function setRate() {
+    // Already in weight mode → hand the rate back for editing
+    if (S.mode === 'weight') {
+      S.entry = clean(S.rate);
       S.rate = null;
-      S.entry = clean(r);
+      S.mode = 'calc';
       S.fresh = true;
       S.wEntry = '0';
       S.wFresh = true;
       render();
-      toast('Edit price, then tap Set');
-    } else {
-      // calculator → price entry
-      S.mode = 'rate';
-      S.fresh = true;
-      S.lastExpr = '';
-      render();
-      toast('Enter price per kg');
+      toast('Edit the rate, then tap ₹/kg');
+      return;
     }
-  }
 
-  function confirmRate() {
     const v = num(S.entry);
     if (!(v > 0)) {
       shake();
-      toast('Enter a valid price');
+      toast('Type a price first, then tap ₹/kg');
       return;
     }
+
     S.rate   = v;
     S.mode   = 'weight';
     S.wEntry = '0';
     S.wFresh = true;
+    S.lastExpr = '';
     render();
     buzz(12);
     toast('Rate locked at ₹' + fmt(v) + ' / kg');
   }
 
   function pressFraction(v) {
-    if (S.mode === 'rate') return;   // dimmed, but guard anyway
-
     if (S.mode === 'weight') {
       S.wEntry = String(v);
       S.wFresh = false;
@@ -915,7 +893,7 @@
   function addToCart() {
     if (S.mode !== 'weight') {
       shake();
-      toast('Set a rate first — tap ₹/kg');
+      toast('Set a rate first — type price, then tap ₹/kg');
       return;
     }
 
@@ -929,13 +907,13 @@
     const amount = round2(S.rate * w);
     S.cart.push({ rate: S.rate, weight: w, amount: amount });
 
-    // back to plain calculator for the next item
-    S.mode   = 'calc';
-    S.rate   = null;
-    S.entry  = '0';
-    S.acc    = null;
-    S.op     = null;
-    S.fresh  = true;
+    // Reset for the next item
+    S.mode = 'calc';
+    S.rate = null;
+    S.entry = '0';
+    S.acc = null;
+    S.op = null;
+    S.fresh = true;
     S.lastExpr = '';
     S.wEntry = '0';
     S.wFresh = true;
@@ -947,7 +925,7 @@
   }
 
   /* =========================================================
-     CART
+     CART RENDERING
   ========================================================= */
   function cartTotal() {
     return round2(S.cart.reduce((a, b) => a + b.amount, 0));
@@ -963,7 +941,7 @@
   function renderCart() {
     if (!S.cart.length) {
       itemsEl.innerHTML =
-        '<div class="empty">No items yet.<br>Tap ₹/kg → enter price → Set → enter weight → Add.</div>';
+        '<div class="empty">No items yet.<br>Tap ₹/kg → enter weight → Add.</div>';
       modalTotalEl.textContent = '₹0';
       return;
     }
@@ -1004,29 +982,28 @@
   /* =========================================================
      EVENT WIRING
   ========================================================= */
-  // Keypad (including the Add key in the top-right slot)
+  // Keypad
   $('keypad').addEventListener('click', function (e) {
     const btn = e.target.closest('button');
     if (!btn || btn.classList.contains('dim')) return;
     buzz();
-
-    if (btn.id === 'addKey') { addToCart(); return; }
 
     if (btn.dataset.digit !== undefined)      pressDigit(btn.dataset.digit);
     else if (btn.dataset.op !== undefined)    pressOp(btn.dataset.op);
     else if (btn.dataset.fn !== undefined)    pressFn(btn.dataset.fn);
   });
 
-  // Grocery row: ½ ¼ ¾ ₹/kg(Set)
+  // Grocery row
   document.querySelector('.grocery').addEventListener('click', function (e) {
     const btn = e.target.closest('button');
-    if (!btn || btn.classList.contains('dim')) return;
+    if (!btn) return;
 
     const g = btn.dataset.g;
-    if (g === 'rate')         rateKeyTap();
-    else if (g === 'half')    pressFraction(0.5);
+    if (g === 'rate')        setRate();
+    else if (g === 'half')   pressFraction(0.5);
     else if (g === 'quarter') pressFraction(0.25);
-    else if (g === 'threeq')  pressFraction(0.75);
+    else if (g === 'threeq') pressFraction(0.75);
+    else if (g === 'add')    addToCart();
   });
 
   // Bill pill
@@ -1059,7 +1036,7 @@
   });
 
   /* =========================================================
-     KEYBOARD SUPPORT
+     KEYBOARD SUPPORT (desktop / testing)
   ========================================================= */
   window.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
