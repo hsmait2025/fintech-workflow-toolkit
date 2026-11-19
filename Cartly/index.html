@@ -343,7 +343,7 @@
     if(!Number.isFinite(n)) throw new Error('This calculation is not a valid number.');
     return Number(n.toPrecision(12));
   };
-  const prettyExpression = (src) => src.replace(/\*/g,' × ').replace(/\//g,' ÷ ').replace(/\+/g,' + ').replace(/-/g,' − ').replace(/\s+/g,' ').trim();
+  const prettyExpression = (src) => src.replace(/\s+/g,'').replace(/\*/g,'×').replace(/\//g,'÷').replace(/-/g,'−');
 
   /* ─────────────────────────── Parser ─────────────────────────── */
   function tokenize(source){
@@ -442,7 +442,7 @@
       if(node.type==='binary'&&node.op==='-'){collect(node.left,sign);collect(node.right,-sign);return;}
       const raw=source.slice(node.start,node.end);
       const amount=cleanNumber(sign*evaluate(node));
-      parts.push({expression:sign<0?'− ('+prettyExpression(raw)+')':prettyExpression(raw),amount});
+      parts.push({expression:sign<0?'−('+prettyExpression(raw)+')':prettyExpression(raw),amount});
     }
     collect(tree,1);
     return parts;
@@ -487,18 +487,21 @@
    * Shrinks `el` until it fits inside `wrap`, never below `minPx`.
    * If it still overflows at the floor size, the line scrolls so the
    * tail (the part you're actually typing) stays visible.
+   * Returns the computed font size in px.
    */
   function fitLine(wrap, el, maxPx, minPx){
     el.style.fontSize = maxPx + 'px';
     const avail = wrap.clientWidth;
-    if(avail <= 0) return;            // hidden line — size is parked for later
+    if(avail <= 0) return maxPx;            // hidden line — size is parked for later
     const width = el.getBoundingClientRect().width;
     let size = maxPx;
     if(width > avail && width > 0){
       size = Math.max(minPx, maxPx * (avail / width) * 0.985);
     }
-    el.style.fontSize = size.toFixed(1) + 'px';
+    const rounded = Number(size.toFixed(1));
+    el.style.fontSize = rounded + 'px';
     wrap.scrollLeft = wrap.scrollWidth;   // keep the right edge in view
+    return rounded;
   }
   function fitAll(){
     const w = displayWrap.clientWidth  || 320;
@@ -512,6 +515,9 @@
     if(S.evaluated){
       fitLine(exprWrap, exprLine, Math.min(20, Math.max(13, w * 0.05)), 11);
       fitLine(resWrap,  resLine,  soloMax, 26);
+    }else if(hasRes){
+      const liveResSize = fitLine(resWrap, resLine, resMax, 14);
+      fitLine(exprWrap, exprLine, eqMax, liveResSize);
     }else{
       fitLine(exprWrap, exprLine, eqMax, 20);
       fitLine(resWrap,  resLine,  resMax, 14);
