@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" id="themeColor" />
+<title>iOS Calculator</title>
+<style>
+  /* =========================================================
+   *  THEME TOKENS
+   * ========================================================= */
+  :root, [data-theme="dark"] {
+    --bg: #000;
+    --text: #fff;
+    --muted: #8e8e93;
+    --key-num: #333335;  --key-num-text: #fff;  --key-num-press: #737373;
+    --key-fn:  #5c5c5f;  --key-fn-text:  #fff;  --key-fn-press:  #8e8e93;
+    --key-op:  #ff9f0a;  --key-op-text:  #fff;  --key-op-press:  #fcc78d;
+    --op-active-bg: #fff; --op-active-text: #ff9f0a;
+    --sheet: #1c1c1e;
+    --line: #2c2c2e;
+    --paper: #2c2c2e;
+    --paper-ink: #f2f2f7;
+    --paper-muted: #98989f;
+    --paper-rule: #545458;
+    --neg: #ff6961;
+    --shadow: none;
+    color-scheme: dark;
+  }
+  [data-theme="light"] {
+    --bg: #f2f2f7;
+    --text: #000;
+    --muted: #8a8a8e;
+    --key-num: #ffffff;  --key-num-text: #000;  --key-num-press: #d1d1d6;
+    --key-fn:  #d4d4d8;  --key-fn-text:  #000;  --key-fn-press:  #aeaeb2;
+    --key-op:  #ff9500;  --key-op-text:  #fff;  --key-op-press:  #ffc56e;
+    --op-active-bg: #fff; --op-active-text: #ff9500;
+    --sheet: #f2f2f7;
+    --line: #d1d1d6;
+    --paper: #ffffff;
+    --paper-ink: #1c1c1e;
+    --paper-muted: #6e6e73;
+    --paper-rule: #b8b8bd;
+    --neg: #d70015;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.06);
+    color-scheme: light;
+  }
+
+  :root {
+    --pad: clamp(14px, 4.6vw, 24px);
+    --gap: clamp(10px, 3.4vw, 16px);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, Roboto, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none;
+    transition: background-color .25s ease;
+  }
+  body { display: flex; justify-content: center; overflow: hidden; }
+
+  /* =========================================================
+   *  LAYOUT (portrait phones first: OnePlus Nord ≈ 412 × 915 CSS px)
+   * ========================================================= */
+  .calc {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;               /* fallback */
+    height: 100dvh;              /* follows Android's collapsing URL bar */
+    display: flex;
+    flex-direction: column;
+    padding:
+      calc(env(safe-area-inset-top) + 6px)
+      calc(env(safe-area-inset-right) + var(--pad))
+      calc(env(safe-area-inset-bottom) + clamp(14px, 3vh, 28px))
+      calc(env(safe-area-inset-left) + var(--pad));
+    overflow: hidden;
+  }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; height: 44px; flex: 0 0 auto; }
+  .icon-btn {
+    position: relative;
+    width: 44px; height: 44px; border: 0; border-radius: 50%;
+    background: transparent; color: var(--key-op);
+    display: grid; place-items: center; cursor: pointer; padding: 0;
+  }
+  .icon-btn:active { opacity: .5; }
+  .icon-btn svg { width: 24px; height: 24px; }
+  .badge {
+    position: absolute; top: 3px; right: 1px; min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 9px; background: var(--key-op); color: #000; font-size: 11px; font-weight: 700;
+    display: grid; place-items: center;
+  }
+  .badge[hidden] { display: none; }
+
+  /* ---------- Display ---------- */
+  .display {
+    flex: 1 1 auto;
+    min-height: 96px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 4px 4px 12px;
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+  .expr-wrap {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .expr-wrap::-webkit-scrollbar { display: none; }
+  .line, .measure {
+    font-family: var(--font);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    font-variant-numeric: tabular-nums;
+  }
+  .line {
+    width: 100%;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: color .22s ease;
+  }
+  .line.wrap { white-space: normal; overflow-wrap: anywhere; overflow: visible; }
+  .expr   { color: var(--text); }
+  .result { color: var(--muted); min-height: 1.12em; flex: 0 0 auto; }
+  .display.done .expr   { color: var(--muted); }
+  .display.done .result,
+  .display.error .result { color: var(--text); }
+  /* font-size only animates on the "=" swap — never while typing (that caused the zoom flicker) */
+  .display.swap .line { transition: color .25s ease, font-size .25s ease; }
+  .measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: pre; font-size: 100px; }
+
+  /* ---------- Keypad ---------- */
+  .keys {
+    /* key = smaller of: width-limited size, height-limited size */
+    --k: min(
+      calc((min(100vw, 480px) - 2 * var(--pad) - env(safe-area-inset-left) - env(safe-area-inset-right) - 3 * var(--gap)) / 4),
+      calc((100dvh - 260px - 4 * var(--gap)) / 5)
+    );
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, var(--k));
+    grid-auto-rows: var(--k);
+    gap: var(--gap);
+    justify-content: center;
+  }
+  .key {
+    width: 100%; height: 100%;
+    border: 0; border-radius: 999px;
+    font-family: var(--font);
+    font-size: calc(var(--k) * 0.42);
+    font-weight: 400;
+    color: var(--key-num-text);
+    background: var(--key-num);
+    display: grid; place-items: center;
+    cursor: pointer;
+    padding: 0;
+    touch-action: manipulation;
+    box-shadow: var(--shadow);
+    transition: background-color .35s ease, color .35s ease;
+  }
+  [data-theme="light"] .key { box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+  .key svg { width: 40%; height: 40%; }
+  .key.fn    { background: var(--key-fn); color: var(--key-fn-text); font-size: calc(var(--k) * 0.36); }
+  .key.op    { background: var(--key-op); color: var(--key-op-text); font-size: calc(var(--k) * 0.5); }
+  .key.paren { font-size: calc(var(--k) * 0.32); }
+  .key.op.active { background: var(--op-active-bg); color: var(--op-active-text); }
+  .key.pressed, .key:active { transition: none; }
+  .key.pressed, .key:active          { background: var(--key-num-press); }
+  .key.fn.pressed, .key.fn:active    { background: var(--key-fn-press); }
+  .key.op.pressed, .key.op:active    { background: var(--key-op-press); }
+  .key:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+
+  /* ---------- Landscape phones: display left, pill keys right ---------- */
+  @media (orientation: landscape) and (max-height: 540px) {
+    .calc {
+      max-width: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      column-gap: clamp(16px, 4vw, 40px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+    }
+    .topbar  { grid-column: 1; grid-row: 1; }
+    .display { grid-column: 1; grid-row: 2; min-height: 0; }
+    .keys {
+      grid-column: 2; grid-row: 1 / span 2; align-self: center;
+      --k: calc((100dvh - 30px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 4 * var(--gap)) / 5);
+      --gap: clamp(8px, 1.8vh, 12px);
+      grid-template-columns: repeat(4, 1fr);
+      width: 100%;
+    }
+    .key, .key.fn, .key.paren { font-size: calc(var(--k) * 0.4); }
+    .key.op { font-size: calc(var(--k) * 0.5); }
+    .key svg { width: auto; height: 42%; }
+  }
+
+  /* =========================================================
+   *  TRANSACTIONS SHEET + BILL
+   * ========================================================= */
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 5;
+  }
+  .sheet {
+    position: fixed; left: 50%; bottom: 0;
+    width: 100%; max-width: 520px;
+    height: min(90dvh, 100%);
+    background: var(--sheet);
+    color: var(--text);
+    border-radius: 18px 18px 0 0;
+    transform: translate(-50%, 100%);
+    transition: transform .32s cubic-bezier(.2,.8,.2,1);
+    display: flex; flex-direction: column;
+    z-index: 6;
+    box-shadow: 0 -8px 30px rgba(0,0,0,.25);
+  }
+  .calc.history-open ~ .sheet-backdrop,
+  body.history-open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+  body.history-open .sheet { transform: translate(-50%, 0); }
+  .grabber { width: 38px; height: 5px; border-radius: 3px; background: var(--line); margin: 8px auto 0; }
+  .sheet-head {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 8px 16px 12px;
+  }
+  .sheet-head h2 { margin: 0; font-size: 17px; font-weight: 600; text-align: center; }
+  .sheet-head .text-btn:first-child { justify-self: start; }
+  .sheet-head .text-btn:last-child  { justify-self: end; font-weight: 600; }
+  .text-btn { background: none; border: 0; color: var(--key-op); font: 16px var(--font); cursor: pointer; padding: 6px 2px; }
+  .text-btn:active { opacity: .5; }
+
+  .bills {
+    list-style: none; margin: 0;
+    padding: 8px 16px 24px;
+    overflow-y: auto; flex: 1;
+    -webkit-overflow-scrolling: touch;
+    user-select: text; -webkit-user-select: text;
+  }
+  .empty { color: var(--muted); text-align: center; margin-top: 48px; font-size: 16px; line-height: 1.6; }
+
+  .bill-item { margin: 0 auto 26px; max-width: 360px; }
+  .receipt {
+    position: relative;
+    background: var(--paper);
+    color: var(--paper-ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 18px 18px 20px;
+    border-radius: 8px 8px 0 0;
+    box-shadow: var(--shadow);
+    font-variant-numeric: tabular-nums;
+  }
+  /* scalloped tear-off edge */
+  .receipt::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -9px; height: 10px;
+    background: radial-gradient(circle at 7px 0, var(--paper) 7px, transparent 7.5px) 0 0 / 14px 10px repeat-x;
+  }
+  .r-center { text-align: center; }
+  .r-title { font-size: 17px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .r-meta { color: var(--paper-muted); font-size: 12px; margin-top: 2px; }
+  .r-rule { border: 0; border-top: 1.5px dashed var(--paper-rule); margin: 12px 0; }
+  .r-cols, .r-row {
+    display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline;
+  }
+  .r-cols { color: var(--paper-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+  .r-cols span:last-child, .r-amt { text-align: right; }
+  .r-row { padding: 3px 0; }
+  .r-letter { color: var(--paper-muted); }
+  .r-expr { overflow-wrap: anywhere; }
+  .r-amt { white-space: nowrap; }
+  .r-amt.neg { color: var(--neg); }
+  .r-sum { display: flex; justify-content: space-between; color: var(--paper-muted); font-size: 13px; }
+  .r-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 3px double var(--paper-rule);
+    margin-top: 10px; padding-top: 10px;
+    font-size: 18px; font-weight: 700;
+  }
+  .r-foot { text-align: center; color: var(--paper-muted); font-size: 11px; letter-spacing: .1em; margin-top: 14px; }
+  .bill-actions { display: flex; justify-content: center; gap: 22px; margin-top: 16px; }
+  .bill-actions button { background: none; border: 0; color: var(--key-op); font: 14px var(--font); cursor: pointer; padding: 4px; }
+  .bill-actions button:active { opacity: .5; }
+
+  .sheet-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px calc(env(safe-area-inset-bottom) + 16px);
+    border-top: 1px solid var(--line);
+  }
+  .sheet-foot span:first-child { color: var(--muted); font-size: 14px; }
+  .grand { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .toast {
+    position: fixed; top: calc(env(safe-area-inset-top) + 56px); left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--key-fn); color: var(--key-fn-text);
+    padding: 8px 14px; border-radius: 10px;
+    font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<main class="calc" id="calc">
+  <div class="topbar">
+    <button class="icon-btn" id="historyBtn" aria-label="Transactions" title="Transactions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 3h14v18l-2.3-1.6L14.3 21 12 19.4 9.7 21l-2.4-1.6L5 21z"/>
+        <line x1="8.5" y1="8" x2="15.5" y2="8"/><line x1="8.5" y1="12" x2="15.5" y2="12"/><line x1="8.5" y1="16" x2="12.5" y2="16"/>
+      </svg>
+      <span class="badge" id="txnBadge" hidden>0</span>
+    </button>
+    <button class="icon-btn" id="themeBtn" aria-label="Theme" title="Theme"></button>
+  </div>
+
+  <section class="display" id="display" aria-live="polite" title="Swipe left/right to delete · Double-tap to copy">
+    <div class="expr-wrap" id="exprWrap"><div class="line expr" id="expr">0</div></div>
+    <div class="line result" id="result"></div>
+  </section>
+
+  <section class="keys" id="keys">
+    <button class="key fn" data-action="clear" id="clearKey" aria-label="All clear">AC</button>
+    <button class="key fn" data-action="negate" aria-label="Plus minus">
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="4" y1="9" x2="14" y2="9"/><line x1="9" y1="4" x2="9" y2="14"/>
+        <line x1="22" y1="5" x2="10" y2="27"/>
+        <line x1="18" y1="23" x2="28" y2="23"/>
+      </svg>
+    </button>
+    <button class="key fn" data-action="percent" aria-label="Percent">%</button>
+    <button class="key op" data-op="/" aria-label="Divide">÷</button>
+
+    <button class="key" data-digit="7">7</button>
+    <button class="key" data-digit="8">8</button>
+    <button class="key" data-digit="9">9</button>
+    <button class="key op" data-op="*" aria-label="Multiply">×</button>
+
+    <button class="key" data-digit="4">4</button>
+    <button class="key" data-digit="5">5</button>
+    <button class="key" data-digit="6">6</button>
+    <button class="key op" data-op="-" aria-label="Subtract">−</button>
+
+    <button class="key" data-digit="1">1</button>
+    <button class="key" data-digit="2">2</button>
+    <button class="key" data-digit="3">3</button>
+    <button class="key op" data-op="+" aria-label="Add">+</button>
+
+    <button class="key paren" data-action="paren" aria-label="Parentheses">( )</button>
+    <button class="key" data-digit="0">0</button>
+    <button class="key" data-action="decimal" aria-label="Decimal">.</button>
+    <button class="key op" data-action="equals" aria-label="Equals">=</button>
+  </section>
+</main>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<aside class="sheet" id="sheet" aria-label="Transactions" role="dialog" aria-modal="true">
+  <div class="grabber"></div>
+  <div class="sheet-head">
+    <button class="text-btn" id="clearHistory">Clear All</button>
+    <h2>Transactions</h2>
+    <button class="text-btn" id="closeHistory">Done</button>
+  </div>
+  <ul class="bills" id="historyList"></ul>
+  <div class="sheet-foot">
+    <span id="grandLabel">Grand Total</span>
+    <span class="grand" id="grandTotal">0.00</span>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<span class="measure" id="measure" aria-hidden="true"></span>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+   *  STATE
+   *  expr uses an internal alphabet:
+   *    digits . + - * / % ( )   and  'n' = unary minus (from ±)
+   * ========================================================= */
+  const $ = (id) => document.getElementById(id);
+  const STORE_KEY = "ios-calc-transactions";
+  const THEME_KEY = "ios-calc-theme";
+
+  const state = {
+    expr: "",
+    done: false,       // true right after "="
+    error: false,
+    lastResult: null,
+    history: loadHistory()
+  };
+
+  const exprEl = $("expr"), exprWrap = $("exprWrap"), resultEl = $("result"), displayEl = $("display");
+  const clearKey = $("clearKey"), measureEl = $("measure");
+  const MAX_DIGITS = 15;
+  const OPS = "+-*/";
+
+  /* =========================================================
+   *  PARSER — recursive descent (no eval)
+   *  expr   := term (('+'|'-') term)*
+   *  term   := factor (('*'|'/') factor)*
+   *  factor := ('-'|'n') factor | primary '%'*
+   *  primary:= number | '(' expr ')'?
+   *  iOS percent semantics:  a ± b%  →  a ± a·b/100 ;  a × b%  →  a × b/100
+   * ========================================================= */
+  function tokenize(s) {
+    const tokens = [];
+    const re = /\s*(\d+\.?\d*(?:e[+-]?\d+)?|\.\d+(?:e[+-]?\d+)?|[+\-*/%()n])/gy;
+    let m;
+    while (re.lastIndex < s.length) {
+      m = re.exec(s);
+      if (!m) throw new Error("Bad token");
+      tokens.push(m[1]);
+    }
+    return tokens;
+  }
+
+  function evaluate(src) {
+    const t = tokenize(src);
+    let i = 0;
+    const peek = () => t[i];
+    const next = () => t[i++];
+
+    function parseExpr() {
+      const left = parseTerm();
+      let lv = left.pct ? left.v / 100 : left.v;
+      while (peek() === "+" || peek() === "-") {
+        const op = next();
+        const r = parseTerm();
+        const rv = r.pct ? lv * r.v / 100 : r.v;
+        lv = op === "+" ? lv + rv : lv - rv;
+      }
+      return { v: lv, pct: false };
+    }
+
+    function parseTerm() {
+      const f = parseFactor();
+      if (peek() !== "*" && peek() !== "/") return f; // pass pct flag up
+      let v = f.pct ? f.v / 100 : f.v;
+      while (peek() === "*" || peek() === "/") {
+        const op = next();
+        const r = parseFactor();
+        const rv = r.pct ? r.v / 100 : r.v;
+        v = op === "*" ? v * rv : v / rv;
+      }
+      return { v, pct: false };
+    }
+
+    function parseFactor() {
+      if (peek() === "-" || peek() === "n") {
+        next();
+        const f = parseFactor();
+        return { v: -f.v, pct: f.pct };
+      }
+      if (peek() === "+") { next(); return parseFactor(); }
+      let p = parsePrimary();
+      let pct = false;
+      while (peek() === "%") {
+        next();
+        if (pct) p /= 100; else pct = true;
+      }
+      return { v: p, pct };
+    }
+
+    function parsePrimary() {
+      const tok = next();
+      if (tok === undefined) throw new Error("Unexpected end");
+      if (tok === "(") {
+        const e = parseExpr();
+        if (peek() === ")") next(); // tolerate missing ')'
+        return e.v;
+      }
+      const n = Number(tok);
+      if (Number.isNaN(n)) throw new Error("Unexpected " + tok);
+      return n;
+    }
+
+    const out = parseExpr();
+    if (i < t.length) throw new Error("Trailing tokens");
+    return out.v;
+  }
+
+  /* =========================================================
+   *  FORMATTING
+   * ========================================================= */
+  function roundSmart(v) {
+    if (!isFinite(v)) return v;
+    return Number.parseFloat(v.toPrecision(12)); // kills 0.1+0.2 noise
+  }
+
+  function formatNumber(v) {
+    if (!isFinite(v) || Number.isNaN(v)) return "Error";
+    v = roundSmart(v);
+    if (Object.is(v, -0)) v = 0;
+    const abs = Math.abs(v);
+    if (abs !== 0 && (abs >= 1e15 || abs < 1e-9)) {
+      return v.toExponential(6).replace(/\.?0+e/, "e").replace("e+", "e");
+    }
+    return v.toLocaleString("en-US", { maximumFractionDigits: 10 }).replace("-", "−");
+  }
+
+  // Bill amounts: always 2 decimals
+  function formatAmount(v) {
+    if (!isFinite(v)) return "—";
+    if (Object.is(roundSmart(v), -0)) v = 0;
+    const abs = Math.abs(v);
+    if (abs >= 1e15) return formatNumber(v);
+    return (v < 0 ? "−" : "") + abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // number → internal expression form
+  function toInternal(v) {
+    v = roundSmart(v);
+    let s = Math.abs(v).toString();
+    if (/e/.test(s) && Math.abs(v) < 1e21) {
+      s = Math.abs(v).toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 20 });
+    }
+    return (v < 0 ? "n" : "") + s;
+  }
+
+  // Internal expression → screen text
+  function prettyExpr(s) {
+    if (!s) return "0";
+    return s
+      .replace(/\d+(\.\d*)?(e[+-]?\d+)?/g, (num) => {
+        if (/e/.test(num)) return num;
+        const [int, dec] = num.split(".");
+        const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return dec !== undefined ? grouped + "." + dec : grouped;
+      })
+      .replace(/\*/g, "×")
+      .replace(/\//g, "÷")
+      .replace(/-/g, "−")
+      .replace(/n/g, "−");
+  }
+
+  /* =========================================================
+   *  HELPERS
+   * ========================================================= */
+  const lastChar = () => state.expr.slice(-1);
+  const isDigit = (c) => c >= "0" && c <= "9";
+  const isOp = (c) => OPS.includes(c);
+  const endsWithValue = () => { const c = lastChar(); return isDigit(c) || c === ")" || c === "%" || c === "."; };
+  const openParens = () => (state.expr.match(/\(/g) || []).length - (state.expr.match(/\)/g) || []).length;
+  const currentNumber = () => (state.expr.match(/(\d*\.?\d*)$/) || [""])[0];
+
+  function closeParens(s) {
+    const open = (s.match(/\(/g) || []).length - (s.match(/\)/g) || []).length;
+    return s + ")".repeat(Math.max(0, open));
+  }
+  function trimTrailing(s) {
+    while (s && /[+\-*/n(]$/.test(s)) s = s.slice(0, -1);
+    return s;
+  }
+
+  function startFresh() {
+    if (state.done || state.error) {
+      state.expr = "";
+      state.done = false;
+      state.error = false;
+    }
+  }
+  function continueFromResult() {
+    if (state.done) {
+      state.expr = state.lastResult !== null && isFinite(state.lastResult) ? toInternal(state.lastResult) : "";
+      state.done = false;
+    }
+    if (state.error) { state.expr = ""; state.error = false; }
+  }
+
+  /* =========================================================
+   *  INPUT ACTIONS
+   * ========================================================= */
+  function inputDigit(d) {
+    startFresh();
+    const c = lastChar();
+    if (c === ")" || c === "%") state.expr += "*";
+    const cur = currentNumber();
+    if (cur.replace(".", "").length >= MAX_DIGITS) return;
+    if (cur === "0") { state.expr = state.expr.slice(0, -1) + d; return; }
+    state.expr += d;
+  }
+
+  function inputDecimal() {
+    startFresh();
+    const c = lastChar();
+    if (c === ")" || c === "%") state.expr += "*";
+    const cur = currentNumber();
+    if (cur.includes(".")) return;
+    state.expr += cur === "" ? "0." : ".";
+  }
+
+  function inputOperator(op) {
+    continueFromResult();
+    if (state.expr === "") state.expr = "0";
+    let c = lastChar();
+    if (c === "(") { if (op === "-") state.expr += "n"; return; }
+    if (c === "n") return;
+    if (c === ".") state.expr = state.expr.slice(0, -1);
+    c = lastChar();
+    if (isOp(c)) state.expr = state.expr.slice(0, -1);
+    state.expr += op;
+  }
+
+  function inputPercent() {
+    continueFromResult();
+    if (endsWithValue() && lastChar() !== ".") state.expr += "%";
+  }
+
+  function negate() {
+    if (state.done) {
+      if (state.lastResult !== null && isFinite(state.lastResult)) {
+        state.lastResult = -state.lastResult;
+        state.expr = toInternal(state.lastResult);
+      }
+      state.done = false;
+      return;
+    }
+    if (state.error) { state.expr = ""; state.error = false; }
+    const m = state.expr.match(/(n?)(\d*\.?\d*(?:e[+-]?\d+)?%?)$/);
+    const sign = m[1], num = m[2];
+    const head = state.expr.slice(0, state.expr.length - sign.length - num.length);
+    if (sign) state.expr = head + num;
+    else if (num === "" && lastChar() === ")") state.expr = state.expr + "*n";
+    else state.expr = head + "n" + num;
+    if (state.expr === "n") state.expr = "n0";
+  }
+
+  function inputParen() {
+    startFresh();
+    if (openParens() > 0 && endsWithValue() && lastChar() !== ".") {
+      state.expr += ")";
+    } else {
+      if (endsWithValue()) state.expr += "*";
+      state.expr += "(";
+    }
+  }
+
+  function backspace() {
+    if (state.done || state.error) { clearAll(); return; }
+    state.expr = state.expr.slice(0, -1);
+  }
+
+  function clearAll() {
+    state.expr = "";
+    state.done = false;
+    state.error = false;
+    state.lastResult = null;
+  }
+
+  function equals() {
+    if (state.done || state.error) return;
+    const src = closeParens(trimTrailing(state.expr));
+    if (!src) return;
+    try {
+      const v = evaluate(src);
+      if (!isFinite(v)) throw new Error("Math error");
+      state.lastResult = roundSmart(v);
+      state.expr = src;
+      state.done = true;
+      pushTransaction(src, state.lastResult);
+    } catch (e) {
+      state.expr = src;
+      state.error = true;
+      state.lastResult = null;
+    }
+  }
+
+  /* =========================================================
+   *  RENDER
+   *  Font sizes are computed once per render from a hidden measurer,
+   *  then applied directly — no grow/shrink loop, so no zoom flicker.
+   *  The equation shrinks until it reaches the live-result size, then wraps.
+   * ========================================================= */
+  function livePreview() {
+    const raw = trimTrailing(state.expr);
+    if (!/[+\-*/%(n]/.test(raw.replace(/^n/, ""))) return "";
+    try {
+      const v = evaluate(closeParens(raw));
+      return isFinite(v) ? formatNumber(v) : "";
+    } catch { return ""; }
+  }
+
+  function widthAt100(text) {
+    measureEl.textContent = text;
+    return measureEl.getBoundingClientRect().width;
+  }
+
+  // Returns the font size that fits `text` on one line in `avail` px, clamped to [min, max]
+  function fitSize(text, avail, max, min) {
+    const w = widthAt100(text) || 1;
+    const ideal = Math.floor((avail / w) * 100 * 0.985);
+    return { size: Math.max(min, Math.min(max, ideal)), overflows: ideal < min };
+  }
+
+  function sizes() {
+    const w = displayEl.clientWidth;
+    const landscape = matchMedia("(orientation: landscape) and (max-height: 540px)").matches;
+    const big = landscape ? Math.round(Math.min(64, window.innerHeight * 0.16)) : Math.round(Math.min(88, Math.max(56, w * 0.2)));
+    const live = landscape ? 26 : Math.round(Math.min(38, Math.max(28, w * 0.085)));
+    return { big, live };
+  }
+
+  let lastDone = false;
+
+  function render() {
+    // animate font-size only on the "=" swap
+    if (state.done !== lastDone || state.error) {
+      displayEl.classList.add("swap");
+      clearTimeout(render._t);
+      render._t = setTimeout(() => displayEl.classList.remove("swap"), 300);
+      lastDone = state.done;
+    }
+
+    displayEl.classList.toggle("done", state.done);
+    displayEl.classList.toggle("error", state.error);
+
+    // zero-width spaces after operators = clean wrap points
+    const exprText = prettyExpr(state.expr).replace(/([×÷+−(])/g, "$1​");
+    exprEl.textContent = exprText;
+
+    let resText = "";
+    if (state.error) resText = "Error";
+    else if (state.done) resText = formatNumber(state.lastResult);
+    else resText = livePreview();
+    resultEl.textContent = resText;
+
+    const avail = exprWrap.clientWidth;
+    const { big, live } = sizes();
+
+    if (state.done || state.error) {
+      const small = Math.round(live * 0.8);
+      const e = fitSize(exprText, avail, small, small);
+      exprEl.style.fontSize = e.size + "px";
+      exprEl.classList.toggle("wrap", e.overflows);
+      const r = fitSize(resText || "0", avail, big, 24);
+      resultEl.style.fontSize = r.size + "px";
+    } else {
+      // equation: big → shrinks down to the live-result size → then wraps (never smaller)
+      const e = fitSize(exprText, avail, big, live);
+      exprEl.style.fontSize = e.size + "px";
+      exprEl.classList.toggle("wrap", e.overflows);
+      const r = fitSize(resText || "0", avail, live, 18);
+      resultEl.style.fontSize = r.size + "px";
+    }
+    exprWrap.scrollTop = exprWrap.scrollHeight; // keep the latest input in view
+
+    // AC ⇄ backspace (iOS 18 behaviour)
+    const showBack = state.expr !== "" && !state.done && !state.error;
+    if (clearKey.dataset.action !== (showBack ? "back" : "clear")) {
+      clearKey.dataset.action = showBack ? "back" : "clear";
+      clearKey.setAttribute("aria-label", showBack ? "Delete" : "All clear");
+      clearKey.innerHTML = showBack
+        ? '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M11 7h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H11l-8-9z"/><line x1="15" y1="12" x2="23" y2="20"/><line x1="23" y1="12" x2="15" y2="20"/></svg>'
+        : "AC";
+    }
+
+    const pending = !state.done && isOp(lastChar()) ? lastChar() : null;
+    document.querySelectorAll(".key.op[data-op]").forEach((k) =>
+      k.classList.toggle("active", k.dataset.op === pending)
+    );
+  }
+
+  /* =========================================================
+   *  TRANSACTIONS
+   *  Every "=" records one transaction. Items are the top-level
+   *  + / − terms, e.g. 10*.5+20*1.5 → a) 10 × 0.5 → 5.00, b) 20 × 1.5 → 30.00
+   *  Item value = eval(prefix incl. item) − eval(prefix before it),
+   *  so iOS-style percent terms (+10%) get their real amount.
+   * ========================================================= */
+  function loadHistory() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (data && Array.isArray(data.list)) return data;
+    } catch {}
+    return { list: [], seq: 0 };
+  }
+  function saveHistory() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state.history)); } catch {}
+  }
+
+  function splitTerms(src) {
+    const terms = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      else if (depth === 0 && (c === "+" || c === "-") && i > 0 && /[\d.)%]/.test(src[i - 1]) && !/\de$/.test(src.slice(0, i))) {
+        terms.push(src.slice(start, i));
+        start = i;
+      }
+    }
+    terms.push(src.slice(start));
+    return terms.filter((t) => t && t !== "+" && t !== "-");
+  }
+
+  function letterFor(i) {
+    let s = "";
+    i++;
+    while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(97 + r) + s; i = Math.floor((i - 1) / 26); }
+    return s;
+  }
+
+  function buildItems(src) {
+    const terms = splitTerms(src);
+    const items = [];
+    let prefix = "", prev = 0;
+    terms.forEach((term, k) => {
+      prefix += term;
+      let cum;
+      try { cum = evaluate(closeParens(prefix)); } catch { cum = NaN; }
+      const value = roundSmart(cum - prev);
+      prev = cum;
+      const sign = term[0] === "-" ? "− " : "";
+      const body = term[0] === "+" || term[0] === "-" ? term.slice(1) : term;
+      items.push({ label: letterFor(k), expr: sign + prettyExpr(body), value });
+    });
+    return items;
+  }
+
+  function pushTransaction(src, total) {
+    const h = state.history;
+    h.seq += 1;
+    h.list.unshift({ no: h.seq, time: Date.now(), expr: src, items: buildItems(src), total });
+    if (h.list.length > 500) h.list.length = 500;
+    saveHistory();
+    updateBadge();
+  }
+
+  function updateBadge() {
+    const b = $("txnBadge");
+    const n = state.history.list.length;
+    b.hidden = n === 0;
+    b.textContent = n > 99 ? "99+" : String(n);
+  }
+
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const date = d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return `${date} · ${time}`;
+  }
+
+  // spaced operators read better on a bill: "10 × 0.5"
+  const billExpr = (s) => s.replace(/\s*([×÷])\s*/g, " $1 ");
+
+  function renderHistory() {
+    const list = $("historyList");
+    list.innerHTML = "";
+    const txns = state.history.list;
+    const grand = txns.reduce((s, t) => s + (isFinite(t.total) ? t.total : 0), 0);
+    $("grandTotal").textContent = formatAmount(roundSmart(grand));
+    $("grandLabel").textContent = `Grand Total · ${txns.length} bill${txns.length === 1 ? "" : "s"}`;
+
+    if (!txns.length) {
+      list.innerHTML = '<p class="empty">No transactions yet.<br>Enter an equation like 10×.5+20×1.5<br>and tap =</p>';
+      return;
+    }
+
+    txns.forEach((t) => {
+      const li = document.createElement("li");
+      li.className = "bill-item";
+      li.innerHTML = `
+        <div class="receipt">
+          <div class="r-center r-title"></div>
+          <div class="r-center r-meta"></div>
+          <hr class="r-rule">
+          <div class="r-cols"><span>#</span><span>Item</span><span>Amount</span></div>
+          <div class="r-rows"></div>
+          <hr class="r-rule">
+          <div class="r-sum"><span class="r-count"></span><span class="r-sub"></span></div>
+          <div class="r-total"><span>TOTAL</span><span class="r-total-val"></span></div>
+          <div class="r-foot">* * * THANK YOU * * *</div>
+        </div>
+        <div class="bill-actions"><button data-act="use">Use total</button><button data-act="del">Delete</button></div>`;
+
+      li.querySelector(".r-title").textContent = `Trans. ${t.no}`;
+      li.querySelector(".r-meta").textContent = fmtDate(t.time);
+      li.querySelector(".r-count").textContent = `Items: ${t.items.length}`;
+      li.querySelector(".r-sub").textContent = `Subtotal ${formatAmount(t.total)}`;
+      li.querySelector(".r-total-val").textContent = formatAmount(t.total);
+
+      const rows = li.querySelector(".r-rows");
+      t.items.forEach((it) => {
+        const row = document.createElement("div");
+        row.className = "r-row";
+        row.innerHTML = `<span class="r-letter"></span><span class="r-expr"></span><span class="r-amt"></span>`;
+        row.querySelector(".r-letter").textContent = it.label + ")";
+        row.querySelector(".r-expr").textContent = billExpr(it.expr);
+        const amt = row.querySelector(".r-amt");
+        amt.textContent = formatAmount(it.value);
+        if (it.value < 0) amt.classList.add("neg");
+        rows.appendChild(row);
+      });
+
+      li.querySelector('[data-act="use"]').addEventListener("click", () => {
+        state.lastResult = t.total;
+        state.expr = toInternal(t.total);
+        state.done = false; state.error = false;
+        toggleHistory(false);
+        render();
+      });
+      li.querySelector('[data-act="del"]').addEventListener("click", () => {
+        state.history.list = state.history.list.filter((x) => x !== t);
+        saveHistory(); updateBadge(); renderHistory();
+      });
+      list.appendChild(li);
+    });
+  }
+
+  function toggleHistory(open) {
+    if (open) { renderHistory(); $("historyList").scrollTop = 0; }
+    document.body.classList.toggle("history-open", open);
+  }
+  $("historyBtn").addEventListener("click", () => toggleHistory(true));
+  $("closeHistory").addEventListener("click", () => toggleHistory(false));
+  $("backdrop").addEventListener("click", () => toggleHistory(false));
+
+  // Two-tap confirm for Clear All (native confirm() isn't available in the sandbox)
+  $("clearHistory").addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    if (!state.history.list.length) return;
+    if (btn.dataset.armed) {
+      state.history = { list: [], seq: 0 };
+      saveHistory(); updateBadge(); renderHistory();
+      delete btn.dataset.armed; btn.textContent = "Clear All";
+    } else {
+      btn.dataset.armed = "1"; btn.textContent = "Confirm?";
+      setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Clear All"; }, 2500);
+    }
+  });
+
+  /* =========================================================
+   *  THEME  (Auto → Light → Dark)
+   * ========================================================= */
+  const themeIcons = {
+    auto:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>',
+    light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
+    dark:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'
+  };
+  const sysDark = matchMedia("(prefers-color-scheme: dark)");
+  let themePref = "auto";
+  try { themePref = localStorage.getItem(THEME_KEY) || "auto"; } catch {}
+
+  function applyTheme() {
+    const resolved = themePref === "auto" ? (sysDark.matches ? "dark" : "light") : themePref;
+    document.documentElement.dataset.theme = resolved;
+    $("themeColor").setAttribute("content", resolved === "dark" ? "#000000" : "#f2f2f7");
+    const btn = $("themeBtn");
+    btn.innerHTML = themeIcons[themePref];
+    btn.setAttribute("aria-label", "Theme: " + themePref);
+    btn.title = "Theme: " + themePref[0].toUpperCase() + themePref.slice(1);
+  }
+  $("themeBtn").addEventListener("click", () => {
+    themePref = { auto: "light", light: "dark", dark: "auto" }[themePref];
+    try { localStorage.setItem(THEME_KEY, themePref); } catch {}
+    applyTheme();
+    showToast("Theme: " + themePref[0].toUpperCase() + themePref.slice(1));
+  });
+  sysDark.addEventListener?.("change", () => { if (themePref === "auto") applyTheme(); });
+
+  /* =========================================================
+   *  DISPATCH & GESTURES
+   * ========================================================= */
+  function handle(btn) {
+    if (btn.dataset.digit !== undefined) inputDigit(btn.dataset.digit);
+    else if (btn.dataset.op) inputOperator(btn.dataset.op);
+    else switch (btn.dataset.action) {
+      case "clear":   clearAll(); break;
+      case "back":    backspace(); break;
+      case "negate":  negate(); break;
+      case "percent": inputPercent(); break;
+      case "decimal": inputDecimal(); break;
+      case "paren":   inputParen(); break;
+      case "equals":  equals(); break;
+    }
+    render();
+  }
+
+  function flash(btn) {
+    btn.classList.add("pressed");
+    setTimeout(() => btn.classList.remove("pressed"), 90);
+  }
+
+  $("keys").addEventListener("click", (e) => {
+    const btn = e.target.closest(".key");
+    if (!btn) return;
+    flash(btn);
+    handle(btn);
+  });
+
+  // Long-press backspace → clear all
+  let holdTimer = null;
+  clearKey.addEventListener("pointerdown", () => {
+    if (clearKey.dataset.action !== "back") return;
+    holdTimer = setTimeout(() => { clearAll(); render(); holdTimer = "fired"; }, 550);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
+    clearKey.addEventListener(ev, () => {
+      if (holdTimer && holdTimer !== "fired") clearTimeout(holdTimer);
+      setTimeout(() => (holdTimer = null), 0);
+    })
+  );
+  clearKey.addEventListener("click", (e) => { if (holdTimer === "fired") e.stopImmediatePropagation(); }, true);
+  clearKey.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // Horizontal swipe on display deletes the last character
+  let sx = null, sy = null;
+  displayEl.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; });
+  displayEl.addEventListener("pointerup", (e) => {
+    if (sx !== null && Math.abs(e.clientX - sx) > 40 && Math.abs(e.clientY - sy) < 40) { backspace(); render(); }
+    sx = sy = null;
+  });
+
+  // Double-tap display to copy
+  displayEl.addEventListener("dblclick", async () => {
+    const raw = state.done ? resultEl.textContent : (resultEl.textContent || exprEl.textContent);
+    const text = raw.replace(/[,​]/g, "").replace(/−/g, "-").replace(/×/g, "*").replace(/÷/g, "/");
+    try { await navigator.clipboard.writeText(text); showToast("Copied " + text); }
+    catch { showToast("Copy not allowed here"); }
+  });
+
+  function showToast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove("show"), 1200);
+  }
+
+  // Keyboard support
+  const keyMap = {
+    "+": '[data-op="+"]', "-": '[data-op="-"]', "*": '[data-op="*"]', "x": '[data-op="*"]', "X": '[data-op="*"]',
+    "/": '[data-op="/"]', "%": '[data-action="percent"]', ".": '[data-action="decimal"]', ",": '[data-action="decimal"]',
+    "=": '[data-action="equals"]', "Enter": '[data-action="equals"]',
+    "(": '[data-action="paren"]', ")": '[data-action="paren"]'
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape" && document.body.classList.contains("history-open")) { toggleHistory(false); return; }
+    let sel = null;
+    if (/^[0-9]$/.test(e.key)) sel = `[data-digit="${e.key}"]`;
+    else if (keyMap[e.key]) sel = keyMap[e.key];
+    else if (e.key === "Backspace") { e.preventDefault(); backspace(); render(); flash(clearKey); return; }
+    else if (e.key === "Escape" || e.key === "Delete" || e.key.toLowerCase() === "c") { clearAll(); render(); flash(clearKey); return; }
+    else if (e.key === "F9" || e.key === "_") sel = '[data-action="negate"]';
+    if (!sel) return;
+    e.preventDefault();
+    const btn = document.querySelector(".keys " + sel);
+    if (btn) { flash(btn); handle(btn); }
+  });
+
+  // Re-fit on any size change (rotation, Android URL bar, split screen)
+  let rafId = 0;
+  const reflow = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(render); };
+  window.addEventListener("resize", reflow);
+  window.addEventListener("orientationchange", reflow);
+  window.visualViewport?.addEventListener("resize", reflow);
+  if ("ResizeObserver" in window) new ResizeObserver(reflow).observe(displayEl);
+
+  applyTheme();
+  updateBadge();
+  render();
+  document.fonts?.ready?.then(render);
+})();
+</script>
+</body>
+</html>
